@@ -19,14 +19,6 @@ import sys
 import traceback
 from typing import List, Optional
 
-# Make sure python3-fontforge is installed on your system
-try:
-    import fontforge
-except ImportError:
-    print("ERROR: Could not import fontforge. Please ensure python3-fontforge is installed.")
-    print("On Ubuntu/Debian: sudo apt-get install python3-fontforge")
-    sys.exit(1)
-
 ###############################################################################
 # Configuration
 ###############################################################################

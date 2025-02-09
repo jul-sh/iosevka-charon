@@ -25,11 +25,11 @@ fi
 
 # Run Fontbakery checks on fonts, disabling the mono-bad-panose check.
 
-# Disable check/monospace because it incorrectly flags our quasi-proportional font as monospaced.
+# Disable opentype/monospace because it incorrectly flags our quasi-proportional font as monospaced.
 # This is due to a majority of glyphs sharing a common width, even though the font is not intended to be monospaced.
 # See https://github.com/fonttools/fontbakery/blob/ffe83a2824631ddbabdbf69c47b8128647de30d1/Lib/fontbakery/checks/conditions.py#L50
 fontbakery check-googlefonts \
     -C --succinct --loglevel FAIL \
-    --exclude-checkid check/monospace \
+    --exclude-checkid opentype/monospace \
     --ghmarkdown "$FONT_DIR/report.md" \
     $TTF_FILES || true

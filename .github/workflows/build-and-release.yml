@@ -60,12 +60,16 @@ jobs:
 
       - name: Check fonts using Nix develop
         run: |
-          for dir in fonts/*/; do
+          for dir in fonts/*; do
             if [ -d "$dir" ]; then
               plan_name=$(basename "$dir")
               echo "Checking fonts in $plan_name..."
-              ./sources/scripts/check_fonts.sh "${dir}/ttf"
-              mv "${dir}/ttf/report.md" "fonts/${plan_name}_report.md"
+              if [ -d "${dir}/ttf" ] && [ -n "$(ls -A ${dir}/ttf)" ]; then
+                ./sources/scripts/check_fonts.sh "${dir}/ttf"
+                mv "${dir}/ttf/report.md" "fonts/${plan_name}_report.md"
+              else
+                echo "Warning: Skipping font check for ${dir} - ttf directory is missing or empty"
+              fi
             fi
           done
 

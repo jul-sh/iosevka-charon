@@ -14,17 +14,22 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            fontforge
             ttfautohint
             nodejs
-            python3
-            python3Packages.fontbakery
-            python3Packages.fonttools
+            uv
+            git
           ];
 
           shellHook = ''
-            echo "Font development shell"
-            echo "Python version: $(python3 --version)"
+            # Set up uv virtual environment
+            readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
+            readonly VENV_DIR="$(git rev-parse --show-toplevel)/.venv"
+            readonly REQUIREMENTS="$(git rev-parse --show-toplevel)/sources/requirements.txt"
+            readonly UV_LOCKFILE="$(git rev-parse --show-toplevel)/sources/requirements.lock"
+
+            uv venv "$VENV_DIR"
+            uv pip sync "$UV_LOCKFILE"
+            source "$VENV_DIR/bin/activate"
           '';
         };
       });

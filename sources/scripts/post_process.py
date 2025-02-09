@@ -9,6 +9,7 @@ Post-process a TTF to fix:
 6) Fix invalid glyph flags in glyf table.
 7) Fix OS/2 usWinAscent value.
 8) Fix OS/2 sTypoAscender and hhea ascent values.
+9) Flatten composite glyphs.
 """
 
 import os
@@ -16,6 +17,10 @@ import sys
 import subprocess
 from fontTools import subset
 from fontTools.ttLib import TTFont
+from fontTools.pens.basePen import BasePen
+from fontTools.ttLib import TTFont
+from fontTools.pens.basePen import BasePen
+from fontTools.pens.transformPen import TransformPen
 from fontbakery.constants import NameID
 
 # OFL license data
@@ -27,6 +32,79 @@ OFL_LICENSE_INFO_URL = "https://openfontlicense.org"
 # Example version you want for both head.fontRevision and nameID=5
 FONT_VERSION_STRING = "Version 32.5.0"
 FONT_REVISION_FLOAT = 32.5  # head.fontRevision is a 16.16 fixed-point float
+
+class FlattenPen(BasePen):
+    def __init__(self, glyphSet):
+        super().__init__(glyphSet)
+        self.contours = []
+        self.currentContour = []
+
+    def moveTo(self, p0):
+        if self.currentContour:
+            self.contours.append(self.currentContour)
+        self.currentContour = [p0]
+
+    def lineTo(self, p1):
+        self.currentContour.append(p1)
+
+    def curveTo(self, p1, p2, p3):
+        self.currentContour.append(p1)
+        self.currentContour.append(p2)
+        self.currentContour.append(p3)
+
+    def closePath(self):
+        if self.currentContour:
+            self.contours.append(self.currentContour)
+        self.currentContour = []
+
+    def getContours(self):
+        if self.currentContour:
+            self.contours.append(self.currentContour)
+        return self.contours
+
+def flatten_glyphs(font):
+    """Flatten composite glyphs into simple glyphs with coordinates."""
+    glyph_set = font.getGlyphSet()
+
+    # Iterate through all glyphs in the font
+    for glyph_name in font['glyf'].keys():
+        glyph = font['glyf'][glyph_name]
+
+        # Skip if the glyph is simple (not a composite)
+        if not glyph.isComposite():
+            continue
+
+        # Create a pen to collect the flattened coordinates
+        flatten_pen = FlattenPen(glyph_set)
+        transform_pen = TransformPen(flatten_pen, (1, 0, 0, 1, 0, 0))
+
+        try:
+            # First establish current point with a moveTo
+            transform_pen.moveTo((0, 0))
+            # Draw the composite glyph to the pen, which will flatten it
+            glyph_set[glyph_name].draw(transform_pen)
+        except Exception as e:
+            print(f"Warning: Could not flatten glyph {glyph_name}: {str(e)}")
+            continue
+
+        # Get the flattened contours
+        contours = flatten_pen.getContours()
+
+        # Convert the glyph to a simple glyph
+        glyph.components = []  # Remove components
+        glyph.coordinates = []
+        glyph.flags = []
+        glyph.endPtsOfContours = []
+
+        # Add the flattened contour data
+        for contour in contours:
+            start_pt = len(glyph.coordinates)
+            for x, y in contour:
+                glyph.coordinates.append((x, y))
+                glyph.flags.append(1)  # Mark all points as on-curve
+            glyph.endPtsOfContours.append(start_pt + len(contour) - 1)
+
+    return font
 
 def parse_nam_file(file_path):
     """Parse a .nam file and return list of codepoints."""
@@ -122,6 +200,7 @@ def subset_basic_latin_plus_nbsp(input_path, output_path):
     3) Drop hinting to avoid OTS "Bad glyph flag" errors.
     4) Fix NameID 13, 14, and version mismatch.
     5) Fix invalid glyph flags in glyf table.
+    6) Flatten composite glyphs.
     """
 
     # Get git repo root using git rev-parse
@@ -185,8 +264,11 @@ def subset_basic_latin_plus_nbsp(input_path, output_path):
 
     # 5) Fix OS/2 usWinAscent, sTypoAscender and hhea ascent values
     font["OS/2"].usWinAscent = 985
-    font["OS/2"].sTypoAscender = 980
-    font["hhea"].ascent = 980
+    font["OS/2"].sTypoAscender = 985
+    font["hhea"].ascent = 985
+
+    # 6) Flatten composite glyphs
+    font = flatten_glyphs(font)
 
     # Save
     subset.save_font(font, output_path, options)

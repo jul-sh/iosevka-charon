@@ -1,13 +1,15 @@
 #!/bin/bash
 
+set -u # Fail on undefined variables
+
 # If we're already inside a Nix shell, continue execution
-if [ -n "$IN_NIX_SHELL" ]; then
+if [ -n "${IN_NIX_SHELL:-}" ]; then
   echo "Already inside a Nix shell. Continuing execution..."
   return 0 2>/dev/null || true
 fi
 
 # Command to re-run the script inside a Nix shell
-NIX_COMMAND="nix develop --experimental-features 'nix-command flakes' ./sources#default --command bash \"$0\" \"$@\""
+NIX_COMMAND="nix develop --experimental-features 'nix-command flakes' ./sources#default --command bash \"${0:-}\" \"${@:-}\""
 
 if command -v nix >/dev/null 2>&1; then
   echo "Nix is available, entering nix shell..."
