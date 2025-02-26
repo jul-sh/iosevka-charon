@@ -19,20 +19,20 @@ import sys
 import traceback
 from typing import List, Optional
 
-###############################################################################
-# Configuration
-###############################################################################
+# Constants
+# ----------------------------------------------------------------------------
 
+# Repository information
 IOSEVKA_REPO_URL: str = "https://github.com/jul-sh/Iosevka.git"
 
+# Directory structure
 OUTPUT_DIR: str = "sources/output"
 WORKDIR: str = "sources/workdir"
 REPO_DIR: str = os.path.join(WORKDIR, "iosevka-repo")
 PRIVATE_TOML: str = "sources/private-build-plans.toml"
 
-###############################################################################
-# Utilities
-###############################################################################
+# Utility Functions
+# ----------------------------------------------------------------------------
 
 def run_cmd(command: str, cwd: Optional[str] = None) -> None:
     """Executes a shell command and raises an error if it fails.
@@ -53,9 +53,8 @@ def run_cmd(command: str, cwd: Optional[str] = None) -> None:
         print(f"Working directory: {cwd or os.getcwd()}")
         raise
 
-###############################################################################
-# Environment Preparation
-###############################################################################
+# Environment Setup
+# ----------------------------------------------------------------------------
 
 def prep_environment() -> None:
     """Prepares the build environment.
@@ -109,9 +108,8 @@ def prep_environment() -> None:
         traceback.print_exc()
         raise
 
-###############################################################################
-# Build Plan Parsing
-###############################################################################
+# Build Plan Processing
+# ----------------------------------------------------------------------------
 
 def get_build_plans() -> List[str]:
     """Parses build plan names from private-build-plans.toml.
@@ -146,9 +144,8 @@ def get_build_plans() -> List[str]:
         print(f"ERROR parsing build plans: {str(e)}")
         raise
 
-###############################################################################
-# Single Plan Build
-###############################################################################
+# Font Building
+# ----------------------------------------------------------------------------
 
 def build_one_plan(plan_name: str) -> None:
     """Builds a single font plan.
@@ -183,9 +180,8 @@ def build_one_plan(plan_name: str) -> None:
             shutil.copy2(os.path.join(plan_dist_dir, filename), ttf_out_dir)
 
 
-###############################################################################
-# Main
-###############################################################################
+# Main Entry Point
+# ----------------------------------------------------------------------------
 
 def main() -> None:
     """Main entry point.

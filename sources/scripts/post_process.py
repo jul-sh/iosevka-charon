@@ -18,20 +18,25 @@ import subprocess
 from fontTools import subset
 from fontTools.ttLib import TTFont
 from fontTools.pens.basePen import BasePen
-from fontTools.ttLib import TTFont
-from fontTools.pens.basePen import BasePen
 from fontTools.pens.transformPen import TransformPen
 from fontbakery.constants import NameID
 
+# Constants
+# ----------------------------------------------------------------------------
+
 # OFL license data
 OFL_LICENSE_DESCRIPTION = (
-    "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org"
+    "This Font Software is licensed under the SIL Open Font License, Version 1.1. "
+    "This license is available with a FAQ at: https://openfontlicense.org"
 )
 OFL_LICENSE_INFO_URL = "https://openfontlicense.org"
 
-# Example version you want for both head.fontRevision and nameID=5
-FONT_VERSION_STRING = "Version 32.5.0"
-FONT_REVISION_FLOAT = 32.5  # head.fontRevision is a 16.16 fixed-point float
+# Font version information
+FONT_VERSION_STRING = "Version 32.5.0"  # Version string for nameID=5
+FONT_REVISION_FLOAT = 32.5              # head.fontRevision (16.16 fixed-point float)
+
+# Font metrics adjustments
+ASCENT_VALUE = 985  # Value for usWinAscent, sTypoAscender, and hhea.ascent
 
 class FlattenPen(BasePen):
     def __init__(self, glyphSet):
@@ -263,9 +268,9 @@ def subset_basic_latin_plus_nbsp(input_path, output_path):
             glyph.recalcBounds(glyf_table)
 
     # 5) Fix OS/2 usWinAscent, sTypoAscender and hhea ascent values
-    font["OS/2"].usWinAscent = 985
-    font["OS/2"].sTypoAscender = 985
-    font["hhea"].ascent = 985
+    font["OS/2"].usWinAscent = ASCENT_VALUE
+    font["OS/2"].sTypoAscender = ASCENT_VALUE
+    font["hhea"].ascent = ASCENT_VALUE
 
     # 6) Flatten composite glyphs
     font = flatten_glyphs(font)
