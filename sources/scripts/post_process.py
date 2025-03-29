@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """
-Post-process a TTF to fix:
-1) Subset (Basic Latin + U+00A0).
-2) Reuse space glyph for U+00A0.
-3) Match head.version and name version string.
-4) Drop hinting to avoid OTS "Bad glyph flag" errors.
-5) Set up NameID 13 and 14 for an OFL font.
-6) Fix invalid glyph flags in glyf table.
-7) Fix OS/2 usWinAscent value.
-8) Fix OS/2 sTypoAscender and hhea ascent values.
-9) Flatten composite glyphs.
+Experimental post-processing script to make a TTF font Google Fonts compliant.
+
+This script performs several common fixes aiming for GF compliance:
+- Subsets the font (e.g., using GF_Latin_Core.nam).
+- Reuses space glyph for U+00A0.
+- Aligns head.fontRevision and nameID 5 (Version).
+- Drops hinting.
+- Sets OFL license nameIDs (13, 14).
+- Fixes potentially invalid 'glyf' table flags.
+- Adjusts OS/2 vertical metrics (usWinAscent, sTypoAscender).
+- Adjusts hhea vertical metrics (ascent).
+- Flattens composite glyphs.
+
+WARNING: This is experimental. Use with caution and verify results.
 """
 
 import os

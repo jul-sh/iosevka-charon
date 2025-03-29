@@ -44,39 +44,27 @@ jobs:
       - name: Build fonts using Nix develop
         run: |
           ./sources/build.sh
-          rm -rf fonts
-          mkdir -p fonts/ttf
-          mkdir -p fonts/woff2
-          find sources/output -name "*.ttf" -exec cp {} fonts/ttf/ \;
-          find sources/output -name "*.woff2" -exec cp {} fonts/woff2/ \;
 
-      - name: Upload Fonts
+      - name: Upload Built Fonts Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Iosevka_Charon_Fonts
-          path: fonts
+          name: Built_Fonts
+          path: sources/output
           if-no-files-found: error
           retention-days: 90
-          compression-level: 0
+          compression-level: 0 # Use 0 for faster upload/download if needed, or 9 for max compression
           overwrite: true
           include-hidden-files: false
 
       - name: Check fonts using Nix develop
         run: |
-          ./sources/scripts/check_fonts.sh "fonts"
+          ./sources/scripts/check_fonts.sh "sources/output"
 
-      - name: Upload Font Check Reports
+      - name: Upload Font Check Reports Artifact
         uses: actions/upload-artifact@v4
         with:
           name: FontBakery_Reports
-          path: fonts/report.md
-          if-no-files-found: error
+          path: sources/output/report.md
+          if-no-files-found: error # Keep this to ensure the report was generated
 
-      - name: Commit changes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add fonts/
-          git commit -m "[GitHub Action] Update font files and QA report (built from $(git rev-parse --short HEAD))"
-          git push
+
