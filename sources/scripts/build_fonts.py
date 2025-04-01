@@ -24,6 +24,7 @@ from typing import List, Optional
 
 # Repository information
 IOSEVKA_REPO_URL: str = "https://github.com/jul-sh/Iosevka.git"
+IOSEVKA_VERSION: str = "v33.2.0"
 
 # Directory structure
 OUTPUT_DIR: str = "sources/output"
@@ -72,12 +73,14 @@ def prep_environment() -> None:
         # Clone or update the repository
         if os.path.isdir(REPO_DIR):
             print("[prep_environment] Updating existing Iosevka repository...")
+            run_cmd("git fetch --all --tags", cwd=REPO_DIR)
+            run_cmd(f"git checkout {IOSEVKA_VERSION}", cwd=REPO_DIR)
             run_cmd("git pull", cwd=REPO_DIR)
             run_cmd("git clean -fdx", cwd=REPO_DIR)
         else:
             print("[prep_environment] Cloning Iosevka repository...")
             run_cmd(
-                f"git clone --depth 1 {IOSEVKA_REPO_URL} {REPO_DIR}"
+                f"git clone --branch {IOSEVKA_VERSION} {IOSEVKA_REPO_URL} {REPO_DIR}"
             )
 
         # Copy private build plans
@@ -168,7 +171,7 @@ def build_one_plan(plan_name: str) -> None:
 
     # 1) Build TTF
     print(f"[build_one_plan] Building TTF for '{plan_name}'...")
-    run_cmd(f"npm run build -- ttf-unhinted::{plan_name}", cwd=REPO_DIR)
+    run_cmd(f"npm run build -- ttf::{plan_name}", cwd=REPO_DIR)
 
     # 2) Copy TTFs
     if not os.path.isdir(plan_dist_dir):
