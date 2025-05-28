@@ -23,7 +23,7 @@ from typing import List, Optional
 # ----------------------------------------------------------------------------
 
 # Repository information
-IOSEVKA_REPO_URL: str = "https://github.com/jul-sh/Iosevka.git"
+IOSEVKA_REPO_URL: str = "https://github.com/be5invis/Iosevka.git"
 IOSEVKA_VERSION: str = "v33.2.0"
 
 # Directory structure
