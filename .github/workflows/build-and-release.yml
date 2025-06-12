@@ -67,4 +67,38 @@ jobs:
           path: sources/output/report.md
           if-no-files-found: error # Keep this to ensure the report was generated
 
+      # Archive the output fonts
+      - name: Archive output fonts
+        run: |
+          mkdir -p sources/output
+          find output -maxdepth 1 -type d -print0 | while IFS= read -r -d $'\0' dir; do
+            if [ "$dir" != "output" ]; then
+              zip -r "sources/output/$(basename "$dir").zip" "$dir"
+            fi
+          done
 
+      # Create a tag for the release
+      - name: Create tag
+        id: create_tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          TAG_NAME="release-$(date +'%Y%m%d-%H%M%S')"
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          git tag $TAG_NAME
+          git push origin $TAG_NAME
+
+      # Create a release and upload fonts
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: sources/output/*.zip
+          name: Font Build - ${{ github.sha }}
+          body: |
+            Fonts generated from commit ${{ github.sha }}.
+            Download the .ttf files from the assets below.
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ env.TAG_NAME }}
