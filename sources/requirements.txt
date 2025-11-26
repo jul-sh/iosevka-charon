@@ -10,7 +10,7 @@ cmarkgfm==2024.11.20
 commandlines==0.4.1
 defcon==0.10.3
 dehinter==4.0.0
-fontbakery[googlefonts]==0.13.2
+fontbakery[googlefonts]==1.1.0
 fontmath==0.9.4
 fonttools==4.55.8
 freetype-py==2.3.0
@@ -22,7 +22,7 @@ markupsafe==3.0.2
 mdurl==0.1.2
 munkres==1.1.4
 opentype-sanitizer==9.2.0
-opentypespec==1.9.1
+opentypespec==1.9.2
 packaging==24.2
 pip==25.0
 pip-api==0.0.34

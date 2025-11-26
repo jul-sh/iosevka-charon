@@ -82,93 +82,77 @@ def fix_vertical_metrics(font):
 
 
 def flatten_nested_components(font):
-    """Flatten nested component glyphs using fontTools subset"""
+    """Flatten nested composites by inlining their components."""
     if 'glyf' not in font:
         return False
 
-    from fontTools import subset
+    from fontTools.ttLib.tables._g_l_y_f import (
+        GlyphComponent,
+        ROUND_XY_TO_GRID,
+        USE_MY_METRICS,
+        SCALED_COMPONENT_OFFSET,
+        UNSCALED_COMPONENT_OFFSET,
+        OVERLAP_COMPOUND,
+        NON_OVERLAPPING,
+    )
 
     glyf = font['glyf']
+    flattened = []
 
-    # Find all glyphs with nested components
-    glyphs_to_flatten = []
+    flag_mask = (
+        ROUND_XY_TO_GRID
+        | USE_MY_METRICS
+        | SCALED_COMPONENT_OFFSET
+        | UNSCALED_COMPONENT_OFFSET
+        | OVERLAP_COMPOUND
+        | NON_OVERLAPPING
+    )
+
+    def expand_component(component):
+        target = glyf.get(component.glyphName)
+        if target and target.isComposite():
+            expanded = []
+            for child in target.components:
+                for inner in expand_component(child):
+                    new_comp = GlyphComponent()
+                    new_comp.glyphName = inner.glyphName
+                    new_comp.x = getattr(inner, 'x', 0) + getattr(component, 'x', 0)
+                    new_comp.y = getattr(inner, 'y', 0) + getattr(component, 'y', 0)
+                    new_comp.flags = inner.flags | (component.flags & flag_mask)
+                    expanded.append(new_comp)
+            return expanded
+
+        simple = GlyphComponent()
+        simple.glyphName = component.glyphName
+        simple.x = getattr(component, 'x', 0)
+        simple.y = getattr(component, 'y', 0)
+        simple.flags = component.flags & flag_mask
+        return [simple]
+
     for glyph_name in font.getGlyphOrder():
-        if glyph_name not in glyf:
-            continue
-
         glyph = glyf[glyph_name]
-        if not hasattr(glyph, 'numberOfContours') or glyph.numberOfContours >= 0:
+        if not glyph.isComposite():
             continue
 
-        # Check if any component is itself a composite
-        has_nested = False
-        for component in glyph.components:
-            comp_glyph = glyf.get(component.glyphName)
-            if comp_glyph and hasattr(comp_glyph, 'numberOfContours') and comp_glyph.numberOfContours < 0:
-                has_nested = True
-                break
-
-        if has_nested:
-            glyphs_to_flatten.append(glyph_name)
-
-    if not glyphs_to_flatten:
-        return False
-
-    # Use subsetter to flatten components
-    # The subsetter has proper component flattening logic
-    options = subset.Options()
-    options.drop_tables = []  # Don't drop any tables
-    options.passthrough_tables = True
-    options.ignore_missing_glyphs = True
-    options.ignore_missing_unicodes = True
-
-    subsetter = subset.Subsetter(options=options)
-
-    # Subset to all glyphs (this preserves everything)
-    subsetter.populate(glyphs=font.getGlyphOrder())
-
-    # Now decompose the nested components
-    # We'll do this by temporarily modifying the glyf table
-    for glyph_name in glyphs_to_flatten:
-        glyph = glyf[glyph_name]
-        if not hasattr(glyph, 'components'):
+        component_names = glyph.getComponentNames(glyf)
+        has_nested = any(
+            (name in glyf and glyf[name].isComposite()) for name in component_names
+        )
+        if not has_nested:
             continue
 
-        # Expand components manually by replacing nested component references
-        # with their sub-components
         new_components = []
         for component in glyph.components:
-            comp_glyph = glyf.get(component.glyphName)
-            if comp_glyph and hasattr(comp_glyph, 'numberOfContours') and comp_glyph.numberOfContours < 0:
-                # This is a nested component - expand it
-                if hasattr(comp_glyph, 'components'):
-                    for subcomp in comp_glyph.components:
-                        # Create new component with same glyph name but preserve positioning
-                        from fontTools.ttLib.tables._g_l_y_f import GlyphComponent
-                        new_comp = GlyphComponent()
-                        new_comp.glyphName = subcomp.glyphName
-                        new_comp.flags = getattr(subcomp, 'flags', 0)
-                        # Preserve the positioning from the parent component
-                        new_comp.x = getattr(component, 'x', 0)
-                        new_comp.y = getattr(component, 'y', 0)
-                        new_components.append(new_comp)
-            else:
-                # Not nested, keep as is
-                new_components.append(component)
+            new_components.extend(expand_component(component))
 
-        # Remove duplicates by tracking seen (glyphName, x, y) tuples
-        seen = set()
-        unique_components = []
-        for comp in new_components:
-            key = (comp.glyphName, getattr(comp, 'x', 0), getattr(comp, 'y', 0))
-            if key not in seen:
-                seen.add(key)
-                unique_components.append(comp)
+        glyph.components = new_components
+        glyph.recalcBounds(glyf)
+        flattened.append(glyph_name)
 
-        glyph.components = unique_components
+    if flattened:
+        print(f"  ✓ Flattened {len(flattened)} glyphs with nested components")
 
-    print(f"  ✓ Flattened {len(glyphs_to_flatten)} glyphs with nested components")
-    return True
+    return bool(flattened)
 
 
 def fix_fontbakery_version(font):
@@ -368,9 +352,6 @@ def post_process_font(font_path, output_path=None):
 
         if fix_vertical_metrics(font):
             fixes_applied.append("vertical_metrics")
-
-        # if flatten_nested_components(font):
-        #     fixes_applied.append("nested_components")
 
         if fix_fontbakery_version(font):
             fixes_applied.append("fontbakery_metadata")

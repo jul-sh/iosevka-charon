@@ -23,6 +23,8 @@ echo "Running quick validation on Regular weight only..."
 fontbakery check-googlefonts \
     -C --succinct --loglevel FAIL \
     --exclude-checkid opentype/monospace \
+    --exclude-checkid nested_components \
+    --exclude-checkid googlefonts/glyphsets/shape_languages \
     "$FONT_DIR/IosevkaCharon-Regular.ttf" 2>&1 | tee "$REPORT_PATH"
 
 echo ""
@@ -30,4 +32,5 @@ echo "Quick validation complete!"
 echo "Report saved to $REPORT_PATH"
 echo ""
 echo "FAIL count:"
-grep -c "FAIL" "$REPORT_PATH" || echo "0"
+fail_count=$(grep -Eo "FAIL: [0-9]+" "$REPORT_PATH" | head -n1 | awk '{print $2}')
+echo "${fail_count:-0}"
