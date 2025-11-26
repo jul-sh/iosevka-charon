@@ -3,7 +3,7 @@
 Build custom Iosevka fonts from private build plans.
 
 Steps:
-  1. Clone or update the Iosevka repo at a specific commit.
+  1. Initialize and update the Iosevka Git submodule (gf branch).
   2. Install npm dependencies.
   3. Parse plan names from `private-build-plans.toml`.
   4. For each plan:
@@ -22,14 +22,10 @@ from typing import List, Optional
 # Constants
 # ----------------------------------------------------------------------------
 
-# Repository information
-IOSEVKA_REPO_URL: str = "https://github.com/be5invis/Iosevka.git"
-IOSEVKA_VERSION: str = "v33.2.0"
-
 # Directory structure
 OUTPUT_DIR: str = "sources/output"
 WORKDIR: str = "sources/workdir"
-REPO_DIR: str = os.path.join(WORKDIR, "iosevka-repo")
+REPO_DIR: str = "sources/iosevka"  # Using Git submodule
 PRIVATE_TOML: str = "sources/private-build-plans.toml"
 
 # Utility Functions
@@ -60,8 +56,8 @@ def run_cmd(command: str, cwd: Optional[str] = None) -> None:
 def prep_environment() -> None:
     """Prepares the build environment.
 
-    Ensures WORKDIR exists, clones/updates Iosevka repo, checks out specified commit,
-    copies build plans, installs dependencies, and cleans output directory.
+    Copies build plans, installs dependencies, and cleans output directory.
+    Note: Assumes the Iosevka submodule is already initialized.
 
     Raises:
         FileNotFoundError: If private build plans file is missing.
@@ -69,19 +65,6 @@ def prep_environment() -> None:
     """
     try:
         os.makedirs(WORKDIR, exist_ok=True)
-
-        # Clone or update the repository
-        if os.path.isdir(REPO_DIR):
-            print("[prep_environment] Updating existing Iosevka repository...")
-            run_cmd("git fetch --all --tags", cwd=REPO_DIR)
-            run_cmd(f"git checkout {IOSEVKA_VERSION}", cwd=REPO_DIR)
-            run_cmd("git pull", cwd=REPO_DIR)
-            run_cmd("git clean -fdx", cwd=REPO_DIR)
-        else:
-            print("[prep_environment] Cloning Iosevka repository...")
-            run_cmd(
-                f"git clone --branch {IOSEVKA_VERSION} {IOSEVKA_REPO_URL} {REPO_DIR}"
-            )
 
         # Copy private build plans
         print("[prep_environment] Copying private build plans...")
