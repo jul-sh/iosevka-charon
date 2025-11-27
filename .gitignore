@@ -3,3 +3,4 @@ sources/workdir
 sources/output
 .aider*
 .venv
+__pycache__/

@@ -12,7 +12,8 @@ defcon==0.10.3
 dehinter==4.0.0
 fontbakery[googlefonts]==1.1.0
 fontmath==0.9.4
-fonttools==4.55.8
+gftools==0.9.98
+fonttools==4.60.1
 freetype-py==2.3.0
 fs==2.4.16
 idna==3.10

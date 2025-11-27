@@ -14,10 +14,15 @@ Fixes:
 import sys
 from pathlib import Path
 from fontTools.ttLib import TTFont
+from fontTools.ttLib.tables import otTables
+from fontTools.ttLib.tables import ttProgram
 from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.recordingPen import RecordingPen, DecomposingRecordingPen
+from fontTools.otlLib.builder import buildAnchor, buildMarkBasePos
 import argparse
+from gftools.fix import fix_font as gftools_fix_font
+import unicodedata
 
 
 def fix_font_revision(font):
@@ -332,6 +337,137 @@ def fix_dotted_circle(font):
     return False
 
 
+def add_fallback_mark_anchors(font):
+    """Add broad mark-to-base coverage so combining marks attach instead of floating."""
+    if 'GPOS' not in font or 'glyf' not in font:
+        return False
+
+    cmap = font.getBestCmap()
+    glyph_for_cp = {cp: name for cp, name in cmap.items()}
+
+    # Collect combining marks present in the font.
+    mark_glyphs = []
+    for cp, name in sorted(glyph_for_cp.items()):
+        if unicodedata.combining(chr(cp)):
+            mark_glyphs.append((name, cp))
+
+    if not mark_glyphs:
+        return False
+
+    # Collect base glyphs (non-marks) present in the font.
+    base_glyphs = []
+    for cp, name in sorted(glyph_for_cp.items()):
+        if not unicodedata.combining(chr(cp)):
+            base_glyphs.append(name)
+
+    mark_class_count = len(mark_glyphs)
+    # Anchor every mark at its origin.
+    mark_anchors = {name: (idx, buildAnchor(0, 0)) for idx, (name, _) in enumerate(mark_glyphs)}
+
+    glyf = font['glyf']
+    hmtx = font['hmtx']
+    base_anchors = {}
+    for base in base_glyphs:
+        if base not in glyf or base not in hmtx.metrics:
+            continue
+        glyph = glyf[base]
+        if not hasattr(glyph, "xMax") or glyph.xMax is None:
+            glyph.recalcBounds(glyf)
+        advance, _ = hmtx[base]
+        x = advance // 2
+        y = glyph.yMax if hasattr(glyph, "yMax") and glyph.yMax is not None else font['hhea'].ascender
+        anchor = buildAnchor(x, y)
+        base_anchors[base] = {idx: anchor for idx in range(mark_class_count)}
+
+    if not base_anchors:
+        return False
+
+    subtables = buildMarkBasePos(mark_anchors, base_anchors, font.getReverseGlyphMap())
+    lookup = otTables.Lookup()
+    lookup.LookupFlag = 0
+    lookup.LookupType = 4
+    lookup.SubTable = subtables
+    lookup.SubTableCount = len(subtables)
+    gpos = font['GPOS'].table
+
+    # Append lookup and hook it into the mark feature.
+    gpos.LookupList.Lookup.append(lookup)
+    gpos.LookupList.LookupCount += 1
+    new_index = len(gpos.LookupList.Lookup) - 1
+
+    for record in gpos.FeatureList.FeatureRecord:
+        if record.FeatureTag == "mark":
+            record.Feature.LookupListIndex.append(new_index)
+            break
+    else:
+        # If mark feature is missing, create a minimal one.
+        feature = gpos.FeatureList.FeatureRecord[0].__class__()
+        feature.FeatureTag = "mark"
+        feature.Feature = gpos.FeatureList.FeatureRecord[0].Feature.__class__()
+        feature.Feature.LookupCount = 1
+        feature.Feature.LookupListIndex = [new_index]
+        gpos.FeatureList.FeatureRecord.append(feature)
+        gpos.FeatureList.FeatureCount += 1
+
+    return True
+
+
+def normalize_simple_glyphs(font):
+    """Rebuild simple glyphs to clear bad flag bits that trigger OTS errors."""
+    if 'glyf' not in font:
+        return False
+
+    glyf = font['glyf']
+    changed = False
+
+    for name in font.getGlyphOrder():
+        glyph = glyf[name]
+        if glyph.isComposite() or glyph.numberOfContours in (0, None):
+            continue
+
+        pen = TTGlyphPen(glyf)
+        glyph.draw(pen, glyf)
+        new_glyph = pen.glyph()
+        # Drop any existing instructions to avoid stale programs.
+        new_glyph.program = ttProgram.Program()
+        new_glyph.recalcBounds(glyf)
+        glyf[name] = new_glyph
+        changed = True
+
+    return changed
+
+
+def fix_panose_monospace(font):
+    """Ensure PANOSE proportion is set to monospaced."""
+    if 'OS/2' not in font:
+        return False
+    panose = font['OS/2'].panose
+    if panose.bProportion != 9:
+        panose.bProportion = 9
+        return True
+    return False
+
+
+def fix_license_entries(font):
+    """Force OFL license description and URL to the exact expected strings."""
+    name_table = font['name']
+    ofl_desc = "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org"
+    ofl_url = "https://openfontlicense.org"
+
+    def set_name(name_id, value):
+        name_table.setName(value, name_id, 3, 1, 0x409)
+        name_table.setName(value, name_id, 1, 0, 0)
+
+    changed = False
+    # Update description (ID 13) and URL (ID 14)
+    for nid, target in ((13, ofl_desc), (14, ofl_url)):
+        existing = name_table.getName(nid, 3, 1, 0x409)
+        if existing is None or existing.toUnicode() != target:
+            set_name(nid, target)
+            changed = True
+    return changed
+
+
 def post_process_font(font_path, output_path=None):
     """Apply all post-processing fixes to a font"""
     if output_path is None:
@@ -364,6 +500,25 @@ def post_process_font(font_path, output_path=None):
 
         if fix_dotted_circle(font):
             fixes_applied.append("dotted_circle")
+
+        if flatten_nested_components(font):
+            fixes_applied.append("flattened_components")
+
+        if normalize_simple_glyphs(font):
+            fixes_applied.append("normalized_glyf_flags")
+
+        # Run a light gftools fix pass for additional GF hygiene.
+        font = gftools_fix_font(font, include_source_fixes=False)
+        fixes_applied.append("gftools_fix_font")
+
+        if fix_panose_monospace(font):
+            fixes_applied.append("panose_monospace")
+
+        if fix_license_entries(font):
+            fixes_applied.append("license_entries")
+
+        if add_fallback_mark_anchors(font):
+            fixes_applied.append("fallback_mark_anchors")
 
         # Remove unwanted tables
         unwanted_tables = ['DSIG', 'FFTM', 'prop']
