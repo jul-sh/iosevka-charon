@@ -4,3 +4,4 @@ sources/output
 .aider*
 .venv
 __pycache__/
+*.log
