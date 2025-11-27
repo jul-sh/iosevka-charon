@@ -91,6 +91,38 @@ jobs:
           git tag $TAG_NAME
           git push origin $TAG_NAME
 
+      - name: Prepare release body with font check results
+        run: |
+          REPORT_PATH="sources/output/report.md"
+          RELEASE_NOTES="sources/output/release_notes.md"
+
+          if [ ! -f "$REPORT_PATH" ]; then
+            echo "Fontbakery report missing at $REPORT_PATH" > "$RELEASE_NOTES"
+            echo "RELEASE_BODY_PATH=$RELEASE_NOTES" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          echo "Fonts generated from commit $GITHUB_SHA." > "$RELEASE_NOTES"
+          echo "Download the .ttf files from the assets below." >> "$RELEASE_NOTES"
+          echo "" >> "$RELEASE_NOTES"
+          echo "## Fontbakery checks" >> "$RELEASE_NOTES"
+
+          if grep -Ei 'FAIL|❌|:x:' "$REPORT_PATH" > /tmp/fail_lines.txt; then
+            echo "**Status: Failures detected.**" >> "$RELEASE_NOTES"
+            echo "" >> "$RELEASE_NOTES"
+            echo "### Failed checks" >> "$RELEASE_NOTES"
+            cat /tmp/fail_lines.txt >> "$RELEASE_NOTES"
+            echo "" >> "$RELEASE_NOTES"
+          else
+            echo "**Status: No FAIL results reported.**" >> "$RELEASE_NOTES"
+            echo "" >> "$RELEASE_NOTES"
+          fi
+
+          echo "### Full Fontbakery report" >> "$RELEASE_NOTES"
+          cat "$REPORT_PATH" >> "$RELEASE_NOTES"
+
+          echo "RELEASE_BODY_PATH=$RELEASE_NOTES" >> $GITHUB_ENV
+
       # Create a release and upload fonts
       - name: Create Release
         id: create_release
@@ -98,9 +130,7 @@ jobs:
         with:
           files: sources/output/*.zip
           name: Font Build - ${{ github.sha }}
-          body: |
-            Fonts generated from commit ${{ github.sha }}.
-            Download the .ttf files from the assets below.
+          body_path: ${{ env.RELEASE_BODY_PATH }}
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
