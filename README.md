@@ -1,16 +1,14 @@
 # Iosevka Charon
 
-Custom Google Fonts–style repository for the Iosevka Charon and Iosevka Charon Mono builds. This project keeps the Google Fonts template layout while using the original Nix + uv toolchain from `iosevka-julsh`.
+Custom Google Fonts–compliant repository for the Iosevka Charon and Iosevka Charon Mono builds. This project keeps the Google Fonts template layout while using the repository's Nix + uv toolchain, and stays aligned with Google Fonts repository expectations. The Iosevka Charon family is a quasi-proportional variant excellent for technical writing and dense UI, while Iosevka Charon Mono is a true monospace tuned for coding and terminal use.
 
 ## Building and testing
 
-The Make targets wrap the Nix flake dev shell (which bootstraps uv and the Python venv) and the Iosevka build scripts:
+The Make targets wrap the Nix flake dev shell (which bootstraps uv and the Python venv) and the Iosevka build scripts. If Nix is installed, `make` automatically enters the flake dev shell; when Nix is absent but Docker is available, the same flow runs inside the official `nixos/nix` container. With either tool installed, you can rely solely on the standard GNU Make entry points:
 
 - `make build` – enter the Nix shell, sync the Iosevka submodule, build the fonts, and copy TTFs to `fonts/ttf/…`.
 - `make test` – run FontBakery (with the Beria Erfe script patch) against the built TTFs, writing reports to `out/fontbakery`.
 - `make proof` – generate diffenator2 HTML proofs in `out/proof` using the built TTFs.
-
-You can also run any command inside the dev shell manually via `./scripts/run-in-nix.sh <command>`.
 
 ## Tooling
 
