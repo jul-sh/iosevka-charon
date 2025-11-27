@@ -135,3 +135,291 @@ jobs:
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ env.TAG_NAME }}
+
+      - name: Generate font demo page
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+
+          DEMO_DIR="sources/output/demo-site"
+          rm -rf "$DEMO_DIR"
+          mkdir -p "$DEMO_DIR/fonts"
+
+          mapfile -t FONT_FILES < <(find sources/output -type f -name '*.ttf' -print | sort)
+          if [ "${#FONT_FILES[@]}" -eq 0 ]; then
+            echo "No TTF files found in sources/output; cannot build demo site."
+            exit 1
+          fi
+
+          for font in "${FONT_FILES[@]}"; do
+            cp "$font" "$DEMO_DIR/fonts/$(basename "$font")"
+          done
+
+          {
+            cat <<'EOF'
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iosevka Julsh — Font Preview</title>
+  <style>
+    :root {
+      --bg: #0d0f1a;
+      --panel: #121528;
+      --card: #151a30;
+      --text: #e8edf6;
+      --muted: #a5adcc;
+      --accent: #7ce7fd;
+      --accent-2: #a78bfa;
+      --border: rgba(167, 139, 250, 0.25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(1200px 1200px at 20% 20%, rgba(124, 231, 253, 0.08), transparent 45%),
+        radial-gradient(900px 900px at 80% 0%, rgba(167, 139, 250, 0.08), transparent 45%),
+        linear-gradient(135deg, #0b0d18, #0e1322 60%, #0c0f1d);
+      color: var(--text);
+      font-family: "Inter", "DM Sans", "Segoe UI", sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      padding: 48px 24px 24px;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 12px;
+      letter-spacing: 1px;
+      font-size: 30px;
+    }
+    p.lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 18px;
+      padding: 18px 22px 48px;
+      max-width: 1260px;
+      margin: 0 auto;
+    }
+    .font-card {
+      background: linear-gradient(150deg, rgba(124, 231, 253, 0.06), transparent 55%), var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 18px;
+      box-shadow: 0 12px 36px rgba(0,0,0,0.35);
+    }
+    .font-card h2 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      letter-spacing: 0.3px;
+      color: var(--accent);
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .controls label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .controls select {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 14px;
+    }
+    .editor {
+      margin: 10px 0 8px;
+      font-size: 28px;
+      line-height: 1.35;
+      background: var(--panel);
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.05);
+      overflow-wrap: anywhere;
+      min-height: 110px;
+      outline: 1px solid transparent;
+      transition: outline 0.2s ease, box-shadow 0.2s ease;
+    }
+    .editor:focus {
+      outline: 1px solid rgba(124,231,253,0.35);
+      box-shadow: 0 0 0 3px rgba(124,231,253,0.12);
+    }
+    .details {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(124,231,253,0.08);
+      border: 1px solid rgba(124,231,253,0.25);
+      border-radius: 999px;
+      color: var(--text);
+      font-size: 12px;
+    }
+EOF
+
+            for font in "${FONT_FILES[@]}"; do
+              font_file="$(basename "$font")"
+              font_family="${font_file%.ttf}"
+              printf "  @font-face { font-family: '%s'; src: url('fonts/%s') format('truetype'); font-display: swap; }\n" "$font_family" "$font_file"
+            done
+
+            cat <<'EOF'
+  </style>
+  <script>
+    const fonts = [
+EOF
+          } >> "$DEMO_DIR/index.html"
+
+          for font in "${FONT_FILES[@]}"; do
+            font_file="$(basename "$font")"
+            font_family="${font_file%.ttf}"
+            base="${font_family%-*}"
+            variant="${font_family##*-}"
+            if [ "$base" = "$font_family" ]; then
+              base="$font_family"
+              variant="regular"
+            fi
+            cat >> "$DEMO_DIR/index.html" <<EOF
+      { file: '${font_file//\'/}', family: '${font_family//\'/}', base: '${base//\'/}', variant: '${variant//\'/}' },
+EOF
+          done
+
+          {
+            cat <<'EOF'
+    ];
+
+    const prettify = (str) =>
+      str.replace(/[-_.]+/g, " ")
+         .replace(/\b\w/g, (m) => m.toUpperCase());
+
+    const deriveStyle = (variant) => {
+      const v = variant.toLowerCase();
+      const style = v.includes("italic") ? "italic" : (v.includes("oblique") ? "oblique" : "normal");
+      let weight = 400;
+      if (v.includes("thin")) weight = 100;
+      else if (v.includes("extralight") || v.includes("ultralight")) weight = 200;
+      else if (v.includes("light")) weight = 300;
+      else if (v.includes("book")) weight = 350;
+      else if (v.includes("regular") || v.includes("text")) weight = 400;
+      else if (v.includes("medium")) weight = 500;
+      else if (v.includes("semibold") || v.includes("demibold")) weight = 600;
+      else if (v.includes("extrabold") || v.includes("ultrabold") || v.includes("heavy")) weight = 800;
+      else if (v.includes("bold")) weight = 700;
+      else if (v.includes("black")) weight = 900;
+      return { style, weight };
+    };
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const grid = document.querySelector(".grid");
+      const grouped = fonts.reduce((acc, font) => {
+        acc[font.base] = acc[font.base] || [];
+        acc[font.base].push(font);
+        return acc;
+      }, {});
+
+      Object.entries(grouped).forEach(([base, variants]) => {
+        variants.sort((a, b) => a.variant.localeCompare(b.variant));
+
+        const card = document.createElement("article");
+        card.className = "font-card";
+
+        const title = document.createElement("h2");
+        title.textContent = prettify(base);
+        card.appendChild(title);
+
+        const badge = document.createElement("div");
+        badge.className = "badge";
+        badge.textContent = `${variants.length} variant${variants.length > 1 ? "s" : ""}`;
+        card.appendChild(badge);
+
+        const controls = document.createElement("div");
+        controls.className = "controls";
+
+        const label = document.createElement("label");
+        label.textContent = "Variant";
+
+        const select = document.createElement("select");
+        variants.forEach((variant, idx) => {
+          const opt = document.createElement("option");
+          opt.value = idx;
+          opt.textContent = prettify(variant.variant);
+          select.appendChild(opt);
+        });
+
+        controls.appendChild(label);
+        controls.appendChild(select);
+        card.appendChild(controls);
+
+        const editor = document.createElement("div");
+        editor.className = "editor";
+        editor.contentEditable = "true";
+        editor.setAttribute("spellcheck", "false");
+        editor.textContent = "Sphinx of black quartz, judge my vow. 0123456789 +=-*/";
+        card.appendChild(editor);
+
+        const meta = document.createElement("p");
+        meta.className = "details";
+        card.appendChild(meta);
+
+        const applyVariant = (variant) => {
+          const { style, weight } = deriveStyle(variant.variant);
+          editor.style.fontFamily = `'${variant.family}', 'Iosevka', 'Fira Code', monospace`;
+          editor.style.fontStyle = style;
+          editor.style.fontWeight = weight;
+          meta.textContent = `${variant.family}.ttf — ${prettify(variant.variant)} • weight ${weight}${style !== "normal" ? " • " + style : ""}`;
+        };
+
+        select.addEventListener("change", (e) => {
+          applyVariant(variants[Number(e.target.value)] || variants[0]);
+        });
+
+        applyVariant(variants[0]);
+        grid.appendChild(card);
+      });
+    });
+  </script>
+</head>
+<body>
+  <header>
+    <h1>Iosevka Julsh — Font Preview</h1>
+    <p class="lead">Each sample below loads directly from the freshly built release artifacts.</p>
+    <p class="hint">Click inside the text to edit. Use the dropdown to toggle weight/italic variants.</p>
+  </header>
+  <section class="grid">
+  </section>
+</body>
+</html>
+EOF
+          } > "$DEMO_DIR/index.html"
+
+      - name: Publish font demo to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: sources/output/demo-site
+          publish_branch: gh-pages
+          commit_message: "Deploy font demo from ${GITHUB_SHA}"
