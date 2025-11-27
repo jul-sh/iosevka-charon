@@ -1,60 +1,30 @@
-SOURCES=$(shell python3 scripts/read-config.py --sources )
-FAMILY=$(shell python3 scripts/read-config.py --family )
-DRAWBOT_SCRIPTS=$(shell ls documentation/*.py)
-DRAWBOT_OUTPUT=$(shell ls documentation/*.py | sed 's/\.py/.png/g')
+ENV_RUNNER := ./scripts/run-in-nix.sh
+FONTS_DIR := fonts/ttf
+REPORT_DIR := out/fontbakery
+PROOF_DIR := out/proof
 
 help:
 	@echo "###"
-	@echo "# Build targets for $(FAMILY)"
+	@echo "# Build targets for Iosevka Charon"
 	@echo "###"
 	@echo
-	@echo "  make build:  Builds the fonts and places them in the fonts/ directory"
-	@echo "  make test:   Tests the fonts with fontspector"
-	@echo "  make proof:  Creates HTML proof documents in the proof/ directory"
-	@echo "  make images: Creates PNG specimen images in the documentation/ directory"
+	@echo "  make build:  Builds the fonts inside the Nix+uv environment"
+	@echo "  make test:   Runs FontBakery checks on the built TTFs"
+	@echo "  make proof:  Generates HTML proofs via diffenator2"
 	@echo
 
-build: build.stamp
+build:
+	$(ENV_RUNNER) bash sources/build.sh
 
-venv: venv/touchfile
+test: build
+	$(ENV_RUNNER) bash sources/scripts/check_fonts.sh $(FONTS_DIR) $(REPORT_DIR)
 
-customize: venv
-	. venv/bin/activate; python3 scripts/customize.py
+proof: build
+	$(ENV_RUNNER) bash -lc 'TTF=$$(find $(FONTS_DIR) -type f -name "*.ttf"); [ -n "$$TTF" ] || { echo "No TTF files found in $(FONTS_DIR)"; exit 1; }; mkdir -p $(PROOF_DIR); gftools gen-html $$TTF --out $(PROOF_DIR)'
 
-build.stamp: venv sources/config.yaml $(SOURCES)
-	rm -rf fonts
-	(for config in sources/config*.yaml; do . venv/bin/activate; gftools builder $$config; done)  && touch build.stamp
-
-venv/touchfile: requirements.txt
-	test -d venv || python3 -m venv venv
-	. venv/bin/activate; pip install -Ur requirements.txt
-	touch venv/touchfile
-
-test: build.stamp
-	which fontspector || (echo "fontspector not found. Please install it with 'cargo install fontspector'." && exit 1)
-	TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; mkdir -p out/ out/fontspector; fontspector --profile googlefonts -l warn --full-lists --succinct --html out/fontspector/fontspector-report.html --ghmarkdown out/fontspector/fontspector-report.md --badges out/badges $$TOCHECK  || echo '::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report.'
-
-proof: venv build.stamp
-	TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; . venv/bin/activate; mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof
-
-images: venv $(DRAWBOT_OUTPUT)
-
-%.png: %.py build.stamp
-	. venv/bin/activate; python3 $< --output $@
+update-uv-lock:
+	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh
 
 clean:
-	rm -rf venv
+	rm -rf fonts out build.stamp .venv
 	find . -name "*.pyc" -delete
-
-update-project-template:
-	npx update-template https://github.com/googlefonts/googlefonts-project-template/
-
-update: venv
-	venv/bin/pip install --upgrade pip-tools
-	# See https://pip-tools.readthedocs.io/en/latest/#a-note-on-resolvers for
-	# the `--resolver` flag below.
-	venv/bin/pip-compile --upgrade --verbose --resolver=backtracking requirements.in
-	venv/bin/pip-sync requirements.txt
-
-	git commit -m "Update requirements" requirements.txt
-	git push
