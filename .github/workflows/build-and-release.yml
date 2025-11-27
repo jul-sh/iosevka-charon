@@ -94,41 +94,41 @@ jobs:
       - name: Prepare release body with font check results
         run: |
           REPORT_PATH="sources/output/report.md"
+          REPORT_TXT="sources/output/fontbakery-report.txt"
           RELEASE_NOTES="sources/output/release_notes.md"
 
           if [ ! -f "$REPORT_PATH" ]; then
             echo "Fontbakery report missing at $REPORT_PATH" > "$RELEASE_NOTES"
             echo "RELEASE_BODY_PATH=$RELEASE_NOTES" >> $GITHUB_ENV
+            echo "REPORT_TXT=" >> $GITHUB_ENV
             exit 0
           fi
 
-          echo "Fonts generated from commit $GITHUB_SHA." > "$RELEASE_NOTES"
-          echo "Download the .ttf files from the assets below." >> "$RELEASE_NOTES"
-          echo "" >> "$RELEASE_NOTES"
-          echo "## Fontbakery checks" >> "$RELEASE_NOTES"
+          cp "$REPORT_PATH" "$REPORT_TXT"
+
+          echo "Fontbakery failure summary (max 1000 chars)." > "$RELEASE_NOTES"
 
           if grep -Ei 'FAIL|❌|:x:' "$REPORT_PATH" > /tmp/fail_lines.txt; then
-            echo "**Status: Failures detected.**" >> "$RELEASE_NOTES"
             echo "" >> "$RELEASE_NOTES"
-            echo "### Failed checks" >> "$RELEASE_NOTES"
-            cat /tmp/fail_lines.txt >> "$RELEASE_NOTES"
-            echo "" >> "$RELEASE_NOTES"
+            perl -0777 -ne 'print substr($_, 0, 1000)' /tmp/fail_lines.txt >> "$RELEASE_NOTES"
           else
-            echo "**Status: No FAIL results reported.**" >> "$RELEASE_NOTES"
-            echo "" >> "$RELEASE_NOTES"
+            echo "No FAIL results reported." >> "$RELEASE_NOTES"
           fi
 
-          echo "### Full Fontbakery report" >> "$RELEASE_NOTES"
-          cat "$REPORT_PATH" >> "$RELEASE_NOTES"
+          # Ensure the entire body stays within 1000 characters
+          perl -0777 -i -ne 'print substr($_, 0, 1000)' "$RELEASE_NOTES"
 
           echo "RELEASE_BODY_PATH=$RELEASE_NOTES" >> $GITHUB_ENV
+          echo "REPORT_TXT=$REPORT_TXT" >> $GITHUB_ENV
 
       # Create a release and upload fonts
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          files: sources/output/*.zip
+          files: |
+            sources/output/*.zip
+            ${{ env.REPORT_TXT }}
           name: Font Build - ${{ github.sha }}
           body_path: ${{ env.RELEASE_BODY_PATH }}
           draft: false
