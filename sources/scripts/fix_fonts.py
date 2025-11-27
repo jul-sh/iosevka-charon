@@ -26,28 +26,14 @@ import unicodedata
 
 
 def fix_font_revision(font):
-    """Fix font revision to exact value (32.05000 instead of 32.04999)"""
-    version_str = font['name'].getName(5, 3, 1, 0x409).toUnicode()
-    # Extract version like "Version 32.5.0; ttfautohint (v1.8.3)"
-    if 'Version' in version_str:
-        # Split on semicolon to remove ttfautohint suffix
-        version_main = version_str.split(';')[0].replace('Version', '').strip()
-        version_parts = version_main.split('.')
-        if len(version_parts) >= 3:
-            major = int(version_parts[0])
-            minor = int(version_parts[1])
-            patch = int(version_parts[2].split()[0] if ' ' in version_parts[2] else version_parts[2])
-
-            # Calculate exact revision
-            # Google Fonts preferred format is often Major.Minor as a float
-            # For 32.5.0, this should be 32.500
-            revision = major + (minor / 10) + (patch / 1000) # Simplified, might need adjustment
-            # Try to match what fontbakery expects, which is usually Major.Minor
-            revision = float(f"{major}.{minor}{patch}")
-            font['head'].fontRevision = revision
-            print(f"  ✓ Fixed font revision: {revision}")
-            return True
-    return False
+    """Fix font revision and nameID5 to exact value (Version 32.5.0)."""
+    target_version = "Version 32.5.0"
+    font['head'].fontRevision = 32.5
+    name_table = font['name']
+    name_table.setName(target_version, 5, 3, 1, 0x409)
+    name_table.setName(target_version, 5, 1, 0, 0)
+    print("  ✓ Fixed font revision: 32.5")
+    return True
 
 
 def fix_windows_metrics(font):
@@ -236,17 +222,26 @@ def fix_font_names(font):
     is_bold = font['OS/2'].usWeightClass >= 700
     is_italic = bool(font['head'].macStyle & 2) or (font['OS/2'].fsSelection & 1)
 
-    family_name = "Iosevka Charon"
+    existing_family = name_table.getName(1, 3, 1, 0x409)
+    family_hint = existing_family.toUnicode() if existing_family else ""
+    existing_style = name_table.getName(2, 3, 1, 0x409)
+    style_hint = existing_style.toUnicode() if existing_style else ""
+    is_mono = "Mono" in family_hint or "Mono" in font.reader.file.name
+    family_name = "Iosevka Charon Mono" if is_mono else "Iosevka Charon"
 
-    # Determine style name
-    if is_bold and is_italic:
-        style_name = "Bold Italic"
-    elif is_bold:
-        style_name = "Bold"
-    elif is_italic:
-        style_name = "Italic"
-    else:
-        style_name = "Regular"
+    weight_map = {
+        100: "Thin",
+        200: "ExtraLight",
+        300: "Light",
+        400: "Regular",
+        500: "Medium",
+        600: "SemiBold",
+        700: "Bold",
+        800: "ExtraBold",
+        900: "Heavy",
+    }
+    style_base = weight_map.get(font["OS/2"].usWeightClass, style_hint.strip() or "Regular")
+    style_name = f"{style_base} Italic" if is_italic else style_base
 
     # Full name should be "Family Style"
     full_name = f"{family_name} {style_name}"
@@ -262,63 +257,23 @@ def fix_font_names(font):
 
     changed = False
 
-    # Name IDs to check/fix
-    # 1: Family Name
-    # 2: Subfamily Name
-    # 4: Full Name
-    # 6: Postscript Name
-    # 16: Typographic Family Name
-    # 17: Typographic Subfamily Name
+    name_table.setName(family_name, 1, 3, 1, 0x409)
+    name_table.setName(style_name, 2, 3, 1, 0x409)
+    name_table.setName(full_name, 4, 3, 1, 0x409)
+    name_table.setName(ps_name, 6, 3, 1, 0x409)
+    name_table.setName(family_name, 16, 3, 1, 0x409)
+    name_table.setName(style_name, 17, 3, 1, 0x409)
 
-    # Collect existing names to check for ID 16/17 necessity
-    has_id16 = any(r.nameID == 16 for r in name_table.names)
-    has_id17 = any(r.nameID == 17 for r in name_table.names)
+    # Mirror to Mac platform
+    name_table.setName(family_name, 1, 1, 0, 0)
+    name_table.setName(style_name, 2, 1, 0, 0)
+    name_table.setName(full_name, 4, 1, 0, 0)
+    name_table.setName(ps_name, 6, 1, 0, 0)
+    name_table.setName(family_name, 16, 1, 0, 0)
+    name_table.setName(style_name, 17, 1, 0, 0)
 
-    # For Regular/Bold/Italic/Bold Italic, we don't strictly need ID 16/17 if ID 1/2 are correct,
-    # but having them consistent is good.
-
-    records_to_add = []
-
-    for record in name_table.names:
-        # Check all platforms for Name ID 6 (Postscript Name)
-        if record.nameID == 6:
-            if record.toUnicode() != ps_name:
-                if record.platformID == 3: # Windows
-                    record.string = ps_name.encode('utf-16-be')
-                else: # Mac or other
-                    record.string = ps_name.encode('ascii')
-                changed = True
-
-        # For other IDs, check Windows platform
-        elif record.platformID == 3 and record.platEncID == 1 and record.langID == 0x409:
-            if record.nameID == 1:
-                if record.toUnicode() != family_name:
-                    record.string = family_name.encode('utf-16-be')
-                    changed = True
-            elif record.nameID == 2:
-                if record.toUnicode() != style_name:
-                    record.string = style_name.encode('utf-16-be')
-                    changed = True
-            elif record.nameID == 4:
-                if record.toUnicode() != full_name:
-                    record.string = full_name.encode('utf-16-be')
-                    changed = True
-            elif record.nameID == 16:
-                if record.toUnicode() == family_name:
-                    records_to_add.append(record) # Reuse this list for removal
-                    changed = True
-            elif record.nameID == 17:
-                if record.toUnicode() == style_name:
-                    records_to_add.append(record) # Reuse this list for removal
-                    changed = True
-
-    for record in records_to_add:
-        if record in name_table.names:
-            name_table.names.remove(record)
-
-    if changed:
-        print(f"  ✓ Fixed font names: {full_name}")
-    return changed
+    print(f"  ✓ Fixed font names: {full_name}")
+    return True
 
 
 def fix_dotted_circle(font):
@@ -360,9 +315,9 @@ def add_fallback_mark_anchors(font):
         if not unicodedata.combining(chr(cp)):
             base_glyphs.append(name)
 
-    mark_class_count = len(mark_glyphs)
-    # Anchor every mark at its origin.
-    mark_anchors = {name: (idx, buildAnchor(0, 0)) for idx, (name, _) in enumerate(mark_glyphs)}
+    # Use a single fallback mark class to keep the lookup compact.
+    mark_class_index = 0
+    mark_anchors = {name: (mark_class_index, buildAnchor(0, 0)) for name, _ in mark_glyphs}
 
     glyf = font['glyf']
     hmtx = font['hmtx']
@@ -377,7 +332,7 @@ def add_fallback_mark_anchors(font):
         x = advance // 2
         y = glyph.yMax if hasattr(glyph, "yMax") and glyph.yMax is not None else font['hhea'].ascender
         anchor = buildAnchor(x, y)
-        base_anchors[base] = {idx: anchor for idx in range(mark_class_count)}
+        base_anchors[base] = {mark_class_index: anchor}
 
     if not base_anchors:
         return False
@@ -468,6 +423,37 @@ def fix_license_entries(font):
     return changed
 
 
+def fix_style_bits(font):
+    """Ensure fsSelection and macStyle reflect bold/italic status correctly."""
+    os2 = font['OS/2']
+    head = font['head']
+    name_table = font['name']
+    style_entry = name_table.getName(2, 3, 1, 0x409)
+    style_str = style_entry.toUnicode() if style_entry else ""
+    base_style = style_str.replace(" Italic", "").strip()
+    is_italic = "Italic" in style_str
+    is_bold = base_style == "Bold"
+    is_regular = base_style == "Regular"
+
+    fs_sel = os2.fsSelection
+    # Clear bold/italic/regular bits first
+    fs_sel &= ~(1 << 0)  # ITALIC
+    fs_sel &= ~(1 << 5)  # BOLD
+    fs_sel &= ~(1 << 6)  # REGULAR
+
+    if is_italic:
+        fs_sel |= (1 << 0)
+    if is_bold:
+        fs_sel |= (1 << 5)
+    if is_regular:
+        fs_sel |= (1 << 6)
+
+    os2.fsSelection = fs_sel
+
+    head.macStyle = (1 if is_bold else 0) | (2 if is_italic else 0)
+    return True
+
+
 def post_process_font(font_path, output_path=None):
     """Apply all post-processing fixes to a font"""
     if output_path is None:
@@ -516,6 +502,9 @@ def post_process_font(font_path, output_path=None):
 
         if fix_license_entries(font):
             fixes_applied.append("license_entries")
+
+        if fix_style_bits(font):
+            fixes_applied.append("style_bits")
 
         if add_fallback_mark_anchors(font):
             fixes_applied.append("fallback_mark_anchors")
