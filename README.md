@@ -1,6 +1,6 @@
 # Iosevka Charon
 
-Custom Google Fonts–compliant repository for the Iosevka Charon and Iosevka Charon Mono builds. This project keeps the Google Fonts template layout while using the repository's Nix + uv toolchain, and stays aligned with Google Fonts repository expectations.
+Refined coding typefaces Iosevka Charon and Iosevka Charon Mono, built from source with crisp ligatures and alignment tuned for editors and terminals. This repository builds each family from scratch and publishes the generated TTFs with every release. It keeps the Google Fonts template layout while using the repository's Nix + uv toolchain and remains fully Google Fonts–compliant.
 
 ## Building and testing
 
