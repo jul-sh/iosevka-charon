@@ -433,7 +433,7 @@ def fix_style_bits(font):
     base_style = style_str.replace(" Italic", "").strip()
     is_italic = "Italic" in style_str
     is_bold = base_style == "Bold"
-    is_regular = base_style == "Regular"
+    is_regular = not is_bold and not is_italic
 
     fs_sel = os2.fsSelection
     # Clear bold/italic/regular bits first

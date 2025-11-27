@@ -37,12 +37,12 @@ echo "Running Fontbakery checks on fonts in $FONT_DIR..."
     echo
 } > "$LOG_PATH"
 
-# Note: We disable opentype/monospace because it incorrectly flags our 
-# quasi-proportional font as monospaced. This is due to a majority of glyphs 
+# Note: We disable opentype/monospace because it incorrectly flags our
+# quasi-proportional font as monospaced. This is due to a majority of glyphs
 # sharing a common width, even though the font is not intended to be monospaced.
 # See: https://github.com/fonttools/fontbakery/blob/ffe83a2824631ddbabdbf69c47b8128647de30d1/Lib/fontbakery/checks/conditions.py#L50
 set +e
-fontbakery check-googlefonts \
+uv run sources/scripts/fontbakery_wrapper.py check-googlefonts \
     -C --succinct --loglevel FAIL \
     --exclude-checkid opentype/monospace \
     --ghmarkdown "$REPORT_PATH" \
