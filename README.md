@@ -1,6 +1,6 @@
 # Iosevka Charon
 
-Refined coding typefaces Iosevka Charon and Iosevka Charon Mono, built from source with crisp ligatures and alignment tuned for editors and terminals. This repository builds each family from scratch and publishes the generated TTFs with every release. It keeps the Google Fonts template layout while using the repository's Nix + uv toolchain and remains fully Google Fonts–compliant.
+Iosevka Charon is a quasi-proportional font excellent for technical writing and dense UI. Iosevka Charon Mono is a true monospace font tuned for coding and terminal use. This repository builds each family from scratch and publishes TTFs with every release. Its unique contribution is that it takes the upstream [Iosevka](https://github.com/be5invis/Iosevka) source code by **Belleve Invis** and builds it in a way that makes the resulting fonts Google Fonts compliant.
 
 ## Building and testing
 
