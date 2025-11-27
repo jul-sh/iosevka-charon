@@ -7,7 +7,7 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 The Make targets rely on the Nix flake dev shell, which not only bootstraps uv and the Python venv but also supplies the native toolchain required to build the fonts (e.g., Node, ttfautohint, and Git). If Nix is installed, `make` automatically enters the flake dev shell; when Nix is absent but Docker is available, the same flow runs inside the official `nixos/nix` container. With either tool installed, you can rely solely on the standard GNU Make entry points:
 
 - `make build` – enter the Nix shell, sync the Iosevka submodule, build the fonts, and copy TTFs to `fonts/ttf/…`.
-- `make test` – run FontBakery (with the Beria Erfe script patch) against the built TTFs, writing reports to `out/fontbakery`.
+- `make test` – run FontBakery against the built TTFs, writing reports to `out/fontbakery`.
 - `make proof` – generate diffenator2 HTML proofs in `out/proof` using the built TTFs.
 
 ## Tooling
