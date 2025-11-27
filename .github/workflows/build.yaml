@@ -2,10 +2,12 @@ name: Build font and specimen
 
 on:
   push:
+    branches:
+      - main
+      - release
+      - release/**
   pull_request:
   workflow_dispatch:
-  release:
-    types: [published]
 
 permissions:
   contents: write
@@ -79,17 +81,10 @@ jobs:
         else
           echo "No TTF files found to copy into out/ttf."
         fi
-        python - <<'PY'
-import json
-from pathlib import Path
-
-root = Path("out")
-manifest = [str(path.relative_to(root)) for path in (root / "ttf").rglob("*.ttf")]
-(root / "ttf_manifest.json").write_text(json.dumps(manifest, indent=2))
-PY
+        python scripts/generate-ttf-manifest.py
         cp scripts/index.html out/index.html
     - name: Collect deployment assets
-      if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+      if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/') }}
       uses: actions/upload-pages-artifact@v3
       with:
         path: ./out
@@ -106,7 +101,7 @@ PY
 
   deploy:
     name: Deploy results to GitHub Pages
-    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/') }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -130,7 +125,7 @@ PY
 
   release:
     name: Release bundle
-    if: contains(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/')
     needs:
       - build
       - deploy
