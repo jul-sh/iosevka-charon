@@ -4,7 +4,7 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 
 ## Building and testing
 
-The Make targets wrap the Nix flake dev shell (which bootstraps uv and the Python venv) and the Iosevka build scripts. If Nix is installed, `make` automatically enters the flake dev shell; when Nix is absent but Docker is available, the same flow runs inside the official `nixos/nix` container. With either tool installed, you can rely solely on the standard GNU Make entry points:
+The Make targets rely on the Nix flake dev shell, which not only bootstraps uv and the Python venv but also supplies the native toolchain required to build the fonts (e.g., Node, ttfautohint, and Git). If Nix is installed, `make` automatically enters the flake dev shell; when Nix is absent but Docker is available, the same flow runs inside the official `nixos/nix` container. With either tool installed, you can rely solely on the standard GNU Make entry points:
 
 - `make build` – enter the Nix shell, sync the Iosevka submodule, build the fonts, and copy TTFs to `fonts/ttf/…`.
 - `make test` – run FontBakery (with the Beria Erfe script patch) against the built TTFs, writing reports to `out/fontbakery`.
@@ -12,7 +12,7 @@ The Make targets wrap the Nix flake dev shell (which bootstraps uv and the Pytho
 
 ## Tooling
 
-- Nix flake in `sources/flake.nix` provisions Node, uv, and supporting tools.
+- Nix flake in `sources/flake.nix` provisions Node, uv, native build tools (like ttfautohint), and other supporting dependencies.
 - uv syncs Python dependencies from `sources/requirements.lock` and activates `.venv` automatically via the flake `shellHook`.
 - `sources/iosevka` is a submodule tracking the upstream gf branch of the Iosevka sources.
 
