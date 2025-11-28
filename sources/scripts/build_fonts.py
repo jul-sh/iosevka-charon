@@ -11,6 +11,7 @@ Steps:
      - Generate subsetted (Basic Latin) WOFF2 webfonts.
 """
 
+import concurrent.futures
 import os
 import re
 import shutil
@@ -166,13 +167,30 @@ def build_one_plan(plan_name: str) -> None:
             shutil.copy2(os.path.join(plan_dist_dir, filename), ttf_out_dir)
 
 
+def get_worker_count(plan_total: int) -> int:
+    """Determine how many workers to use when building plans in parallel."""
+
+    env_value = os.environ.get("IOSEVKA_BUILD_WORKERS")
+    if env_value:
+        try:
+            value = int(env_value)
+            if value > 0:
+                return value
+            print("[get_worker_count] Ignoring non-positive IOSEVKA_BUILD_WORKERS value.")
+        except ValueError:
+            print("[get_worker_count] Ignoring non-numeric IOSEVKA_BUILD_WORKERS value.")
+
+    cpu_total = os.cpu_count() or 1
+    return max(1, min(plan_total, cpu_total))
+
+
 # Main Entry Point
 # ----------------------------------------------------------------------------
 
 def main() -> None:
     """Main entry point.
 
-    Prepares environment, gathers build plans, and builds each plan in turn.
+    Prepares environment, gathers build plans, and builds each plan in parallel.
     """
     print(f"[main] Working directory: {os.getcwd()}")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -183,14 +201,26 @@ def main() -> None:
         build_plans = get_build_plans()
         print("[main] Discovered build plans:", build_plans)
 
-        for plan_name in build_plans:
-            try:
-                build_one_plan(plan_name)
-            except Exception as e:
-                print(f"ERROR building plan '{plan_name}': {str(e)}")
-                print("Traceback:")
-                traceback.print_exc()
-                raise
+        if not build_plans:
+            print("No build plans to process.")
+            return
+
+        worker_count = get_worker_count(len(build_plans))
+        print(f"[main] Building with up to {worker_count} parallel worker(s).")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
+            future_to_plan = {executor.submit(build_one_plan, name): name for name in build_plans}
+
+            for future in concurrent.futures.as_completed(future_to_plan):
+                plan_name = future_to_plan[future]
+                try:
+                    future.result()
+                    print(f"[main] Plan '{plan_name}' completed.")
+                except Exception as e:
+                    print(f"ERROR building plan '{plan_name}': {str(e)}")
+                    print("Traceback:")
+                    traceback.print_exc()
+                    raise
 
         print("\nAll font builds completed successfully.")
     except Exception as e:
