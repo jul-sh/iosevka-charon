@@ -19,11 +19,5 @@ if command -v nix >/dev/null 2>&1; then
   exec bash -c "$NIX_COMMAND"
 fi
 
-echo "Nix is not available. Attempting to use Docker with Nix image."
-if command -v docker >/dev/null 2>&1; then
-  echo "Docker is available, running script inside a Nix container."
-  exec docker run --rm -v "$(pwd):/app" -w /app nixos/nix bash -c "$NIX_COMMAND"
-fi
-
-echo "Nix and Docker are unavailable. Continuing with the current environment."
-return 0 2>/dev/null || exit 0
+echo "Nix is not available. Please install Nix to continue." >&2
+exit 1

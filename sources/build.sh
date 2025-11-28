@@ -10,7 +10,6 @@ cd "$(git rev-parse --show-toplevel)"
 CACHE_SCRIPT="sources/scripts/cache_branch.py"
 CACHE_AVAILABLE=1
 CACHE_STORE_ARGS=()
-FAST_BUILD="${FAST_BUILD:-0}"
 
 mkdir -p .cache
 
@@ -59,36 +58,11 @@ if restore_cache post; then
   exit 0
 fi
 
-if [ "$FAST_BUILD" != "0" ]; then
-  echo "FAST_BUILD enabled; skipping environment setup and npm build."
-else
-  # Source the Nix environment
-  source sources/scripts/setup_shell.sh
-fi
-
-generate_fast_outputs() {
-  python3 - <<'PY'
-import pathlib
-import tomllib
-
-root = pathlib.Path("sources/output")
-plans = list(tomllib.load(open("sources/private-build-plans.toml", "rb")).get("buildPlans", {}).keys())
-
-for plan in plans:
-    ttf_dir = root / plan / "ttf"
-    ttf_dir.mkdir(parents=True, exist_ok=True)
-    for suffix in ("Regular", "Italic"):
-        path = ttf_dir / f"{plan}-{suffix}.ttf"
-        path.write_text("FAST_BUILD placeholder font\n")
-PY
-}
+# Source the Nix environment
+source sources/scripts/setup_shell.sh
 
 if restore_cache initial; then
   echo "Initial build artifacts restored from cache; skipping npm build."
-elif [ "$FAST_BUILD" != "0" ]; then
-  echo "Generating placeholder outputs (FAST_BUILD) …"
-  generate_fast_outputs
-  store_cache initial sources/output
 else
   echo "Starting Iosevka font build process..."
 
@@ -101,9 +75,8 @@ else
   store_cache initial sources/output
 fi
 
-if [ "$FAST_BUILD" = "0" ]; then
-  echo "Post-processing fonts for GF compliance…"
-  python3 - <<'PY'
+echo "Post-processing fonts for GF compliance…"
+python3 - <<'PY'
 import pathlib
 import sys
 
@@ -118,9 +91,6 @@ if not fonts:
 for font_path in fonts:
     fix_fonts.post_process_font(font_path)
 PY
-else
-  echo "FAST_BUILD enabled; skipping font post-processing."
-fi
 
 echo "Syncing fonts into fonts/ttf/…"
 rm -rf fonts
