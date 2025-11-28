@@ -7,16 +7,31 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+CACHE_SCRIPT="sources/scripts/cache_branch.py"
+SOURCE_HASH=$(python3 "$CACHE_SCRIPT" hash)
+echo "Source tree hash: $SOURCE_HASH"
+
+if python3 "$CACHE_SCRIPT" restore --stage post --hash "$SOURCE_HASH"; then
+  echo "Post-processed fonts restored from cache."
+  exit 0
+fi
+
 # Source the Nix environment
 source sources/scripts/setup_shell.sh
 
-echo "Starting Iosevka font build process..."
+if python3 "$CACHE_SCRIPT" restore --stage initial --hash "$SOURCE_HASH"; then
+  echo "Initial build artifacts restored from cache; skipping npm build."
+else
+  echo "Starting Iosevka font build process..."
 
-# Ensure submodules are available
-git submodule update --init --recursive
+  # Ensure submodules are available
+  git submodule update --init --recursive
 
-# Run the build script to generate TTFs
-python3 sources/scripts/build_fonts.py
+  # Run the build script to generate TTFs
+  python3 sources/scripts/build_fonts.py
+
+  python3 "$CACHE_SCRIPT" store --stage initial --hash "$SOURCE_HASH" --paths sources/output
+fi
 
 echo "Post-processing fonts for GF compliance…"
 python3 - <<'PY'
@@ -51,5 +66,7 @@ if [ "$found" -eq 0 ]; then
   echo "ERROR: No TTF files were produced under sources/output."
   exit 1
 fi
+
+python3 "$CACHE_SCRIPT" store --stage post --hash "$SOURCE_HASH" --paths sources/output fonts/ttf
 
 echo "Build complete! Font files are available in fonts/ttf/"

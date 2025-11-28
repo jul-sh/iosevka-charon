@@ -4,6 +4,7 @@ venv-test
 build.stamp
 proof
 fonts
+.cache
 .venv
 out
 sources/output
