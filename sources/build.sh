@@ -8,10 +8,52 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 CACHE_SCRIPT="sources/scripts/cache_branch.py"
-SOURCE_HASH=$(python3 "$CACHE_SCRIPT" hash)
-echo "Source tree hash: $SOURCE_HASH"
+CACHE_AVAILABLE=1
+CACHE_STORE_ARGS=()
 
-if python3 "$CACHE_SCRIPT" restore --stage post --hash "$SOURCE_HASH"; then
+mkdir -p .cache
+
+if [ "${CACHE_PUSH:-0}" != "0" ]; then
+  CACHE_STORE_ARGS+=("--push")
+fi
+
+if ! SOURCE_HASH=$(python3 "$CACHE_SCRIPT" hash 2> .cache/cache-hash.err); then
+  CACHE_AVAILABLE=0
+  echo "Cache disabled: unable to compute source hash." >&2
+  if [ -s .cache/cache-hash.err ]; then
+    cat .cache/cache-hash.err >&2
+  fi
+else
+  echo "Source tree hash: $SOURCE_HASH"
+fi
+
+restore_cache() {
+  local stage="$1"
+  if [ "$CACHE_AVAILABLE" -eq 0 ]; then
+    return 1
+  fi
+
+  if python3 "$CACHE_SCRIPT" restore --stage "$stage" --hash "$SOURCE_HASH"; then
+    return 0
+  fi
+
+  echo "Cache restore for stage '$stage' unavailable or failed; continuing without cache."
+  return 1
+}
+
+store_cache() {
+  local stage="$1"
+  shift
+  if [ "$CACHE_AVAILABLE" -eq 0 ]; then
+    return
+  fi
+
+  if ! python3 "$CACHE_SCRIPT" store --stage "$stage" --hash "$SOURCE_HASH" --paths "$@" "${CACHE_STORE_ARGS[@]}"; then
+    echo "Failed to store '$stage' cache artifacts; continuing without uploading cache." >&2
+  fi
+}
+
+if restore_cache post; then
   echo "Post-processed fonts restored from cache."
   exit 0
 fi
@@ -19,7 +61,7 @@ fi
 # Source the Nix environment
 source sources/scripts/setup_shell.sh
 
-if python3 "$CACHE_SCRIPT" restore --stage initial --hash "$SOURCE_HASH"; then
+if restore_cache initial; then
   echo "Initial build artifacts restored from cache; skipping npm build."
 else
   echo "Starting Iosevka font build process..."
@@ -30,7 +72,7 @@ else
   # Run the build script to generate TTFs
   python3 sources/scripts/build_fonts.py
 
-  python3 "$CACHE_SCRIPT" store --stage initial --hash "$SOURCE_HASH" --paths sources/output
+  store_cache initial sources/output
 fi
 
 echo "Post-processing fonts for GF compliance…"
@@ -67,6 +109,6 @@ if [ "$found" -eq 0 ]; then
   exit 1
 fi
 
-python3 "$CACHE_SCRIPT" store --stage post --hash "$SOURCE_HASH" --paths sources/output fonts/ttf
+store_cache post sources/output fonts/ttf
 
 echo "Build complete! Font files are available in fonts/ttf/"

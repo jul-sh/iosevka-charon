@@ -111,6 +111,26 @@ class CacheManager:
                 check=False,
             )
 
+    def _push_cache_branch(self) -> bool:
+        """Push the cache branch to origin, returning True on success."""
+
+        remotes = self._run_git(["remote"], check=False)
+        if "origin" not in remotes.stdout.split():
+            print("No origin remote configured; skipping cache push.")
+            return False
+
+        result = self._run_git(
+            ["-C", str(self.worktree_path), "push", "-u", "origin", self.cache_branch],
+            check=False,
+        )
+        if result.returncode != 0:
+            print("Failed to push cache branch; continuing without uploading cache.")
+            if result.stderr:
+                print(result.stderr.strip())
+            return False
+
+        return True
+
     # Artifact handling ---------------------------------------------------
     def compute_source_hash(self) -> str:
         try:
@@ -162,7 +182,7 @@ class CacheManager:
             display = ", ".join(str(path) for path in missing)
             raise CacheError(f"Cannot cache missing paths: {display}")
 
-    def store(self, source_hash: str, stage: str, rel_paths: List[str]) -> bool:
+    def store(self, source_hash: str, stage: str, rel_paths: List[str], *, push: bool = False) -> bool:
         self._ensure_worktree()
         archive = self.artifact_path(source_hash, stage)
         if archive.exists():
@@ -186,6 +206,10 @@ class CacheManager:
 
         message = f"Cache {stage} artifacts for {source_hash}"
         self._run_git(["-C", str(self.worktree_path), "commit", "-m", message])
+
+        if push:
+            self._push_cache_branch()
+
         return True
 
 
@@ -203,6 +227,11 @@ def build_parser() -> argparse.ArgumentParser:
     store_parser.add_argument("--stage", choices=["initial", "post"], required=True)
     store_parser.add_argument("--hash", dest="source_hash", required=True)
     store_parser.add_argument("--paths", nargs="+", required=True, help="Relative paths to archive.")
+    store_parser.add_argument(
+        "--push",
+        action="store_true",
+        help="Push the cache branch to origin after storing the artifacts.",
+    )
 
     return parser
 
@@ -220,7 +249,7 @@ def main() -> int:
         return 0 if restored else 1
 
     if args.command == "store":
-        manager.store(args.source_hash, args.stage, args.paths)
+        manager.store(args.source_hash, args.stage, args.paths, push=args.push)
         return 0
 
     return 1
