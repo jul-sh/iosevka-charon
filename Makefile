@@ -20,7 +20,7 @@ test: build
 	$(ENV_RUNNER) bash sources/scripts/check_fonts.sh $(FONTS_DIR) $(REPORT_DIR)
 
 proof: build
-	$(ENV_RUNNER) bash -lc 'TTF=$$(find $(FONTS_DIR) -type f -name "*.ttf"); [ -n "$$TTF" ] || { echo "No TTF files found in $(FONTS_DIR)"; exit 1; }; mkdir -p $(PROOF_DIR); gftools gen-html $$TTF --out $(PROOF_DIR)'
+	$(ENV_RUNNER) bash -lc 'TTF=$$(find $(FONTS_DIR) -type f -name "*.ttf"); [ -n "$$TTF" ] || { echo "No TTF files found in $(FONTS_DIR)"; exit 1; }; mkdir -p $(PROOF_DIR); gftools gen-html proof $$TTF --out $(PROOF_DIR)'
 
 update-uv-lock:
 	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh
