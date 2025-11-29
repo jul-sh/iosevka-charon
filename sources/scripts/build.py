@@ -5,6 +5,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Import the build scripts directly
+sys.path.insert(0, str(Path(__file__).parent))
+import build_fonts
+import post_process_fonts
+
 def main():
     print("Starting Iosevka font build process...")
 
@@ -23,17 +28,11 @@ def main():
 
     # Run the build script to generate TTFs
     print("Building fonts...")
-    subprocess.check_call(
-        ["uv", "run", "sources/scripts/build_fonts.py"],
-        cwd=repo_root
-    )
+    build_fonts.main()
 
     # Post-process fonts for GF compliance
     print("Post-processing fonts for GF compliance…")
-    subprocess.check_call(
-        ["uv", "run", "sources/scripts/post_process_fonts.py"],
-        cwd=repo_root
-    )
+    post_process_fonts.main()
 
     # Sync fonts into fonts/ttf/
     print("Syncing fonts into fonts/ttf/…")
