@@ -16,7 +16,7 @@ help:
 build: build.stamp
 
 build.stamp:
-	$(ENV_RUNNER) bash sources/build.sh
+	$(ENV_RUNNER) uv run sources/scripts/build.py
 	touch build.stamp
 
 test: build.stamp
@@ -35,4 +35,4 @@ clean:
 	find . -name "*.pyc" -delete
 
 update-uv-lock:
-	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh
+	$(ENV_RUNNER) uv run sources/scripts/update_uv_lock.py
