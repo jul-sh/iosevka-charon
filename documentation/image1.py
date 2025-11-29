@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # This script is meant to be run from the root level
 # of your font's git repository. For example, from a Unix terminal:
 # $ git clone my-font

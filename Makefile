@@ -28,7 +28,7 @@ proof: build.stamp
 images: build.stamp $(DRAWBOT_OUTPUT)
 
 %.png: %.py build.stamp
-	$(ENV_RUNNER) bash -lc "python3 $< --output $@"
+	$(ENV_RUNNER) bash -lc "./$< --output $@"
 
 clean:
 	rm -rf fonts out build.stamp .venv
