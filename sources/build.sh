@@ -19,7 +19,7 @@ git submodule update --init --recursive
 python3 sources/scripts/build_fonts.py
 
 echo "Post-processing fonts for GF compliance…"
-uv run python3 sources/scripts/post_process_fonts.py
+uv run sources/scripts/post_process_fonts.py
 
 echo "Syncing fonts into fonts/ttf/…"
 rm -rf fonts
