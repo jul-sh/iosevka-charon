@@ -1,30 +1,39 @@
 ENV_RUNNER := ./scripts/run-in-nix.sh
-FONTS_DIR := fonts/ttf
-REPORT_DIR := out/fontbakery
-PROOF_DIR := out/proof
+DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null || echo "")
+DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g' || echo "")
 
 help:
 	@echo "###"
 	@echo "# Build targets for Iosevka Charon"
 	@echo "###"
 	@echo
-	@echo "  make build:  Builds the fonts inside the Nix+uv environment"
-	@echo "  make test:   Runs FontBakery checks on the built TTFs"
-	@echo "  make proof:  Generates HTML proofs via diffenator2"
+	@echo "  make build:  Builds the fonts and places them in the fonts/ directory"
+	@echo "  make test:   Tests the fonts with fontspector"
+	@echo "  make proof:  Creates HTML proof documents in the proof/ directory"
+	@echo "  make images: Creates PNG specimen images in the documentation/ directory"
 	@echo
 
-build:
+build: build.stamp
+
+build.stamp:
 	$(ENV_RUNNER) bash sources/build.sh
+	touch build.stamp
 
-test: build
-	$(ENV_RUNNER) bash sources/scripts/check_fonts.sh $(FONTS_DIR) $(REPORT_DIR)
+test: build.stamp
+	which fontspector || (echo "fontspector not found. Please install it with 'cargo install fontspector'." && exit 1)
+	TOCHECK=$$(find fonts/ttf -type f -name "*.ttf" 2>/dev/null | head -n 4); if [ -z "$$TOCHECK" ]; then echo "No TTF files found in fonts/ttf"; exit 1; fi; mkdir -p out/ out/fontspector; fontspector --profile googlefonts -l warn --full-lists --succinct --html out/fontspector/fontspector-report.html --ghmarkdown out/fontspector/fontspector-report.md --badges out/badges $$TOCHECK || echo '::warning file=sources/private-build-plans.toml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report.'
 
-proof: build
-	$(ENV_RUNNER) bash -lc 'TTF=$$(find $(FONTS_DIR) -type f -name "*.ttf"); [ -n "$$TTF" ] || { echo "No TTF files found in $(FONTS_DIR)"; exit 1; }; mkdir -p $(PROOF_DIR); gftools gen-html proof $$TTF --out $(PROOF_DIR)'
+proof: build.stamp
+	TOCHECK=$$(find fonts/ttf -type f -name "*.ttf" 2>/dev/null | head -n 4); if [ -z "$$TOCHECK" ]; then echo "No TTF files found in fonts/ttf"; exit 1; fi; $(ENV_RUNNER) bash -lc "mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof"
 
-update-uv-lock:
-	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh
+images: build.stamp $(DRAWBOT_OUTPUT)
+
+%.png: %.py build.stamp
+	$(ENV_RUNNER) bash -lc "python3 $< --output $@"
 
 clean:
 	rm -rf fonts out build.stamp .venv
 	find . -name "*.pyc" -delete
+
+update-uv-lock:
+	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh

@@ -54,7 +54,7 @@ jobs:
         NIX_CONFIG: "experimental-features = nix-command flakes"
       run: make build
     - name: Check with fontspector
-      id: fontbakery
+      id: fontspector
       env:
         NIX_CONFIG: "experimental-features = nix-command flakes"
       run: |
@@ -97,7 +97,7 @@ jobs:
           out
     outputs:
       zip_name: ${{ env.ZIP_NAME }}
-      validation_failed: ${{ steps.fontbakery.outputs.failed }}
+      validation_failed: ${{ steps.fontspector.outputs.failed }}
 
   deploy:
     name: Deploy results to GitHub Pages
@@ -171,17 +171,17 @@ jobs:
             STATUS="Failed"
           fi
           PROOF_LINK=${PAGE_URL%/}/proof/diffenator2-report.html
-          FONTBAKERY_LINK=${PAGE_URL%/}/fontbakery
+          FONTSPECTOR_LINK=${PAGE_URL%/}/fontspector
           {
             echo "## ${GITHUB_REF_NAME}"
             echo ""
             echo "- Demo and reports: ${PAGE_URL:-N/A}"
             echo "- Hosted proof: ${PROOF_LINK:-N/A}"
-            echo "- FontBakery reports: ${FONTBAKERY_LINK:-N/A}"
+            echo "- Fontspector reports: ${FONTSPECTOR_LINK:-N/A}"
             echo "- Validation status: ${STATUS}"
             if [ "${VALIDATION_FAILED}" = "true" ]; then
               echo ""
-              echo "FontBakery reported issues during validation. See attached and hosted reports for details."
+              echo "Fontspector reported issues during validation. See attached and hosted reports for details."
             fi
           } > release-notes.md
       - name: Check for release
