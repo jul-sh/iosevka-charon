@@ -19,7 +19,13 @@ git submodule update --init --recursive
 python3 sources/scripts/build_fonts.py
 
 echo "Post-processing fonts for GF compliance…"
-python3 - <<'PY'
+# Use python from venv if available, otherwise system python
+PYTHON_CMD="${VIRTUAL_ENV}/bin/python3"
+if [ ! -f "$PYTHON_CMD" ]; then
+    PYTHON_CMD="python3"
+fi
+
+$PYTHON_CMD - <<'PY'
 import pathlib
 import sys
 
