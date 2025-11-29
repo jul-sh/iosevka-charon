@@ -3,7 +3,7 @@
 # of your font's git repository. For example, from a Unix terminal:
 # $ git clone my-font
 # $ cd my-font
-# $ python3 documentation/image1.py --output documentation/image1.png
+# $ uv run documentation/image1.py --output documentation/image1.png
 
 # Import moduels from external python packages: https://pypi.org/
 from drawbot_skia.drawbot import *
@@ -38,7 +38,7 @@ BIG_TEXT_BOTTOM_MARGIN = MARGIN * 2
 GRID_VIEW = False # Toggle this for a grid overlay
 
 # Handel the "--output" flag
-# For example: $ python3 documentation/image1.py --output documentation/image1.png
+# For example: $ uv run documentation/image1.py --output documentation/image1.png
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", metavar="PNG", help="where to write the PNG file")
 args = parser.parse_args()
