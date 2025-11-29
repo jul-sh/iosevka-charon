@@ -20,7 +20,7 @@ fi
 
 echo "Running quick validation on Regular weight only..."
 
-python3 sources/scripts/fontbakery_wrapper.py check-googlefonts \
+uv run sources/scripts/fontbakery_wrapper.py check-googlefonts \
     -C --succinct --loglevel FAIL \
     --exclude-checkid opentype/monospace \
     "$FONT_DIR/IosevkaCharon-Regular.ttf" 2>&1 | tee "$REPORT_PATH"

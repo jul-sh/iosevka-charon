@@ -16,7 +16,7 @@ echo "Starting Iosevka font build process..."
 git submodule update --init --recursive
 
 # Run the build script to generate TTFs
-python3 sources/scripts/build_fonts.py
+uv run sources/scripts/build_fonts.py
 
 echo "Post-processing fonts for GF compliance…"
 uv run sources/scripts/post_process_fonts.py
