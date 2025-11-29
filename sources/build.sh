@@ -20,11 +20,15 @@ python3 sources/scripts/build_fonts.py
 
 echo "Post-processing fonts for GF compliance…"
 # Use python from venv if available, otherwise system python
-PYTHON_CMD="${VIRTUAL_ENV}/bin/python3"
-if [ ! -f "$PYTHON_CMD" ]; then
+if [ -n "${VIRTUAL_ENV:-}" ] && [ -f "${VIRTUAL_ENV}/bin/python3" ]; then
+    PYTHON_CMD="${VIRTUAL_ENV}/bin/python3"
+elif [ -f ".venv/bin/python3" ]; then
+    PYTHON_CMD=".venv/bin/python3"
+else
     PYTHON_CMD="python3"
 fi
 
+echo "Using Python: $PYTHON_CMD"
 $PYTHON_CMD - <<'PY'
 import pathlib
 import sys
