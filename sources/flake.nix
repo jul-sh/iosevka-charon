@@ -19,6 +19,10 @@
             nodejs
             uv
             git
+            rustc
+            cargo
+            pkg-config
+            openssl
           ];
 
           shellHook = ''
@@ -31,6 +35,12 @@
             uv venv "$VENV_DIR"
             uv pip sync "$UV_LOCKFILE"
             source "$VENV_DIR/bin/activate"
+
+            # Install fontspector if not already available
+            if ! command -v fontspector &> /dev/null; then
+              echo "Installing fontspector..."
+              cargo install fontspector
+            fi
           '';
         };
       });

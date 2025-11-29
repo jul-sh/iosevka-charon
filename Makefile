@@ -20,8 +20,7 @@ build.stamp:
 	touch build.stamp
 
 test: build.stamp
-	which fontspector || (echo "fontspector not found. Please install it with 'cargo install fontspector'." && exit 1)
-	TOCHECK=$$(find fonts/ttf -type f -name "*.ttf" 2>/dev/null | head -n 4); if [ -z "$$TOCHECK" ]; then echo "No TTF files found in fonts/ttf"; exit 1; fi; mkdir -p out/ out/fontspector; fontspector --profile googlefonts -l warn --full-lists --succinct --html out/fontspector/fontspector-report.html --ghmarkdown out/fontspector/fontspector-report.md --badges out/badges $$TOCHECK || echo '::warning file=sources/private-build-plans.toml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report.'
+	TOCHECK=$$(find fonts/ttf -type f -name "*.ttf" 2>/dev/null | head -n 4); if [ -z "$$TOCHECK" ]; then echo "No TTF files found in fonts/ttf"; exit 1; fi; $(ENV_RUNNER) bash -lc "mkdir -p out/ out/fontspector; fontspector --profile googlefonts -l warn --full-lists --succinct --html out/fontspector/fontspector-report.html --ghmarkdown out/fontspector/fontspector-report.md --badges out/badges $$TOCHECK || echo '::warning file=sources/private-build-plans.toml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report.'"
 
 proof: build.stamp
 	TOCHECK=$$(find fonts/ttf -type f -name "*.ttf" 2>/dev/null | head -n 4); if [ -z "$$TOCHECK" ]; then echo "No TTF files found in fonts/ttf"; exit 1; fi; $(ENV_RUNNER) bash -lc "mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof"
