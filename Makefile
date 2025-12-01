@@ -27,4 +27,4 @@ proof: build.stamp
 	$(ENV_RUNNER) bash -c 'TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof'
 
 clean:
-	git clean -fdx
+	git stash && git clean -fdx && (cd sources/iosevka && git stash && git clean -fdx && git stash pop) && git stash pop

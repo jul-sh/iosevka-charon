@@ -1,4 +1,0 @@
-[submodule "sources/iosevka"]
-	path = sources/iosevka
-	url = https://github.com/jul-sh/Iosevka.git
-	branch = gf
