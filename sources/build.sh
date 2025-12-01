@@ -35,7 +35,15 @@ while IFS= read -r -d '' font; do
   dest_dir_name="$(echo "$plan_dir" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
   dest_dir="fonts/ttf/$dest_dir_name"
   mkdir -p "$dest_dir"
-  cp "$font" "$dest_dir/"
+
+  # Normalize filename for Google Fonts compliance
+  # ExtraBold -> Extrabold, ExtraLight -> Extralight, SemiBold -> Semibold
+  filename="$(basename "$font")"
+  filename="${filename//ExtraBold/Extrabold}"
+  filename="${filename//ExtraLight/Extralight}"
+  filename="${filename//SemiBold/Semibold}"
+
+  cp "$font" "$dest_dir/$filename"
   found=1
 done < <(find sources/output -type f -name "*.ttf" -print0)
 

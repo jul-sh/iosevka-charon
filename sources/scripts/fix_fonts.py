@@ -287,7 +287,8 @@ def fix_font_names(font):
         # Google Fonts requires nameID 16 and 17 for non-RIBBI fonts
         family_name = f"{base_family} {weight_display}"
         subfamily_name = "Italic" if is_italic else "Regular"
-        full_name = f"{base_family} {weight_display} Italic" if is_italic else f"{base_family} {weight_display}"
+        # Full name should include both weight AND subfamily (e.g., "Iosevka Charon Extrabold Regular")
+        full_name = f"{base_family} {weight_display} {subfamily_name}"
         ps_suffix = "Italic" if is_italic else "Regular"
         ps_name = f"{base_family.replace(' ', '')}{weight_display}-{ps_suffix}"
         # Set typographic names for non-RIBBI fonts
@@ -316,6 +317,11 @@ def fix_font_names(font):
     if typographic_family:
         name_table.setName(typographic_family, 16, 1, 0, 0)
         name_table.setName(typographic_subfamily, 17, 1, 0, 0)
+
+    # For non-RIBBI fonts, OS/2 usWeightClass should be 400 (Regular)
+    # The weight information is encoded in the family name and typographic subfamily
+    if typographic_family:
+        font['OS/2'].usWeightClass = 400
 
     print(f"  ✓ Fixed font names: {full_name} (ps: {ps_name})")
     return True
