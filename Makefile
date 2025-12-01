@@ -31,5 +31,4 @@ update-deps:
 	$(ENV_RUNNER) bash sources/scripts/update_all.sh
 
 clean:
-	rm -rf fonts out build.stamp .venv
-	find . -name "*.pyc" -delete
+	git clean -fdx
