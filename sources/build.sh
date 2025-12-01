@@ -10,13 +10,17 @@ cd "$(git rev-parse --show-toplevel)"
 # Source the Nix environment
 source sources/scripts/setup_shell.sh
 
+# Accept build plan file as optional argument (defaults to private-build-plans.toml)
+BUILD_PLAN="${1:-sources/private-build-plans.toml}"
+
 echo "Starting Iosevka font build process..."
+echo "Using build plan: $BUILD_PLAN"
 
 # Ensure submodules are available
 git submodule update --init --recursive
 
 # Run the build script to generate TTFs
-python3 sources/scripts/build_fonts.py
+python3 sources/scripts/build_fonts.py "$BUILD_PLAN"
 
 echo "Post-processing fonts for GF compliance…"
 python3 - <<'PY'

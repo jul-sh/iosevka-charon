@@ -8,7 +8,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PYTHONPATH="${PYTHONPATH:+$PYTHONPATH:}${ROOT_DIR}"
 
 if [ -n "${IN_NIX_SHELL:-}" ]; then
-  echo "Already inside a Nix shell. Continuing execution..."
   exec "$@"
 fi
 

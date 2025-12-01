@@ -11,6 +11,7 @@ Steps:
      - Generate subsetted (Basic Latin) WOFF2 webfonts.
 """
 
+import argparse
 import concurrent.futures
 import os
 import re
@@ -27,6 +28,8 @@ from typing import List, Optional
 OUTPUT_DIR: str = "sources/output"
 WORKDIR: str = "sources/workdir"
 REPO_DIR: str = "sources/iosevka"  # Using Git submodule
+
+# Build plan file (can be overridden via command-line argument)
 PRIVATE_TOML: str = "sources/private-build-plans.toml"
 
 # Utility Functions
@@ -54,11 +57,14 @@ def run_cmd(command: str, cwd: Optional[str] = None) -> None:
 # Environment Setup
 # ----------------------------------------------------------------------------
 
-def prep_environment() -> None:
+def prep_environment(build_plan_file: str) -> None:
     """Prepares the build environment.
 
     Copies build plans, installs dependencies, and cleans output directory.
     Note: Assumes the Iosevka submodule is already initialized.
+
+    Args:
+        build_plan_file: Path to the build plans TOML file.
 
     Raises:
         FileNotFoundError: If private build plans file is missing.
@@ -68,10 +74,10 @@ def prep_environment() -> None:
         os.makedirs(WORKDIR, exist_ok=True)
 
         # Copy private build plans
-        print("[prep_environment] Copying private build plans...")
-        if not os.path.exists(PRIVATE_TOML):
-            raise FileNotFoundError(f"Private build plans file not found: {PRIVATE_TOML}")
-        shutil.copyfile(PRIVATE_TOML, os.path.join(REPO_DIR, "private-build-plans.toml"))
+        print("[prep_environment] Copying build plans...")
+        if not os.path.exists(build_plan_file):
+            raise FileNotFoundError(f"Build plans file not found: {build_plan_file}")
+        shutil.copyfile(build_plan_file, os.path.join(REPO_DIR, "private-build-plans.toml"))
 
         # Install npm dependencies
         print("[prep_environment] Installing npm dependencies...")
@@ -98,8 +104,11 @@ def prep_environment() -> None:
 # Build Plan Processing
 # ----------------------------------------------------------------------------
 
-def get_build_plans() -> List[str]:
-    """Parses build plan names from private-build-plans.toml.
+def get_build_plans(build_plan_file: str) -> List[str]:
+    """Parses build plan names from the specified build plans file.
+
+    Args:
+        build_plan_file: Path to the build plans TOML file.
 
     Returns:
         List of build plan names, excluding variant plans containing dots.
@@ -111,7 +120,7 @@ def get_build_plans() -> List[str]:
     try:
         plans: List[str] = []
         pattern = re.compile(r'^\[buildPlans\.(.+)\]$')
-        with open(PRIVATE_TOML, "r", encoding="utf-8") as f:
+        with open(build_plan_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 match = pattern.match(line)
@@ -121,11 +130,11 @@ def get_build_plans() -> List[str]:
                         plans.append(plan_name)
 
         if not plans:
-            print("WARNING: No build plans found in private-build-plans.toml")
+            print(f"WARNING: No build plans found in {build_plan_file}")
 
         return plans
     except FileNotFoundError:
-        print(f"ERROR: Build plans file not found: {PRIVATE_TOML}")
+        print(f"ERROR: Build plans file not found: {build_plan_file}")
         raise
     except Exception as e:
         print(f"ERROR parsing build plans: {str(e)}")
@@ -192,13 +201,26 @@ def main() -> None:
 
     Prepares environment, gathers build plans, and builds each plan in parallel.
     """
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Build custom Iosevka fonts from build plans.")
+    parser.add_argument(
+        "build_plan_file",
+        nargs="?",
+        default=PRIVATE_TOML,
+        help=f"Path to the build plans TOML file (default: {PRIVATE_TOML})"
+    )
+    args = parser.parse_args()
+
+    build_plan_file = args.build_plan_file
+
     print(f"[main] Working directory: {os.getcwd()}")
+    print(f"[main] Build plan file: {build_plan_file}")
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(WORKDIR, exist_ok=True)
     try:
-        prep_environment()
+        prep_environment(build_plan_file)
 
-        build_plans = get_build_plans()
+        build_plans = get_build_plans(build_plan_file)
         print("[main] Discovered build plans:", build_plans)
 
         if not build_plans:
