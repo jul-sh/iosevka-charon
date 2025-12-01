@@ -50,7 +50,7 @@ for famdir in $family_dirs; do
     mkdir -p "$fam_report_dir"
 
     set +e
-    uv run sources/scripts/fontbakery_wrapper.py check-googlefonts \
+    python sources/scripts/fontbakery_wrapper.py check-googlefonts \
         -C --succinct --loglevel WARN \
         --exclude-checkid opentype/monospace \
         --exclude-checkid opentype/STAT/ital_axis \

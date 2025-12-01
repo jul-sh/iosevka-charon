@@ -1,79 +1,126 @@
 {
-  description = "Font development environment";
+  description = "Iosevka Charon - Custom Iosevka font variant";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay.url = "github:oxalica/rust-overlay";
+    rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = nixpkgs.legacyPackages.${system};
+        overlays = [ (import rust-overlay) ];
+        pkgs = import nixpkgs {
+          inherit system overlays;
+        };
+
+        # Python environment with font processing tools
+        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
+          # Core font tools
+          fonttools
+          fontmake
+          fontbakery
+          glyphslib
+          gftools
+          ufo2ft
+          ufolint
+          defcon
+          fontmath
+
+          # Additional font processing dependencies
+          brotli
+          pillow
+          requests
+          pyyaml
+          jinja2
+          rich
+          click
+          toml
+          pygments
+          dehinter
+          freetype-py
+          unicodedata2
+          uharfbuzz
+
+          # Additional packages
+          setuptools
+          pip
+        ]);
+
+        # Custom derivation for fontspector
+        fontspector = pkgs.rustPlatform.buildRustPackage rec {
+          pname = "fontspector";
+          version = "1.5.1";
+
+          src = pkgs.fetchFromGitHub {
+            owner = "fonttools";
+            repo = "fontspector";
+            rev = "fontspector-v${version}";
+            hash = "sha256-kkedKDhCXMPWd8l3VpkNBCR6DpudK7RwUlXczExFxhk=";
+          };
+
+          cargoHash = "sha256-9jewRzUtTKnIMnoV8mWUZJXsf9RvHoov+89g0SwUc9M=";
+
+          # Build only the CLI binary, not all workspace members
+          cargoBuildFlags = [ "-p" "fontspector" ];
+          cargoTestFlags = [ "-p" "fontspector" ];
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+          ];
+
+          buildInputs = with pkgs; [
+            openssl
+            zlib
+          ];
+
+          meta = with pkgs.lib; {
+            description = "Skrifa/Read-Fonts-based font QA tool (successor to fontbakery)";
+            homepage = "https://github.com/fonttools/fontspector";
+            license = licenses.asl20;
+            maintainers = [ ];
+            mainProgram = "fontspector";
+          };
+        };
       in
       {
+        packages.fontspector = fontspector;
+
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            python312
-            ttfautohint
+            # Rust toolchain - nightly version
+            rust-bin.nightly.latest.default
+
+            # Custom fontspector package
+            fontspector
+
+            # Node.js and npm for the Iosevka build system
             nodejs
-            uv
+
+            # Python environment with all font tools
+            pythonEnv
+
+            # Other useful tools
             git
-            rustup
+            which
+            ttfautohint
           ];
 
           shellHook = ''
-            # Set up uv virtual environment
-            readonly REPO_ROOT="$(git rev-parse --show-toplevel)"
-            readonly VENV_DIR="$(git rev-parse --show-toplevel)/.venv"
-            readonly REQUIREMENTS="$(git rev-parse --show-toplevel)/sources/requirements.txt"
-            readonly UV_LOCKFILE="$(git rev-parse --show-toplevel)/sources/requirements.lock"
+            export PYTHONPATH="${pythonEnv}/${pythonEnv.sitePackages}"
+            # Workaround for protobuf compatibility with gflanguages
+            export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 
-            uv venv "$VENV_DIR"
-            uv pip sync "$UV_LOCKFILE"
-            source "$VENV_DIR/bin/activate"
-
-            # Set up Rust toolchain
-            export RUSTUP_HOME="$HOME/.rustup"
-            export CARGO_HOME="$HOME/.cargo"
-            export PATH="$CARGO_HOME/bin:$PATH"
-
-            # Pin versions for compatibility
-            # Run 'make update-deps' to update to latest versions
-            RUST_VERSION="nightly-2025-11-30"
-            FONTSPECTOR_VERSION="1.5.1"
-
-            # Install Rust toolchain if not already installed
-            if ! rustup show &> /dev/null; then
-              echo "Setting up Rust toolchain $RUST_VERSION..."
-              rustup-init -y --default-toolchain "$RUST_VERSION" --profile minimal
-            else
-              # Ensure the pinned version is installed
-              CURRENT_TOOLCHAIN=$(rustup show active-toolchain 2>/dev/null | awk '{print $1}' || echo "")
-              if [ "$CURRENT_TOOLCHAIN" != "$RUST_VERSION" ]; then
-                if ! rustup toolchain list | grep -q "$RUST_VERSION"; then
-                  echo "Installing Rust $RUST_VERSION..."
-                  rustup toolchain install "$RUST_VERSION" --profile minimal
-                fi
-                echo "Setting Rust $RUST_VERSION as default..."
-                rustup default "$RUST_VERSION"
-              fi
-            fi
-
-            # Install fontspector at pinned version if not already installed (optional, best-effort)
-            if ! command -v fontspector &> /dev/null; then
-              echo "Installing fontspector $FONTSPECTOR_VERSION..."
-              if ! cargo install fontspector --version "$FONTSPECTOR_VERSION" 2>&1; then
-                echo "⚠ Warning: fontspector $FONTSPECTOR_VERSION failed to install."
-                echo "  This is optional. You can manually install with: cargo install fontspector"
-              fi
-            elif ! fontspector --version 2>&1 | grep -q "$FONTSPECTOR_VERSION"; then
-              echo "Updating fontspector to $FONTSPECTOR_VERSION..."
-              if ! cargo install fontspector --version "$FONTSPECTOR_VERSION" --force 2>&1; then
-                echo "⚠ Warning: fontspector $FONTSPECTOR_VERSION failed to install."
-                echo "  Current version: $(fontspector --version 2>&1 || echo 'none')"
-              fi
-            fi
+            echo "Starting Iosevka Charon development environment..."
+            echo "Rust version: $(rustc --version)"
+            echo "Node version: $(node --version)"
+            echo "Python version: $(python --version)"
+            echo "fontspector version: $(fontspector --version)"
+            echo "fonttools version: $(python -c 'import fontTools; print(fontTools.__version__)' 2>/dev/null || echo 'check failed')"
+            echo "gftools available: $(python -c 'import gftools; print(\"yes\")' 2>/dev/null || echo 'no')"
+            echo "Ready to build Iosevka Charon!"
           '';
         };
       });
