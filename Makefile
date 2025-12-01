@@ -1,34 +1,33 @@
 ENV_RUNNER := ./scripts/run-in-nix.sh
-FONTS_DIR := fonts/ttf
-REPORT_DIR := out/fontbakery
-PROOF_DIR := out/proof
 PLAN := sources/private-build-plans.toml
+SOURCES := $(shell find sources -type f)
 
 help:
 	@echo "###"
 	@echo "# Build targets for Iosevka Charon"
 	@echo "###"
 	@echo
-	@echo "  make build:                          Builds the fonts inside the Nix+uv environment"
+	@echo "  make build:                          Builds the fonts (in Nix)"
 	@echo "  make build PLAN=<path-to-toml>:      Builds fonts using a custom build plan"
-	@echo "  make test:                           Runs FontBakery checks on the built TTFs"
-	@echo "  make proof:                          Generates HTML proofs via diffenator2"
-	@echo
-	@echo "Examples:"
-	@echo "  make build                                    # Use default build plan"
-	@echo "  make build PLAN=sources/test-build-plans.toml # Use test build plan"
+	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
+	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
+	@echo "  make update-deps:                    Updates Python dependencies lockfile"
+	@echo "  make clean:                          Removes build artifacts"
 	@echo
 
-build:
-	$(ENV_RUNNER) bash sources/build.sh "$(PLAN)"
+build: build.stamp
 
-test: build
-	$(ENV_RUNNER) bash sources/scripts/check_fonts.sh $(FONTS_DIR) $(REPORT_DIR)
+build.stamp: $(SOURCES)
+	rm -rf fonts
+	$(ENV_RUNNER) bash sources/build.sh "$(PLAN)" && touch build.stamp
 
-proof: build
-	$(ENV_RUNNER) bash -lc 'TTF=$$(find $(FONTS_DIR) -type f -name "*.ttf"); [ -n "$$TTF" ] || { echo "No TTF files found in $(FONTS_DIR)"; exit 1; }; mkdir -p $(PROOF_DIR); gftools gen-html proof $$TTF --out $(PROOF_DIR)'
+test: build.stamp
+	$(ENV_RUNNER) bash -c 'which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1); TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; mkdir -p out/ out/fontspector; fontspector --profile googlefonts -l warn --full-lists --succinct --html out/fontspector/fontspector-report.html --ghmarkdown out/fontspector/fontspector-report.md --badges out/badges $$TOCHECK || echo "::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report."'
 
-update-uv-lock:
+proof: build.stamp
+	$(ENV_RUNNER) bash -c 'TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof'
+
+update-deps:
 	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh
 
 clean:

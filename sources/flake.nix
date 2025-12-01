@@ -19,6 +19,7 @@
             nodejs
             uv
             git
+            rustup
           ];
 
           shellHook = ''
@@ -31,6 +32,23 @@
             uv venv "$VENV_DIR"
             uv pip sync "$UV_LOCKFILE"
             source "$VENV_DIR/bin/activate"
+
+            # Set up Rust toolchain
+            export RUSTUP_HOME="$HOME/.rustup"
+            export CARGO_HOME="$HOME/.cargo"
+            export PATH="$CARGO_HOME/bin:$PATH"
+
+            # Install latest stable Rust if not already installed
+            if ! rustup show &> /dev/null; then
+              echo "Setting up Rust toolchain..."
+              rustup-init -y --default-toolchain stable --profile minimal
+            fi
+
+            # Install fontspector if not already installed
+            if ! command -v fontspector &> /dev/null; then
+              echo "Installing fontspector..."
+              cargo install fontspector
+            fi
           '';
         };
       });

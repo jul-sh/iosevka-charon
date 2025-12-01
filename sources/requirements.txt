@@ -13,6 +13,7 @@ dehinter==4.0.0
 fontbakery[googlefonts]==1.1.0
 fontmath==0.9.4
 gftools==0.9.98
+diffenator2
 fonttools==4.60.1
 freetype-py==2.3.0
 fs==2.4.16
@@ -39,6 +40,6 @@ toml==0.10.2
 ufo2ft==3.4.1
 ufolint==1.2.0
 uharfbuzz==0.45.0
-unicodedata2==16.0.0
+unicodedata2==15.1.0
 urllib3==2.3.0
 vharfbuzz==0.3.1
