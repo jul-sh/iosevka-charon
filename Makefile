@@ -28,7 +28,7 @@ proof: build.stamp
 	$(ENV_RUNNER) bash -c 'TOCHECK=$$(find fonts/variable -type f 2>/dev/null); if [ -z "$$TOCHECK" ]; then TOCHECK=$$(find fonts/ttf -type f 2>/dev/null); fi ; mkdir -p out/ out/proof; diffenator2 proof $$TOCHECK -o out/proof'
 
 update-deps:
-	$(ENV_RUNNER) bash sources/scripts/update_uv_lock.sh
+	$(ENV_RUNNER) bash sources/scripts/update_all.sh
 
 clean:
 	rm -rf fonts out build.stamp .venv

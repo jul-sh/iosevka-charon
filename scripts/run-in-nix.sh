@@ -12,7 +12,6 @@ if [ -n "${IN_NIX_SHELL:-}" ]; then
 fi
 
 if command -v nix >/dev/null 2>&1; then
-  echo "Nix is available, entering nix shell..."
   exec nix develop --experimental-features 'nix-command flakes' "$ROOT_DIR/sources#default" --command "$ROOT_DIR/scripts/run-in-nix.sh" "$@"
 else
   echo "Nix is not available. Attempting to use Docker with Nix image."

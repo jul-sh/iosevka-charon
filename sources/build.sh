@@ -23,21 +23,7 @@ git submodule update --init --recursive
 python3 sources/scripts/build_fonts.py "$BUILD_PLAN"
 
 echo "Post-processing fonts for GF compliance…"
-python3 - <<'PY'
-import pathlib
-import sys
-
-sys.path.append("sources/scripts")
-import fix_fonts
-
-root = pathlib.Path("sources/output")
-fonts = sorted(root.glob("**/*.ttf"))
-if not fonts:
-    raise SystemExit("No TTF files found in sources/output to post-process.")
-
-for font_path in fonts:
-    fix_fonts.post_process_font(font_path)
-PY
+python3 sources/scripts/post_process_parallel.py
 
 echo "Syncing fonts into fonts/ttf/…"
 rm -rf fonts

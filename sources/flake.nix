@@ -38,16 +38,41 @@
             export CARGO_HOME="$HOME/.cargo"
             export PATH="$CARGO_HOME/bin:$PATH"
 
-            # Install latest stable Rust if not already installed
+            # Pin versions for compatibility
+            # Run 'make update-deps' to update to latest versions
+            RUST_VERSION="nightly-2025-11-30"
+            FONTSPECTOR_VERSION="1.5.1"
+
+            # Install Rust toolchain if not already installed
             if ! rustup show &> /dev/null; then
-              echo "Setting up Rust toolchain..."
-              rustup-init -y --default-toolchain stable --profile minimal
+              echo "Setting up Rust toolchain $RUST_VERSION..."
+              rustup-init -y --default-toolchain "$RUST_VERSION" --profile minimal
+            else
+              # Ensure the pinned version is installed
+              CURRENT_TOOLCHAIN=$(rustup show active-toolchain 2>/dev/null | awk '{print $1}' || echo "")
+              if [ "$CURRENT_TOOLCHAIN" != "$RUST_VERSION" ]; then
+                if ! rustup toolchain list | grep -q "$RUST_VERSION"; then
+                  echo "Installing Rust $RUST_VERSION..."
+                  rustup toolchain install "$RUST_VERSION" --profile minimal
+                fi
+                echo "Setting Rust $RUST_VERSION as default..."
+                rustup default "$RUST_VERSION"
+              fi
             fi
 
-            # Install fontspector if not already installed
+            # Install fontspector at pinned version if not already installed (optional, best-effort)
             if ! command -v fontspector &> /dev/null; then
-              echo "Installing fontspector..."
-              cargo install fontspector
+              echo "Installing fontspector $FONTSPECTOR_VERSION..."
+              if ! cargo install fontspector --version "$FONTSPECTOR_VERSION" 2>&1; then
+                echo "⚠ Warning: fontspector $FONTSPECTOR_VERSION failed to install."
+                echo "  This is optional. You can manually install with: cargo install fontspector"
+              fi
+            elif ! fontspector --version 2>&1 | grep -q "$FONTSPECTOR_VERSION"; then
+              echo "Updating fontspector to $FONTSPECTOR_VERSION..."
+              if ! cargo install fontspector --version "$FONTSPECTOR_VERSION" --force 2>&1; then
+                echo "⚠ Warning: fontspector $FONTSPECTOR_VERSION failed to install."
+                echo "  Current version: $(fontspector --version 2>&1 || echo 'none')"
+              fi
             fi
           '';
         };
