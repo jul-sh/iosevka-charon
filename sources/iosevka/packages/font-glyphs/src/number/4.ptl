@@ -1,0 +1,101 @@
+$$include '../meta/macros.ptl'
+
+import [mix linreg clamp fallback SuffixCfg] from "@iosevka/util"
+import [MathSansSerif] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Digits-Four : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Digits-Shared : OnumMarks ShiftDown CodeLnum CodeOnum
+
+	define [FourStdShape] : with-params [top open crossing [fine [AdviceStroke 3]] [sw Stroke] [bbd 0] [slab SLAB]] : glyph-proc
+		define yBar : Math.max (top * 0.25 + 0.625 * sw) (top * 0.05 + sw + [if (!bbd && slab) Stroke 0])
+		define swVBar : [AdviceStroke 2.5] * (sw / Stroke)
+
+		define xVertBar : [mix SB RightSB : if crossing 0.78 0.9125] - (bbd * 0.75) + [if crossing [HSwToV : 0.375 * sw] 0]
+		define yVertBarTop : [mix (yBar - sw) top : if open 0.5 1] - [if open (0.3 * sw) 0]
+		define xHBarTerminal : if crossing RightSB xVertBar
+		define xSlopeTop : xVertBar - [HSwToV sw] - [if open 0.06 0.25] * [HSwToV fine]
+
+		include : union
+			if open
+				VBar.r xVertBar 0 yVertBarTop swVBar
+				lift-@ : dispiro
+					widths.lhs sw
+					flat xVertBar (@b = 0)           [heading Upward]
+					curl xVertBar [mix @b @t 0.8]    [heading Upward]
+					g2   xVertBar (@t = yVertBarTop) [widths.lhs.heading fine Upward]
+			difference
+				HBar.t (SB + OX) xHBarTerminal yBar sw
+				Rect CAP 0 xVertBar (xVertBar + bbd)
+			intersection
+				if open
+					Rect top yBar 0 Width
+					Rect top yBar 0 xVertBar
+				dispiro
+					widths.rhs fine
+					flat (SB + OX) yBar
+					curl [mix (SB + OX) xSlopeTop 2] [mix yBar top 2]
+
+		if bbd : begin
+			include : VBar.r (xVertBar + bbd) 0 yVertBarTop sw
+			include : HBar.t xVertBar (xVertBar + bbd) CAP sw
+			include : HBar.b xVertBar (xVertBar + bbd) 0   sw
+		if (!bbd && slab) : begin
+			include : HSerif.rb (xVertBar - [HSwToV HalfStroke]) 0 Jut
+			include : HSerif.lb (xVertBar - [HSwToV HalfStroke]) 0 MidJutSide
+
+	define [FourClosedShape top crossing slab] : begin
+		return : FourStdShape top false crossing (slab -- slab)
+
+	define [FourSemiOpenShape top crossing slab] : begin
+		return : FourStdShape top true crossing (fine -- [AdviceStroke 2.75]) (slab -- slab)
+
+	define [FourOpenShape top crossing slab] : glyph-proc
+		local yBar : top * 0.4
+		local fine : AdviceStroke 3
+
+		define xVertBar : mix SB RightSB : if crossing 0.825 0.9125
+		define xHBarTerminal : if crossing RightSB xVertBar
+
+		include : HBar.t SB xHBarTerminal yBar
+		include : VBar.r xVertBar 0 [mix (yBar - Stroke) top 0.75]
+		include : VBar.l SB yBar top
+		if slab : begin
+			include : HSerif.rb (xVertBar - [HSwToV HalfStroke]) 0 Jut
+			include : HSerif.lb (xVertBar - [HSwToV HalfStroke]) 0 MidJutSide
+
+	define FourConfig : SuffixCfg.weave
+		object # body
+			"closed"   FourClosedShape
+			"semiOpen" FourSemiOpenShape
+			"open"     FourOpenShape
+		object # crossing
+			"nonCrossing" false
+			"crossing"    true
+		object # slab
+			"serifless" false
+			"serifed"   true
+
+	foreach { suffix { body crossing slab } } [pairs-of FourConfig] : do
+		create-glyph "four.lnum.\(suffix)" : glyph-proc
+			include : MarkSet.capital
+			include : body CAP crossing slab
+
+		create-glyph "four.onum.\(suffix)" : glyph-proc
+			include : OnumMarks.p
+			include : body CAP crossing slab
+			include : ShiftDown
+
+	select-variant 'four.lnum' [CodeLnum '4'] (follow -- 'four')
+	select-variant 'four.onum' [CodeOnum '4'] (follow -- 'four')
+
+	link-reduced-variant 'four/sansSerif.lnum' 'four.lnum' MathSansSerif (follow -- 'four/sansSerif')
+	link-reduced-variant 'four/sansSerif.onum' 'four.onum' MathSansSerif (follow -- 'four/sansSerif')
+
+	glyph-block-import Letter-Blackboard : BBS BBD BBBarCenter
+	create-glyph 'mathbb/four' 0x1D7DC : glyph-proc
+		include : MarkSet.capital
+		include : FourStdShape CAP false true (sw -- BBS) (bbd -- BBD) (fine -- BBS)

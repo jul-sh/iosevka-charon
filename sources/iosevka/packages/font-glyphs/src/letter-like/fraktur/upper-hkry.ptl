@@ -1,0 +1,122 @@
+$$include '../../meta/macros.ptl'
+
+import [mix min max fallback slY] from "@iosevka/util"
+
+glyph-module
+
+glyph-block LetterLike-Fraktur-Upper-HKR : begin
+	glyph-block-import Common-Derivatives
+	glyph-block-import CommonShapes
+	glyph-block-import LetterLike-Fraktur-Common : UpperDf S F T fraktur-stroke change-pen
+	glyph-block-import LetterLike-Fraktur-Common : DecoSizeX DecoSizeY SlopeA SlopeB
+	glyph-block-import LetterLike-Fraktur-Common : Wave FHook PHexTop PHexBot
+
+	define [HOuterShape bBody bDeco yConnT yConnB] : lift-@ : fraktur-stroke S
+		g2          bBody.right                   (@yT - FHook)
+		arch.lhs (sw -- S.thick) (blendPre -- {}) (@yT = bBody.top)
+		corner     (@xLD = @xL - 0.5 * DecoSizeX) [slY @xL @yL @xLD SlopeB]
+		corner     (@xL = bBody.left)             (@yL = [max yConnT (@yT - 0.75 * ArchDepthA)])
+		curl        @xL                           [min yConnB (@yBD + ArchDepthA)]
+		corner      bDeco.left                    (@yBD = @yB + 2 * DecoSizeY)
+		g2c.r.end  (@xM - DecoSizeX)              (@yB = bBody.bot)
+		corner     (@xM = bBody.xMid)             (@yB + DecoSizeY)
+
+	define [KRLegs box] : glyph-proc
+		# Top-right arch
+		local c : include : lift-@ : fraktur-stroke S
+			flat         (@xL = box.left)          [slY @xT @yT @xL SlopeA]
+			corner       (@xT = [box.xp PHexTop])  (@yT = box.top)
+			g2.down.mid  box.right                 [mix @yT @yRB 0.5]
+			flat         (@xRB = [box.xp 0.625])   (@yRB = [box.yp 0.55])
+			curl          @xL                      [slY @xRB @yRB @xL SlopeA]
+
+
+		local xLegStart : mix [c.last 1].x [c.last 2].x 0.75
+		local yLegStart : mix [c.last 1].y [c.last 2].y 0.75
+
+		# Leg
+		include : lift-@ : fraktur-stroke S
+			[g2.sr SlopeA].start  (@xS = xLegStart)                    (@yS = yLegStart)
+			flat                  (@xM = [mix @xS @xB 0.75])           (@yS - 0.6 * ArchDepthB)
+			~~~ [ curl             @xM                                 (@yB + 2 * DecoSizeY) ]
+			corner                (@xB = box.right + 0.5 * DecoSizeX)  (@yB = box.bot)
+			corner                (@xB + DecoSizeX)                    (@yB + DecoSizeY)
+
+		return : object [yConnT [c.first].y] [yConnB [c.last].y]
+
+	create-glyph "frak/H" 0x210C : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capDesc
+
+		local hBox : S.box CAP 0 df.leftSB df.rightSB
+		local hDeco : hBox.padLeft (-0.25 * DecoSizeX) # top-left decoration ref box
+		local hBody : hBox.padLeft (+0.75 * DecoSizeX) # body ref box
+		local hInner : [hBody.withTop : hBody.yp 0.6].withBottom Descender
+
+		# Inner stroke
+		local c : include : lift-@ : fraktur-stroke S
+			corner       (@xL = hInner.left)            [slY @xT @yT @xL SlopeA]
+			corner       (@xT = [hInner.xp PHexTop])    (@yT = hInner.top)
+			g2.down.mid  hInner.right           [hInner.yp 0.75]
+			~~~ [alsoThru.g2 0.5 0.5]
+			g2.down.mid  [hInner.xp 0.75]       [hInner.yp 0.25]
+			g2           hInner.right           hInner.bot
+
+		# Top and left stroke
+		include : HOuterShape hBody hDeco (-VERY-FAR) [c.first].y
+
+	create-glyph "frak/K" 0x1D50E : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capital
+
+		local kBox : S.box CAP 0 df.leftSB df.rightSB
+		local kDeco : kBox.padLeft (-0.25 * DecoSizeX) # top-left decoration ref box
+		local kBody : kBox.padLeft (+0.75 * DecoSizeX) # body ref box
+		local kInner : kBody.withTop : Math.min [kBody.yp 0.75] (kBody.top - FHook - Wave.DepthY - S.thick)
+
+		local leg : include : KRLegs kInner
+
+		include : HOuterShape kBody kDeco leg.yConnT leg.yConnB
+
+	define [RKLeftStroke deco body yConnB pRight] : glyph-proc
+		local s : include : lift-@ : fraktur-stroke F
+			g2.ru.start     @xdL                            ([deco.yp 0.625] - 2 * F.thick)
+			~~~ [Wave.vc Wave.LTDecoSize]
+			g2.ru.mid      (@xdL = deco.left)               (@yT - DecoSizeY)  [change-pen S]
+			arch.rhs (blendPre -- {})                       (@yT = body.top) 0.625
+			flat           (@xbL = body.left)               (@ybT = body.top - 0.6 * ArchDepthA)
+			curl 	        @xbL                            [min yConnB [mix @ybT @ybB 0.5]]
+			corner          @xdL                            (@ybB = @yB + 2 * DecoSizeY)
+			g2c.right.end  (@xR - DecoSizeX)                (@yB = [S.yb 0])
+			corner         (@xR = [body.xp : 0.5 * pRight]) (@yB + DecoSizeY)
+		return s
+
+	create-glyph "frak/R" 0x211C : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capital
+
+		local rBox  : S.box CAP 0 df.leftSB df.rightSB
+		local rDeco : rBox.padLeft (-0.25 * DecoSizeX) # top-left decoration ref box
+		local rBody : rBox.padLeft (+1.50 * DecoSizeX) # body ref box
+
+		# Legs
+		local leg : include : KRLegs rBody
+		local leftStroke : include : RKLeftStroke rDeco rBody leg.yConnB 1
+
+	create-glyph "frak/Y" 0x1D51C : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capDesc
+
+		local yBox  : S.box CAP 0 df.leftSB df.rightSB
+		local yDeco : yBox.padLeft (-0.25 * DecoSizeX) # top-left decoration ref box
+		local yBody : yBox.padLeft (+1.50 * DecoSizeX) # body ref box
+
+		local leftStroke : include : RKLeftStroke yDeco yBody yBody.top 0.75
+
+		local yRight : yBody.withBottom Descender
+		local rightStroke : include : lift-@ : fraktur-stroke S
+			corner (@xL = yRight.left) [slY @xT @yT @xL SlopeA]
+			corner (@xT = [yRight.xp PHexTop]) (@yT = yRight.top)
+			g2.down.mid yRight.right [yRight.yp 0.75]
+			g2.down.mid [yRight.xp 0.75] [yRight.yp 0.25]
+			g2 yRight.right yRight.bot

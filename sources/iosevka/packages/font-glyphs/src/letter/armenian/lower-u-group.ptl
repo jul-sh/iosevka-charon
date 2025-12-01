@@ -1,0 +1,466 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DependentSelector] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Armenian-Lower-U-Group : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared-Shapes : nShoulder uBowl SerifFrame
+	glyph-block-import Letter-Armenian-Shared-Shapes : ArmHBar TwoNeck
+	glyph-block-import Letter-Latin-Lower-M : SmallMArches
+
+	# Common Params
+	define barPos : XH / 2
+	define highBarPos XH
+	define jut Jut
+
+	do "Turned Ayb"
+		create-glyph 'armn/aybTurned' 0x560 : glyph-proc
+			local df : include : DivFrame para.advanceScaleMM 3
+			include : df.markSet.e
+			include : SmallMArches df XH 0 0 0
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include : if para.isItalic
+					composite-proc sf.lt.outer sf.rb.outer
+					if sf.enoughSpaceForFullSerifs
+						composite-proc sf.lt.outer sf.lb.full sf.mb.full sf.rb.full
+						composite-proc sf.lt.outer sf.lb.outer sf.rb.outer
+
+	do "Ayb"
+		create-glyph 'armn/ayb' 0x561 : glyph-proc
+			local df : include : DivFrame para.advanceScaleMM 3
+			include : df.markSet.e
+			include : SmallMArches df XH 0 0 0
+			include : FlipAround df.middle (XH / 2)
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include : if ([not para.isItalic] && sf.enoughSpaceForFullSerifs)
+					composite-proc sf.lt.outer sf.mt.left sf.rt.inner sf.rb.outer
+					composite-proc sf.lt.outer sf.rb.outer
+
+	do "Ben"
+		create-glyph 'armn/ben' 0x562 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.p
+			include : VBar.l df.leftSB Descender XH df.mvs
+			local barPosB : barPos - df.mvs / 2
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- barPosB
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : [ArmHBar.normal df].base
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH Descender
+				include : composite-proc sf.lt.outer sf.lb.fullSide
+
+	do "Da"
+		create-glyph 'armn/da' 0x564 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.p
+			include : VBar.l df.leftSB 0 XH df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- Descender
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : [ArmHBar.right df].base
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				local sf2 : SerifFrame.fromDf df XH Descender
+				if para.isItalic
+					include sf.lt.outer
+					include : composite-proc sf.lt.outer sf.lb.full
+				include sf2.rb.fullSide
+
+	do "Ech"
+		create-glyph 'armn/ech' 0x565 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+			local barPosT : barPos + df.mvs / 2
+			include : uBowl.shape
+				top    -- Ascender
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : VBar.r df.rightSB 0 barPosT df.mvs
+			include : [ArmHBar.normal df].high
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df Ascender 0
+				include : composite-proc sf.lt.outer sf.rb.outer
+
+	do "Et"
+		create-glyph 'armn/et' 0x568 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+			include : VBar.l df.leftSB Descender XH df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : [ArmHBar.normal df].desc
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH Descender
+				local sf2 : SerifFrame.fromDf df XH 0
+				include sf.lt.outer
+				include : if para.isItalic sf2.rb.outer sf2.rb.full
+
+	do "Ini"
+		create-glyph 'armn/ini' 0x56B : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.bp
+			include : VBar.l df.leftSB Descender Ascender df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df Ascender Descender
+				local sf2 : SerifFrame.fromDf df XH 0
+				include : composite-proc sf.lt.outer sf.lb.fullSide
+				include : if para.isItalic sf2.rb.outer sf2.rb.full
+
+	do "Xeh"
+		create-glyph 'armn/xeh' 0x56D : glyph-proc
+			local df : include : DivFrame para.advanceScaleMM 3
+			include : df.markSet.bp
+			local subDf : df.slice 3 2
+			include : VBar.l df.leftSB Descender Ascender df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- (XH / 2 - TINY)
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- (df.middle + [HSwToV : 0.5 * df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			include : uBowl.shape
+				top    -- (XH / 2 + TINY)
+				bottom -- 0
+				left   -- (df.middle - [HSwToV : 0.5 * df.mvs])
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			include : VBar.r df.rightSB 0 XH df.mvs
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df Ascender Descender
+				local sf2 : SerifFrame.fromDf df XH 0
+				include : composite-proc sf.lt.outer sf.lb.fullSide
+				if para.isItalic
+					include sf2.rb.outer
+					include : composite-proc sf2.rt.inner sf2.rb.outer
+
+	do "Ken"
+		create-glyph 'armn/ken' 0x56F : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.bp
+			include : uBowl.shape
+				top    -- Ascender
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : VBar.r df.rightSB Descender XH df.mvs
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df Ascender 0
+				local sf2 : SerifFrame.fromDf df XH Descender
+				include sf.lt.outer
+				if para.isItalic
+					include sf2.rb.fullSide
+					include : composite-proc sf2.rt.inner sf2.rb.fullSide
+
+	do "Ho"
+		create-glyph 'armn/ho' 0x570 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+			include : VBar.l df.leftSB 0 Ascender df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df Ascender 0
+				include : if para.isItalic
+					composite-proc sf.lt.outer sf.rb.outer
+					composite-proc sf.lt.outer sf.lb.full sf.rb.full
+
+	do "Ghat"
+		create-glyph 'armn/ghat' 0x572 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.p
+			include : VBar.l df.leftSB 0 XH df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- Descender
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : [ArmHBar.right df].desc
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include sf.lt.outer
+				if [not para.isItalic] : include sf.lb.full
+
+	do "Men"
+		create-glyph 'armn/men' 0x574 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+			include : uBowl.shape
+				top    -- XH
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : VBar.r df.rightSB 0 Ascender df.mvs
+			include : [ArmHBar.right df].asc
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				local sf2 : SerifFrame.fromDf df Ascender 0
+				include : composite-proc sf.lt.outer sf2.rb.outer
+
+	do "Nu"
+		create-glyph 'armn/nu' 0x576 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+			include : uBowl.shape
+				top    -- Ascender
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : VBar.r df.rightSB 0 XH df.mvs
+			include : [ArmHBar.left df].asc
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include sf.rb.outer
+				if [not para.isItalic] : include sf.rt.inner
+
+	do "Vo"
+		create-glyph 'armn/vo' 0x578 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.e
+			include : VBar.l df.leftSB 0 XH df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include : if para.isItalic
+					composite-proc sf.lt.outer sf.rb.outer
+					composite-proc sf.lt.outer sf.lb.full sf.rb.full
+
+	do "Peh"
+		create-glyph 'armn/peh' 0x57A : glyph-proc
+			local df : include : DivFrame para.advanceScaleMM 3
+			include : df.markSet.p
+			include : SmallMArches df XH 0 0 0
+			include : FlipAround df.middle (XH / 2)
+			include : VBar.r df.rightSB Descender XH df.mvs
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH Descender
+				include : if ([not para.isItalic] && sf.enoughSpaceForFullSerifs)
+					composite-proc sf.lt.outer sf.mt.left sf.rt.inner sf.rb.fullSide
+					composite-proc sf.lt.outer sf.rb.fullSide
+
+	do "Rra"
+		create-glyph 'armn/rra' 0x57C : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.e
+			include : VBar.l df.leftSB 0 XH df.mvs
+
+			# Combination of nShoulder and straight '2' shape
+			local left : Math.max df.middle : (df.rightSB - [HSwToV df.mvs]) - jut
+			include : dispiro
+				widths.rhs df.shoulderFine
+				flat (df.leftSB + [HSwToV : df.mvs - df.shoulderFine]) (XH - SmallArchDepthA - TINY)
+				curl (df.leftSB + [HSwToV : df.mvs - df.shoulderFine]) (XH - SmallArchDepthA)
+				arch.rhs XH (sw -- df.mvs) (swBefore -- df.shoulderFine)
+				TwoNeck df XH 0 left
+			include : HBar.b left ((left + [HSwToV df.mvs]) + jut) 0 df.mvs
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include sf.lt.outer
+				if [not para.isItalic] : include sf.lb.outer
+
+			# Alternate straight 'n' form
+			# include : nShoulder.shape
+			# 	top    -- XH
+			# 	bottom -- 0
+			# 	left   -- (df.leftSB + [HSwToV df.mvs])
+			# 	right  -- df.rightSB
+			# 	stroke -- df.mvs
+			# 	fine   -- df.shoulderFine
+			# include : [ArmHBar.right df].base
+			# if SLAB : begin
+			# 	local sf : SerifFrame.fromDf df XH 0
+			# 	include sf.lt.outer
+			# 	if [not para.isItalic] : include sf.lb.full
+
+	do "Seh"
+		create-glyph 'armn/seh' 0x57D : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.e
+			include : uBowl.shape
+				top    -- XH
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : VBar.r df.rightSB 0 XH df.mvs
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include : if para.isItalic
+					composite-proc sf.lt.outer sf.rb.outer
+					composite-proc sf.lt.outer sf.rt.inner sf.rb.outer
+
+	do "Vew"
+		create-glyph 'armn/vew' 0x57E : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.bp
+			include : uBowl.shape
+				top    -- XH
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.rightSB - [HSwToV df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			include : VBar.r df.rightSB Descender Ascender df.mvs
+			include : [ArmHBar.right df].desc
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				local sf2 : SerifFrame.fromDf df Ascender Descender
+				include : composite-proc sf.lt.outer sf2.rt.inner
+
+	do "Tiun"
+		create-glyph 'armn/tiun' 0x57F : glyph-proc
+			local df : include : DivFrame para.advanceScaleMM 3
+			include : df.markSet.e
+			local subDf : df.slice 3 2
+			include : uBowl.shape
+				top    -- XH
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.middle - [HSwToV : 0.5 * df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			include : VBar.m df.middle 0 XH df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.middle + [HSwToV : 0.5 * df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				include : if ([not para.isItalic] && sf.enoughSpaceForFullSerifs)
+					composite-proc sf.lt.outer sf.mt.left sf.mb.right sf.rb.full
+					composite-proc sf.lt.outer sf.rb.outer
+
+	do "Reh"
+		create-glyph 'armn/reh' 0x580 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+			include : VBar.l df.leftSB Descender XH df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.leftSB + [HSwToV df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH Descender
+				local sf2 : SerifFrame.fromDf df XH 0
+				include : composite-proc sf.lt.outer sf.lb.fullSide
+				include : if para.isItalic sf2.rb.outer sf2.rb.full
+
+	do "P'iur"
+		create-glyph 'armn/piur' 0x583 : glyph-proc
+			local df : include : DivFrame para.advanceScaleMM 3
+			include : df.markSet.bp
+			local subDf : df.slice 3 2
+			include : uBowl.shape
+				top    -- XH
+				bottom -- 0
+				left   -- df.leftSB
+				right  -- (df.middle - [HSwToV : 0.5 * df.mvs])
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			include : VBar.m df.middle Descender Ascender df.mvs
+			include : nShoulder.shape
+				top    -- XH
+				bottom -- 0
+				left   -- (df.middle + [HSwToV : 0.5 * df.mvs])
+				right  -- df.rightSB
+				stroke -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df XH 0
+				local sf2 : SerifFrame.fromDf df Ascender Descender
+				include : if ([not para.isItalic] && sf.enoughSpaceForFullSerifs)
+					composite-proc sf.lt.outer sf.rb.full
+					composite-proc sf.lt.outer sf.rb.outer
+				include : composite-proc sf2.mt.left sf2.mb.fullCenter
+
+	do "Ew"
+		create-glyph 'armn/ew' 0x587 : glyph-proc
+			local df : include : DivFrame para.advanceScaleM 1
+			include : df.markSet.b
+			local subDf : DivFrame (0.75 * para.advanceScaleM) 2
+			include : uBowl.shape
+				top    -- Ascender
+				bottom -- 0
+				left   -- subDf.leftSB
+				right  -- (subDf.rightSB - [HSwToV subDf.mvs])
+				stroke -- subDf.mvs
+				fine   -- subDf.shoulderFine
+				ada    -- subDf.smallArchDepthA
+				adb    -- subDf.smallArchDepthB
+			include : VBar.r subDf.rightSB 0 XH subDf.mvs
+			include : HBar.b (subDf.rightSB - [HSwToV : 0.5 * subDf.mvs]) df.rightSB 0 subDf.mvs
+			if SLAB : begin
+				local sf : SerifFrame.fromDf subDf Ascender 0
+				include sf.lt.outer
+				if [not para.isItalic] : begin
+					local sf2 : SerifFrame.fromDf subDf XH 0
+					include sf2.rt.inner

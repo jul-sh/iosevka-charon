@@ -1,0 +1,72 @@
+###### Braille symbols
+$$include '../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [maskBit maskBits popCountByte] from "@iosevka/util/mask-bit"
+
+glyph-module
+
+glyph-block Symbol-Braille : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	local left : Middle - (0.25 * Width)
+	local right : Middle + (0.25 * Width)
+	local offsetY : 0.3 * (SymbolMid - PictTop)
+	local stress : 0.5 * [AdviceStroke 3.375]
+	local dotRadius : PeriodRadius * [Math.min 1 (stress / HalfStroke)]
+
+	define MASK-LEFT-HALF  0x47
+	define MASK-RIGHT-HALF 0xB8
+
+
+	define [brailleGlyphName byte suffix] : begin
+		local dots {}
+		foreach [bit : range 0 8] : if [maskBit byte bit] : dots.push (bit + 1)
+		return : if suffix "braille\[dots.join ''].\(suffix)" "braille\[dots.join '']"
+
+	foreach { suffix { DrawAt kDotRadius overshoot } } [Object.entries DotVariants] : do
+		define [BrailleYCoord y] (SymbolMid + y * offsetY)
+
+		### Computed Braille Patterns
+		###
+		### Bit to Dot mapping:
+		###   0  3
+		###   1  4
+		###   2  5
+		###   6  7
+		define [OneHalf byte] : glyph-proc
+			local r : kDotRadius * dotRadius - overshoot
+			foreach [bit : range 0 8] : if [maskBit byte bit] : begin
+				include : match bit
+					0 : DrawAt left  [BrailleYCoord (-3)] r
+					1 : DrawAt left  [BrailleYCoord (-1)] r
+					2 : DrawAt left  [BrailleYCoord   1 ] r
+					3 : DrawAt right [BrailleYCoord (-3)] r
+					4 : DrawAt right [BrailleYCoord (-1)] r
+					5 : DrawAt right [BrailleYCoord   1 ] r
+					6 : DrawAt left  [BrailleYCoord   3 ] r
+					7 : DrawAt right [BrailleYCoord   3 ] r
+
+		define [TwoHalves byte] : glyph-proc
+			local leftHalf  : maskBits byte MASK-LEFT-HALF
+			local rightHalf : maskBits byte MASK-RIGHT-HALF
+			include : refer-glyph : brailleGlyphName leftHalf  suffix
+			include : refer-glyph : brailleGlyphName rightHalf suffix
+
+		define [brailleBuildStage byte] : begin
+			if (![maskBits byte MASK-LEFT-HALF] || ![maskBits byte MASK-RIGHT-HALF]) : return 1
+			return 2
+
+		define stageConfig : list
+			list 1 OneHalf
+			list 2 TwoHalves
+
+		foreach { stage F } [items-of stageConfig] : begin
+			foreach [byte : range 1 256] : if (stage == [brailleBuildStage byte]) : begin
+				create-glyph [brailleGlyphName byte suffix] : glyph-proc
+					include : ForceUpright
+					include : F byte
+
+	foreach [byte : range 1 256] : begin
+		select-variant [brailleGlyphName byte] (0x2800 + byte) (follow -- 'brailleDot')

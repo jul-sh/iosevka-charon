@@ -1,0 +1,94 @@
+extern Map
+extern Set
+
+define MarkClasses {
+	'above' 'tieAbove' 'leaningAbove' 'topLeft' 'topRight' 'grekUpperTonos' 'aboveBraceL' 'aboveBraceR'
+	'below' 'tieBelow' 'leaningBelow' 'bottomLeft' 'bottomRight' 'trailing' 'lf' 'belowBraceL' 'belowBraceR'
+
+	'overlay' 'slash' 'strike' 'overlayOnExtension'
+	'cvDecompose' 'enclosureInner' 'enclosureInnerFirstHalf' 'enclosureInnerSecondHalf'
+	'fracBuildUp'
+}
+
+define MarkInteractions : new Map : list
+	list 'aboveBraceL' {'aboveBraceL' 'above' 'tieAbove' 'leaningAbove' 'topLeft' 'topRight' 'grekUpperTonos'}
+	list 'aboveBraceR' {'aboveBraceR' 'above' 'tieAbove' 'leaningAbove' 'topLeft' 'topRight' 'grekUpperTonos'}
+	list 'belowBraceL' {'belowBraceL' 'below' 'tieBelow' 'leaningBelow' 'bottomLeft' 'bottomRight' 'trailing' 'lf'}
+	list 'belowBraceR' {'belowBraceR' 'below' 'tieBelow' 'leaningBelow' 'bottomLeft' 'bottomRight' 'trailing' 'lf'}
+
+
+define MkmkStackingLimit : new Set { 'above' 'below' }
+
+export : define [buildMarkMkmk gpos glyphStore markGlyphs] : begin
+	define validMarkClasses : new Set MarkClasses
+
+	define mark : object
+		feature      : gpos.addCommonFeature : gpos.createFeature 'mark'
+		lookupMap    : new Map
+		createLookup : function [] {.type 'gpos_mark_to_base' .marks {.} .bases {.}}
+	define mkmk : object
+		feature      : gpos.addCommonFeature : gpos.createFeature 'mkmk'
+		lookupMap    : new Map
+		createLookup : function [] {.type 'gpos_mark_to_mark' .marks {.} .bases {.}}
+
+	# Populate the marks
+	foreach cls [items-of MarkClasses] : begin
+		local markLookup : ensureLookup gpos mark cls
+		local mkmkLookup : ensureLookup gpos mkmk cls
+
+		foreach { gn glyph } [glyphStore.namedEntries] : begin
+			if glyph.markAnchors.(cls) : begin
+				markGlyphs.all.add gn
+				markGlyphs.markAttachClassDef.set gn cls
+				addMarkAnchor markLookup gn cls glyph.markAnchors.(cls)
+				addMarkAnchor mkmkLookup gn cls glyph.markAnchors.(cls)
+
+	# Populate the bases
+	foreach cls [items-of MarkClasses] : begin
+		local markLookup : ensureLookup gpos mark cls
+		local mkmkLookup : ensureLookup gpos mkmk cls
+
+		foreach { gn glyph } [glyphStore.namedEntries] : begin
+			if glyph.baseAnchors.(cls) : begin
+				if [markGlyphs.all.has gn]
+				: then : addBaseAnchor mkmkLookup gn cls glyph.baseAnchors.(cls)
+				: else : addBaseAnchor markLookup gn cls glyph.baseAnchors.(cls)
+
+	foreach markLookup [mark.lookupMap.values] : foreach mkmkLookup [mkmk.lookupMap.values]
+		gpos.setDependency markLookup mkmkLookup
+
+	foreach { cls lookup } mkmk.lookupMap : begin
+		local interactionMarkSet : new Set ([MarkInteractions.get cls] || { cls })
+
+		local includeSet : new Set
+		local ignoreSet : new Set
+		foreach { gn c } markGlyphs.markAttachClassDef : if [interactionMarkSet.has c]
+			then : includeSet.add gn
+			else : ignoreSet.add gn
+
+		set lookup.ignoreGlyphs : Array.from ignoreSet
+		if (interactionMarkSet.size > 1) : begin
+			markGlyphs.markGlyphSets.push : Array.from includeSet
+
+define [ensureLookup gpos feat cls] : begin
+	local existing : feat.lookupMap.get cls
+	if existing : return existing
+
+	local lookup : gpos.createLookup : feat.createLookup
+	feat.feature.addLookup lookup
+	feat.lookupMap.set cls lookup
+	return lookup
+
+define [addMarkAnchor lookup gn cls anchor] : begin
+	local a : object
+		class cls
+		x     anchor.x
+		y     anchor.y
+	set lookup.marks.(gn) a
+
+define [addBaseAnchor lookup gn cls anchor] : begin
+	local a : object
+		x     anchor.x
+		y     anchor.y
+	if [not lookup.bases.(gn)] : set lookup.bases.(gn) {.}
+	set lookup.bases.(gn).(cls) a

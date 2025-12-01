@@ -1,0 +1,92 @@
+$$include '../../meta/macros.ptl'
+
+import [mix fallback slY] from "@iosevka/util"
+
+glyph-module
+
+glyph-block LetterLike-Fraktur-Upper-CEG : begin
+	glyph-block-import Common-Derivatives
+	glyph-block-import CommonShapes
+	glyph-block-import LetterLike-Fraktur-Common : UpperDf S F T fraktur-stroke change-pen
+	glyph-block-import LetterLike-Fraktur-Common : DecoSizeX DecoSizeY SlopeA SlopeB
+	glyph-block-import LetterLike-Fraktur-Common : Wave FHook PHexTop PHexBot
+
+
+	define flex-params [FrakCTopAndCenterStroke] : glyph-proc
+		local-parameter   df
+		local-parameter : top -- [S.yt CAP]
+		local-parameter : bot -- [S.yp 0 CAP 0.375]
+		local-parameter : left -- [S.xl df.leftSB]
+		local-parameter : right -- [S.xr df.rightSB]
+
+		local xCenter : [mix left right 0.5] + 0.25 * F.thick
+		local deco : Math.max DecoSizeX (0.5 * ArchDepthA - 2 * S.thick)
+		local waveTop : top - deco
+
+		# Top-right stroke
+		include : lift-@ : fraktur-stroke S
+			g2           right                top
+			g2.left.mid  [mix right @xP 0.5] (top - 0.5 * FHook)
+			corner       (@xP = @xC + deco)   top
+			corner       (@xC = xCenter)     (top - deco)
+
+		# Inner decoration
+		include : lift-@ : fraktur-stroke F
+			g2.ld.start  (@xS = [F.connL S xCenter]) [F.connB S : top - deco]
+			~~~ [Wave.vc (-Wave.DepthX)]
+			g2.ld.end     @xS                         bot
+
+		return : object xCenter [waveTop : top - deco] [waveBot bot]
+
+	define flex-params [FrakCOutlineShape] : glyph-proc
+		local-parameter   df
+		local-parameter : mode -- 'C'
+		local-parameter : top -- [S.yt CAP]
+		local-parameter : bot -- [S.yb 0]
+		local-parameter : left -- [S.xl df.leftSB]
+		local-parameter : right -- [S.xr df.rightSB]
+
+		local [object xCenter waveTop waveBot] : include : FrakCTopAndCenterStroke df
+			bot -- ([mix bot top 0.1] + 2 * Wave.DepthY + 0.5 * S.thick)
+
+		# Left and bottom stroke
+		include : lift-@ : fraktur-stroke S
+			g4.ru.start   [T.connL S xCenter]  [T.connB S waveTop] [change-pen T]
+			arch.rhs (@yT = [T.connT S top]) (sw -- T.thick) (anglePre -- (-45)) (anglePost -- 0)
+			flat           left                (@yT - 0.6 * ArchDepthA)  [change-pen S]
+			curl           left                (bot + ArchDepthB)
+			match mode
+			: [Just 'C'] : list # C and E
+				hookend (sw -- S.thick)     bot
+				g2      [T.connR S right]  (bot + [T.connT S SHook]) [change-pen T]
+			: [Just 'G'] : list # G
+				arch.lhs (sw -- S.thick)                   bot
+				flat      right                           (bot + ArchDepthA)
+				curl      right                           (@yMT - 0.5 * ArchDepthB)
+				g2       (@xMT + TINY)                    (@yMT + TINY * SlopeB)
+				corner   (@xMT = [mix @xM right PHexTop]) (@yMT = [slY @xM @yM @xMT SlopeA])
+				corner   (@xM = xCenter)                  (@yM = [mix waveTop waveBot 0.5])
+
+		return : object xCenter waveTop waveBot
+
+	create-glyph "frak/C" 0x212D : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capital
+
+		include : FrakCOutlineShape df (mode -- 'C')
+
+	create-glyph "frak/E" 0x1D508 : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capital
+
+		local [object xCenter waveTop waveBot] : include : FrakCOutlineShape df (mode -- 'C')
+
+		include : lift-@ : fraktur-stroke F
+			corner  (@xM = [F.connL S xCenter])    (@yM = [F.connB S : mix waveTop waveBot 0.5])
+			corner  (@xRM = @xR - 0.5 * DecoSizeX) (@yRM = [slY @xM @yM @xRM SlopeA])
+			corner  (@xR = [F.xr df.rightSB])      (@yRM - 0.5 * DecoSizeY)
+
+	create-glyph "frak/G" 0x1D50A : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capital
+		include : FrakCOutlineShape df (mode -- 'G')

@@ -1,0 +1,11 @@
+{
+  "name": "@iosevka/util",
+  "version": "33.3.5",
+  "private": true,
+  "exports": {
+    ".": "./src/index.mjs",
+    "./formatter": "./src/formatter.mjs",
+    "./mask-bit": "./src/mask-bit.mjs",
+    "./monotonic-interpolate": "./src/monotonic-interpolate.mjs"
+  }
+}

@@ -1,0 +1,45 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Letter-Cyrillic-Djerv : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared-Shapes : LetterBarOverlay SerifFrame
+
+	define [RStirrupShape df top py ada adb] : glyph-proc
+		local uBot : mix top 0 py
+		include : VBar.m df.middle 0 uBot
+		include : UShape top uBot df.leftSB df.rightSB nothing ada adb
+		include : FlipAround df.middle (top / 2)
+
+	define [DjervShape df top py ada adb] : glyph-proc
+		include : RStirrupShape df top py ada adb
+
+		if SLAB : begin
+			local sf : SerifFrame.fromDf df top 0
+			include sf.lb.full
+			include sf.rb.full
+			include sf.mt.fullCenter
+
+		include : LetterBarOverlay.m.in
+			x   -- df.middle
+			bot -- (top * py)
+			top -- (top - [if SLAB Stroke 0])
+
+	create-glyph 'cyrl/Djerv' 0xA648 : glyph-proc
+		define df : include : DivFrame 1
+		include : df.markSet.capital
+		include : DjervShape df CAP 0.6 ArchDepthA ArchDepthB
+
+	create-glyph 'cyrl/djerv' 0xA649 : glyph-proc
+		define df : include : DivFrame 1
+		include : df.markSet.e
+		include : DjervShape df XH 0.6 SmallArchDepthA SmallArchDepthB
+
+	create-glyph 'rStirrup' 0xAB45 : glyph-proc
+		define df : include : DivFrame 1
+		include : df.markSet.e
+		include : RStirrupShape df XH 0.6 ArchDepthA ArchDepthB

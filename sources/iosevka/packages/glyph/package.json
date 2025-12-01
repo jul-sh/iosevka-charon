@@ -1,0 +1,14 @@
+{
+  "name": "@iosevka/glyph",
+  "version": "33.3.5",
+  "private": true,
+  "exports": {
+    ".": "./src/glyph.mjs",
+    "./store": "./src/store.mjs",
+    "./block": "./src/block.mjs",
+    "./relation": "./src/relation.mjs"
+  },
+  "dependencies": {
+    "@iosevka/geometry": "33.3.5"
+  }
+}

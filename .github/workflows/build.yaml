@@ -19,82 +19,80 @@ jobs:
     name: Build and test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@v14
-    - name: Nix cache
-      uses: DeterminateSystems/magic-nix-cache-action@v7
-    - name: Setup fontspector
-      uses: fonttools/setup-fontspector@main
-      env:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+      - name: Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      - name: Setup fontspector
+        uses: fonttools/setup-fontspector@main
+        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Set artifact file name
-      id: zip-name
-      shell: bash
-      # Set the archive name to repo name + "-fonts" e.g "radiocanadafonts-fonts.zip"
-      run: echo "ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-fonts" >> $GITHUB_ENV
+      - name: Set artifact file name
+        id: zip-name
+        shell: bash
+        # Set the archive name to repo name + "-fonts" e.g "radiocanadafonts-fonts.zip"
+        run: echo "ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-fonts" >> $GITHUB_ENV
 
-    # If a new release is cut, use the release tag to auto-bump the source files
-    # - name: Bump release
-    #   if: github.event_name == 'release'
-    #   run: |
-    #     . venv/bin/activate
-    #     SRCS=$(yq e ".sources[]" sources/config.yaml)
-    #     TAG_NAME=${GITHUB_REF/refs\/tags\//}
-    #     echo "Bumping $SRCS to $TAG_NAME"
-    #     for src in $SRCS
-    #     do
-    #       bumpfontversion sources/$src --new-version $TAG_NAME;
-    #     done
+      # If a new release is cut, use the release tag to auto-bump the source files
+      # - name: Bump release
+      #   if: github.event_name == 'release'
+      #   run: |
+      #     . venv/bin/activate
+      #     SRCS=$(yq e ".sources[]" sources/config.yaml)
+      #     TAG_NAME=${GITHUB_REF/refs\/tags\//}
+      #     echo "Bumping $SRCS to $TAG_NAME"
+      #     for src in $SRCS
+      #     do
+      #       bumpfontversion sources/$src --new-version $TAG_NAME;
+      #     done
 
-    - name: Build font
-      env:
-        NIX_CONFIG: "experimental-features = nix-command flakes"
-      run: make build
-    - name: Check with fontspector
-      id: fontbakery
-      env:
-        NIX_CONFIG: "experimental-features = nix-command flakes"
-      run: |
-        set +e
-        make test
-        status=$?
-        echo "exit_code=$status" >> "$GITHUB_OUTPUT"
-        if [ "$status" -ne 0 ]; then
-          echo "failed=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "failed=false" >> "$GITHUB_OUTPUT"
-        fi
-        exit 0
-      continue-on-error: true
-    - name: Generate proofs
-      env:
-        NIX_CONFIG: "experimental-features = nix-command flakes"
-      run: make proof
-    - name: Set up test result site
-      run: |
-        mkdir -p out/ttf
-        if compgen -G "fonts/ttf/*.ttf" > /dev/null; then
-          rsync -av fonts/ttf/ out/ttf/
-        else
-          echo "No TTF files found to copy into out/ttf."
-        fi
-        python scripts/generate-ttf-manifest.py
-        cp scripts/index.html out/index.html
-    - name: Collect deployment assets
-      if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/') }}
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./out
-    - name: Archive artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ env.ZIP_NAME }}
-        path: |
-          fonts
-          out
+      - name: Build font
+        env:
+          NIX_CONFIG: "experimental-features = nix-command flakes"
+        run: make build
+      - name: Check with fontspector
+        id: fontbakery
+        env:
+          NIX_CONFIG: "experimental-features = nix-command flakes"
+        run: |
+          set +e
+          make test
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -ne 0 ]; then
+            echo "failed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+        continue-on-error: true
+      - name: Generate proofs
+        env:
+          NIX_CONFIG: "experimental-features = nix-command flakes"
+        run: make proof
+      - name: Set up test result site
+        run: |
+          mkdir -p out/ttf
+          if compgen -G "fonts/ttf/*.ttf" > /dev/null; then
+            rsync -av fonts/ttf/ out/ttf/
+          else
+            echo "No TTF files found to copy into out/ttf."
+          fi
+          python scripts/generate-ttf-manifest.py
+          cp scripts/index.html out/index.html
+      - name: Collect deployment assets
+        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./out
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: |
+            fonts
+            out
     outputs:
       zip_name: ${{ env.ZIP_NAME }}
       validation_failed: ${{ steps.fontbakery.outputs.failed }}

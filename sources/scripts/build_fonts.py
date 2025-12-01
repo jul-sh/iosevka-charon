@@ -3,10 +3,9 @@
 Build custom Iosevka fonts from private build plans.
 
 Steps:
-  1. Initialize and update the Iosevka Git submodule (gf branch).
-  2. Install npm dependencies.
-  3. Parse plan names from `private-build-plans.toml`.
-  4. For each plan:
+  1. Install npm dependencies in the Iosevka subtree.
+  2. Parse plan names from `private-build-plans.toml`.
+  3. For each plan:
      - Build TTFs
      - Generate subsetted (Basic Latin) WOFF2 webfonts.
 """
@@ -27,13 +26,14 @@ from typing import List, Optional
 # Directory structure
 OUTPUT_DIR: str = "sources/output"
 WORKDIR: str = "sources/workdir"
-REPO_DIR: str = "sources/iosevka"  # Using Git submodule
+REPO_DIR: str = "sources/iosevka"  # Git subtree containing Iosevka sources
 
 # Build plan file (can be overridden via command-line argument)
 PRIVATE_TOML: str = "sources/private-build-plans.toml"
 
 # Utility Functions
 # ----------------------------------------------------------------------------
+
 
 def run_cmd(command: str, cwd: Optional[str] = None) -> None:
     """Executes a shell command and raises an error if it fails.
@@ -54,14 +54,16 @@ def run_cmd(command: str, cwd: Optional[str] = None) -> None:
         print(f"Working directory: {cwd or os.getcwd()}")
         raise
 
+
 # Environment Setup
 # ----------------------------------------------------------------------------
+
 
 def prep_environment(build_plan_file: str) -> None:
     """Prepares the build environment.
 
     Copies build plans, installs dependencies, and cleans output directory.
-    Note: Assumes the Iosevka submodule is already initialized.
+    Note: Assumes the Iosevka subtree is already present.
 
     Args:
         build_plan_file: Path to the build plans TOML file.
@@ -77,7 +79,9 @@ def prep_environment(build_plan_file: str) -> None:
         print("[prep_environment] Copying build plans...")
         if not os.path.exists(build_plan_file):
             raise FileNotFoundError(f"Build plans file not found: {build_plan_file}")
-        shutil.copyfile(build_plan_file, os.path.join(REPO_DIR, "private-build-plans.toml"))
+        shutil.copyfile(
+            build_plan_file, os.path.join(REPO_DIR, "private-build-plans.toml")
+        )
 
         # Install npm dependencies
         print("[prep_environment] Installing npm dependencies...")
@@ -101,8 +105,10 @@ def prep_environment(build_plan_file: str) -> None:
         traceback.print_exc()
         raise
 
+
 # Build Plan Processing
 # ----------------------------------------------------------------------------
+
 
 def get_build_plans(build_plan_file: str) -> List[str]:
     """Parses build plan names from the specified build plans file.
@@ -119,14 +125,14 @@ def get_build_plans(build_plan_file: str) -> List[str]:
     """
     try:
         plans: List[str] = []
-        pattern = re.compile(r'^\[buildPlans\.(.+)\]$')
+        pattern = re.compile(r"^\[buildPlans\.(.+)\]$")
         with open(build_plan_file, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 match = pattern.match(line)
                 if match:
                     plan_name = match.group(1)
-                    if '.' not in plan_name:
+                    if "." not in plan_name:
                         plans.append(plan_name)
 
         if not plans:
@@ -140,8 +146,10 @@ def get_build_plans(build_plan_file: str) -> List[str]:
         print(f"ERROR parsing build plans: {str(e)}")
         raise
 
+
 # Font Building
 # ----------------------------------------------------------------------------
+
 
 def build_one_plan(plan_name: str) -> None:
     """Builds a single font plan.
@@ -185,9 +193,13 @@ def get_worker_count(plan_total: int) -> int:
             value = int(env_value)
             if value > 0:
                 return value
-            print("[get_worker_count] Ignoring non-positive IOSEVKA_BUILD_WORKERS value.")
+            print(
+                "[get_worker_count] Ignoring non-positive IOSEVKA_BUILD_WORKERS value."
+            )
         except ValueError:
-            print("[get_worker_count] Ignoring non-numeric IOSEVKA_BUILD_WORKERS value.")
+            print(
+                "[get_worker_count] Ignoring non-numeric IOSEVKA_BUILD_WORKERS value."
+            )
 
     cpu_total = os.cpu_count() or 1
     return max(1, min(plan_total, cpu_total))
@@ -196,18 +208,21 @@ def get_worker_count(plan_total: int) -> int:
 # Main Entry Point
 # ----------------------------------------------------------------------------
 
+
 def main() -> None:
     """Main entry point.
 
     Prepares environment, gathers build plans, and builds each plan in parallel.
     """
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Build custom Iosevka fonts from build plans.")
+    parser = argparse.ArgumentParser(
+        description="Build custom Iosevka fonts from build plans."
+    )
     parser.add_argument(
         "build_plan_file",
         nargs="?",
         default=PRIVATE_TOML,
-        help=f"Path to the build plans TOML file (default: {PRIVATE_TOML})"
+        help=f"Path to the build plans TOML file (default: {PRIVATE_TOML})",
     )
     args = parser.parse_args()
 
@@ -230,8 +245,12 @@ def main() -> None:
         worker_count = get_worker_count(len(build_plans))
         print(f"[main] Building with up to {worker_count} parallel worker(s).")
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=worker_count) as executor:
-            future_to_plan = {executor.submit(build_one_plan, name): name for name in build_plans}
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=worker_count
+        ) as executor:
+            future_to_plan = {
+                executor.submit(build_one_plan, name): name for name in build_plans
+            }
 
             for future in concurrent.futures.as_completed(future_to_plan):
                 plan_name = future_to_plan[future]
@@ -248,6 +267,7 @@ def main() -> None:
     except Exception as e:
         print(f"\nERROR: Font build failed: {str(e)}")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

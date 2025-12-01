@@ -1,0 +1,107 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Symbol-Pictograph-Checking-Marks : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Symbol-Geometric-Shared : GeometricDim
+
+	for-width-kinds WideWidth1 : do
+		define Geom : GeometricDim MosaicUnitWidth MosaicWidth
+		define lightSw  : UnicodeWeightGrade 300  Geom.Scalar GeometryStroke
+		define heavySw  : UnicodeWeightGrade 900  Geom.Scalar GeometryStroke
+
+		define ptMaxWidth : MosaicWidth - SB
+		define ptHeight0 : 1.5 * (Width - SB / 2) * (MosaicWidthScalar ** (1 / 4))
+		define ptHeight  : (ptHeight0 ** 2) / [Math.hypot ptHeight0 : Math.min ptHeight0 ptMaxWidth]
+		define ptWidth  : Math.min ptMaxWidth ptHeight
+		define ptMidX : MosaicWidth / 2
+		define ptSB : (MosaicWidth - ptWidth) / 2
+		define ptRSB : MosaicWidth - ptSB
+		define ptTop : SymbolMid + ptHeight / 2
+		define ptBot : SymbolMid - ptHeight / 2
+
+		foreach [{unicode sw} : items-of {{0x2713 lightSw} {0x2714 heavySw}}] : begin
+			create-glyph [MangleName : NameUni unicode] [MangleUnicode unicode] : glyph-proc
+				set-width MosaicWidth
+				include : dispiro
+					widths.center sw
+					g4 ptSB ([mix ptBot ptTop 0.46] + 0.5 * sw)
+					alsoThru 0.5 0.4
+					g4 [mix ptSB ptRSB 0.4] [mix ptBot ptTop 0.05] [heading Downward]
+				include : dispiro
+					widths.center sw
+					g4 [mix ptSB ptRSB 0.4] [mix ptBot ptTop 0.05] [heading Upward]
+					alsoThru 0.5 0.6
+					g4 ptRSB [mix ptBot ptTop 0.9]
+
+		foreach [{unicode sw} : items-of {{0x2715 lightSw} {0x2716 heavySw}} ] : begin
+			create-glyph [MangleName : NameUni unicode] [MangleUnicode unicode] : glyph-proc
+				set-width MosaicWidth
+				include : dispiro [widths.center sw] [g4 ptRSB ptTop] [g4 ptSB  ptBot]
+				include : dispiro [widths.center sw] [g4 ptSB  ptTop] [g4 ptRSB ptBot]
+
+		foreach [{unicode sw} : items-of {{0x2717 lightSw} {0x2718 heavySw}} ] : begin
+			create-glyph [MangleName : NameUni unicode] [MangleUnicode unicode] : glyph-proc
+				set-width MosaicWidth
+				include : dispiro
+					widths.center sw
+					g4 [mix ptSB ptRSB 1.05] [mix SymbolMid ptTop 1.02]
+					alsoThru 0.53 0.45
+					g4 [mix ptSB ptRSB (-0.05)] [mix SymbolMid ptBot 1.05]
+				include : dispiro
+					widths.center sw
+					g4 ptSB [mix ptBot ptTop 0.96]
+					alsoThru 0.47 0.5
+					g4 ptRSB [mix ptBot ptTop 0.05]
+
+		create-glyph [MangleName 'halfCheck'] [MangleUnicode 0x237B] : glyph-proc
+			set-width MosaicWidth
+			include : refer-glyph : MangleName : NameUni 0x2713
+			include : dispiro
+				widths.center lightSw
+				g4 [mix ptSB ptRSB 0.5] [mix ptBot ptTop 0.82]
+				alsoThru 0.47 0.5
+				g4 ptRSB [mix ptBot ptTop 0.42]
+
+	do "Decorative angular brackets"
+		define Geom : GeometricDim Width Width
+		define mediumSw : UnicodeWeightGrade 500  Geom.Scalar GeometryStroke
+		define heavySw  : UnicodeWeightGrade 900  Geom.Scalar GeometryStroke
+		define xHeavySw : UnicodeWeightGrade 1100 Geom.Scalar GeometryStroke
+
+		define HeightConfig : object
+			# suffix    width scale   height scale
+			tall      { 1.00          1.00         }
+			middle    { 0.80          0.75         }
+			short     { 0.55          0.50         }
+
+		define CharConfig : list
+			#    unicode   sw        side
+			list 0x276C    mediumSw  1
+			list 0x276D    mediumSw  0
+			list 0x276E    heavySw   1
+			list 0x276F    heavySw   0
+			list 0x2770    xHeavySw  1
+			list 0x2771    xHeavySw  0
+
+		foreach { unicode sw side } [items-of CharConfig] : begin
+			foreach { suffix { widthScale heightScale } } [pairs-of HeightConfig] : begin
+				create-glyph "\[NameUni unicode].\(suffix)" : glyph-proc
+					local top : mix SymbolMid ParenTop heightScale
+					local bot : mix SymbolMid ParenBot heightScale
+					local left : mix Middle SB widthScale
+					local right : mix Middle RightSB widthScale
+					local cor : DiagCor (top - bot) (2 * (right - left))
+					local swC : sw * cor
+					local shift : 0.5 * swC + OX
+					include : dispiro
+						widths.center swC
+						corner [mix (left + shift) (right - shift) side] top [heading Downward]
+						corner [mix (left + shift) (right - shift) (1 - side)] SymbolMid [heading Downward]
+						corner [mix (left + shift) (right - shift) side] bot [heading Downward]
+
+			select-variant [NameUni unicode] unicode (follow -- 'decorativeAngleBracket')

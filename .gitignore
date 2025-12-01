@@ -2,6 +2,8 @@
 venv
 venv-test
 build.stamp
+fonts.stamp
+postprocess.stamp
 proof
 fonts
 .venv

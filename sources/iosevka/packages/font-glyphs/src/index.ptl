@@ -1,0 +1,113 @@
+import [Glyph GlyphProc ForkGlyphProc] from "@iosevka/glyph"
+import [GlyphStore] from "@iosevka/glyph/store"
+import [GlyphBlock GlyphBuildExecutor GlyphSaveSink] from "@iosevka/glyph/block"
+import as Gr from "@iosevka/glyph/relation"
+import as SpiroKit from "@iosevka/font-kits/spiro-kit"
+import as BooleKit from "@iosevka/font-kits/boole-kit"
+import [DesignParameters calculateMetrics setFontMetrics GenDivFrame] from "./meta/aesthetics.mjs"
+import [$NamedParameterPair$] from "@iosevka/util"
+
+extern isFinite
+
+$$include './meta/macros.ptl'
+
+export : define [buildGlyphs para recursive] : begin
+	# Execution and dependency management
+	local $Exec$ : new GlyphBuildExecutor recursive
+
+	# Initialize glyph store
+	local glyphStore : new GlyphStore
+
+	# Font metrics
+	define Metrics : calculateMetrics para
+	define fontMetrics { .head {.} .hhea {.} .os2 {.} .post {.} }
+	setFontMetrics para Metrics fontMetrics
+
+	# Glyph metrics and parameters
+	define DivFrame : GenDivFrame Metrics
+	define MarkSet    [DivFrame 1 2].markSet
+
+	# Anchor parameters
+	define {AS_BASE ALSO_METRICS} {'AS-BASE' 'ALSO-METRICS'}
+
+	# Glyph saving sink
+	define $GlyphSaveSink$ : new GlyphSaveSink $Exec$ Metrics glyphStore
+
+	# Spiro kit and boole kit
+	define SpiroFns : SpiroKit.SetupBuilders : object
+		globalTransform Metrics.GlobalTransform
+		Contrast        Metrics.Contrast
+		Stroke          Metrics.Stroke
+		CorrectionOMidX Metrics.CorrectionOMidX
+		TINY            Metrics.TINY
+		Superness       DesignParameters.superness
+	define BooleFns : BooleKit.SetupBuilders : object
+		globalTransform Metrics.GlobalTransform
+
+	# Setup the capture
+	define $$Capture$$ : object
+		$NamedParameterPair$
+		$Exec$
+		$GlyphSaveSink$
+		Metrics : Object.assign {.} Metrics
+		para
+		recursive
+		glyphStore
+		SpiroFns
+		BooleFns
+		DivFrame
+		MarkSet
+		AS_BASE
+		ALSO_METRICS
+		buildGlyphs
+		fontMetrics
+		GlyphProc
+		ForkGlyphProc
+
+	### HERE WE GO
+	run-glyph-module "./common/derivatives.mjs"
+	run-glyph-module "./common/shapes.mjs"
+	run-glyph-module "./common/o-shape-variants.mjs"
+	run-glyph-module "./space/index.mjs"
+	run-glyph-module "./marks/index.mjs"
+
+	# Unified letters
+	run-glyph-module "./letter/accent-builder.mjs"
+	run-glyph-module "./letter/shared.mjs"
+	run-glyph-module "./letter/latin.mjs"
+	run-glyph-module "./letter/greek.mjs"
+	run-glyph-module "./letter/cyrillic.mjs"
+	run-glyph-module "./letter/armenian.mjs"
+
+	# Numbers
+	run-glyph-module "./number/index.mjs"
+
+	# Letter-likes
+	run-glyph-module "./letter-like/cursive.mjs"
+	run-glyph-module "./letter-like/fraktur.mjs"
+
+	# Symbols
+	run-glyph-module "./symbol/shared.mjs"
+	run-glyph-module "./symbol/punctuation.mjs"
+	run-glyph-module "./symbol/arrow.mjs"
+	run-glyph-module "./symbol/geometric.mjs"
+	run-glyph-module "./symbol/mosaic.mjs"
+	run-glyph-module "./symbol/enclosure.mjs"
+	run-glyph-module "./symbol/pictograph.mjs"
+	run-glyph-module "./symbol/math.mjs"
+	run-glyph-module "./symbol/letter.mjs"
+	run-glyph-module "./symbol/braille.mjs"
+	run-glyph-module "./symbol/counting-rod.mjs"
+	run-glyph-module "./symbol/combining.mjs"
+	run-glyph-module "./symbol/ligation.mjs"
+
+	# Auto-builds
+	if [not recursive] : begin
+		run-glyph-module "./auto-build/recursive-build.mjs"
+		run-glyph-module "./auto-build/accents.mjs"
+		run-glyph-module "./auto-build/transformed.mjs"
+		run-glyph-module "./auto-build/composite.mjs"
+
+	$Exec$.executePendingBlocks
+
+	return : object glyphStore fontMetrics

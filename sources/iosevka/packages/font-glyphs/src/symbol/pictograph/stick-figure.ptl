@@ -1,0 +1,213 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [Box] from "@iosevka/geometry/box"
+import [Transform] from "@iosevka/geometry/transform"
+
+glyph-module
+
+glyph-block Symbol-Pictograph-Stick-Figure : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	define PictographSw : AdviceStroke 4
+
+	glyph-block-export D4Transform WithD4Transform
+	define [D4Transform midx rot refl] : Transform.Combine
+		Translate (-midx) (-SymbolMid)
+		if refl [Scale (-1) 1] [Transform.Id]
+		Rotate ((rot / 2) * Math.PI)
+		Translate (+midx) (+SymbolMid)
+	define [WithD4Transform midx rot refl shapeFunc] : new-glyph : glyph-proc
+		local giz currentGlyph.gizmo
+		set currentGlyph.gizmo : Transform.Id
+		include : shapeFunc
+		include : D4Transform midx rot refl
+		include   giz
+
+	glyph-block-export StickFigureKit
+	define [StickFigureKit box tfm sw] : namespace
+		define [StrokeCap z1 zc side] : glyph-proc
+			local dh1 : zc.x - z1.x
+			local dv1 : zc.y - z1.y
+			local mag : Math.hypot dh1 dv1
+			include : Circle.Outline.DotAt (z1.x + dv1 * side * sw / mag) (z1.y - dh1 * side * sw / mag) (sw / 2)
+
+		export : define [RoundSeg h1 v1 h2 v2 cl cr _side] : glyph-proc
+			local side : [fallback _side 0] / 2 + 0.5
+
+			local z1 : tfm.applyXY [mix box.left box.right h1] [mix box.bottom box.top v1]
+			local z2 : tfm.applyXY [mix box.left box.right h2] [mix box.bottom box.top v2]
+
+			include : dispiro
+				disable-contrast
+				widths ((1 - side) * sw) (side * sw)
+				corner z1.x z1.y
+				corner z2.x z2.y
+
+			if cl : include : StrokeCap z1 z2 (side - 0.5)
+			if cr : include : StrokeCap z2 z1 (0.5 - side)
+
+		define [ArcImpl mode h1 v1 h2 v2 cl cr _side _fMask] : glyph-proc
+			local side : [fallback _side 0] / 2 + 0.5
+			local fMask : fallback _fMask false
+
+			local z1 : tfm.applyXY [mix box.left box.right h1] [mix box.bottom box.top v1]
+			local z2 : tfm.applyXY [mix box.left box.right h2] [mix box.bottom box.top v2]
+
+			local zc : tfm.applyXY [mix box.left box.right : if mode h1 h2] [mix box.bottom box.top : if mode v2 v1]
+			local zr : tfm.applyXY [mix box.left box.right : if mode h2 h1] [mix box.bottom box.top : if mode v1 v2]
+
+			local innerKnots {}
+			foreach j [range 1 64] : begin
+				local theta : (Math.PI / 2) * (j / 64)
+				local c : [Math.cos theta] ** (2 / DesignParameters.superness)
+				local s : [Math.sin theta] ** (2 / DesignParameters.superness)
+
+				local mx : mix box.left   box.right [mix h1 h2 : if mode (1 - c) s      ]
+				local my : mix box.bottom box.top   [mix v1 v2 : if mode s       (1 - c)]
+				local zm : tfm.applyXY mx my
+
+				innerKnots.push : g4 zm.x zm.y unimportant
+
+			include : [if fMask spiro-outline dispiro]
+				disable-contrast
+				widths ((1 - side) * sw) (side * sw)
+				flat z1.x z1.y
+				curl [mix z1.x zc.x TINY] [mix z1.y zc.y TINY]
+				* innerKnots
+				flat [mix z2.x zc.x TINY] [mix z2.y zc.y TINY]
+				[if fMask corner curl] z2.x z2.y
+				if fMask [corner zr.x zr.y] [list]
+
+			if cl : include : StrokeCap z1 zc (side - 0.5)
+			if cr : include : StrokeCap z2 zc (0.5 - side)
+
+		export : define [ArcVH h1 v1 h2 v2 cl cr _side _fMask] : ArcImpl 1 h1 v1 h2 v2 cl cr _side _fMask
+		export : define [ArcHV h1 v1 h2 v2 cl cr _side _fMask] : ArcImpl 0 h1 v1 h2 v2 cl cr _side _fMask
+
+		export : define [Arc h1 v1 h2 v2 hc vc cl cr _side _fMask] : glyph-proc
+			local side : [fallback _side 0] / 2 + 0.5
+			local fMask : fallback _fMask false
+
+			local fFlat : (h1 == h2) || (v1 == v2)
+			local fSwap : ((h2 - hc) * (h1 - h2) > 0) || ((v1 - v2) * (vc - v1) > 0)
+			local zr : tfm.applyXY [mix box.left box.right [if fSwap h1 h2]] [mix box.bottom box.top [if fSwap v2 v1]]
+
+			local z1 : tfm.applyXY [mix box.left box.right h1] [mix box.bottom box.top v1]
+			local z2 : tfm.applyXY [mix box.left box.right h2] [mix box.bottom box.top v2]
+
+			local zc : tfm.applyXY [mix box.left box.right hc] [mix box.bottom box.top vc]
+
+			local ho : h1 + h2 - hc
+			local vo : v1 + v2 - vc
+
+			local dh1 : hc - h1
+			local dv1 : vc - v1
+			local dh2 : hc - h2
+			local dv2 : vc - v2
+
+			local innerKnots {}
+			define nKnots 64
+			foreach j [range 1 nKnots] : begin
+				local theta : (Math.PI / 2) * (j / nKnots)
+				local c : [Math.cos theta] ** (2 / DesignParameters.superness)
+				local s : [Math.sin theta] ** (2 / DesignParameters.superness)
+
+				local mx : mix box.left   box.right (ho + s * dh1 + c * dh2)
+				local my : mix box.bottom box.top   (vo + s * dv1 + c * dv2)
+				local zm : tfm.applyXY mx my
+
+				innerKnots.push : g4 zm.x zm.y [if (fFlat && (j == [Math.floor : nKnots / 2])) nothing unimportant]
+
+			include : [if fMask spiro-outline dispiro]
+				disable-contrast
+				widths ((1 - side) * sw) (side * sw)
+				flat z1.x z1.y
+				curl [mix z1.x zc.x TINY] [mix z1.y zc.y TINY]
+				* innerKnots
+				flat [mix z2.x zc.x TINY] [mix z2.y zc.y TINY]
+				[if fMask corner curl] z2.x z2.y
+				if fMask [corner zr.x zr.y] [list]
+
+			if cl : include : StrokeCap z1 zc (side - 0.5)
+			if cr : include : StrokeCap z2 zc (0.5 - side)
+
+		export : define [Box h1 v1 h2 v2] : glyph-proc
+			local z1 : tfm.applyXY [mix box.left box.right h1] [mix box.bottom box.top v1]
+			local z2 : tfm.applyXY [mix box.left box.right h2] [mix box.bottom box.top v1]
+			local z3 : tfm.applyXY [mix box.left box.right h2] [mix box.bottom box.top v2]
+			local z4 : tfm.applyXY [mix box.left box.right h1] [mix box.bottom box.top v2]
+
+			include : spiro-outline
+				corner z1.x z1.y
+				corner z2.x z2.y
+				corner z3.x z3.y
+				corner z4.x z4.y
+
+		export : define [Circ h1 v1 pr] : glyph-proc
+			local z1 : tfm.applyXY [mix box.left box.right h1] [mix box.bottom box.top v1]
+			include : DotAt z1.x z1.y (pr * (box.top - box.bottom))
+
+	# Pointing Hand
+	glyph-block-export PointingHandShape
+	define [PointingHandShape box tfm sw] : begin
+		local Kit : StickFigureKit box tfm sw
+		return : union
+			Kit.RoundSeg (0 / 24) (0 / 8) (0 / 24) (8 / 8) 1 1
+			Kit.RoundSeg (3 / 24) (7 / 8) (0 / 24) (8 / 8)
+			Kit.RoundSeg (3 / 24) (1 / 8) (0 / 24) (0 / 8)
+			Kit.RoundSeg (3 / 24) (7 / 8) (3 / 24) (1 / 8)
+			Kit.ArcVH    (3 / 24) (7 / 8) (6 / 24) (8 / 8)
+			Kit.ArcVH    (3 / 24) (1 / 8) (6 / 24) (0 / 8)
+			Kit.RoundSeg (6 / 24) (8 / 8) (22 / 24) (8 / 8)
+			Kit.ArcHV    (22 / 24) (8 / 8) (24 / 24) (7 / 8)
+			Kit.ArcVH    (24 / 24) (7 / 8) (22 / 24) (6 / 8)
+			Kit.RoundSeg (14 / 24) (6 / 8) (22 / 24) (6 / 8)
+			Kit.ArcHV    (11 / 24) (8 / 8) (14 / 24) (6 / 8)
+			Kit.ArcVH    (14 / 24) (6 / 8) (12 / 24) (5 / 8)
+			Kit.RoundSeg (9 / 24) (5 / 8) (12 / 24) (5 / 8) 1 0
+			Kit.ArcVH    (9 / 24) (5 / 8) (3 / 24) (2 / 8)
+			Kit.ArcHV    (15 / 24) (6 / 8) (17 / 24) (5 / 8)
+			Kit.ArcVH    (17 / 24) (5 / 8) (15 / 24) (4 / 8)
+			Kit.RoundSeg (11 / 24) (4 / 8) (15 / 24) (4 / 8) 1 0
+			Kit.ArcHV    (14 / 24) (4 / 8) (16 / 24) (3 / 8)
+			Kit.ArcVH    (16 / 24) (3 / 8) (14 / 24) (2 / 8)
+			Kit.RoundSeg (8 / 24) (2 / 8) (14 / 24) (2 / 8) 1 0
+			Kit.ArcHV    (13 / 24) (2 / 8) (15 / 24) (1 / 8)
+			Kit.ArcVH    (15 / 24) (1 / 8) (13 / 24) (0 / 8)
+			Kit.RoundSeg (6 / 24) (0 / 8) (13 / 24) (0 / 8)
+
+	for-width-kinds WideWidth1
+		local sb : SB * (0.5 * MosaicWidthScalar)
+		local hBox : new Box
+			mix SymbolMid PlusTop (0.5 * MosaicWidthScalar)
+			mix SymbolMid PlusBot (0.5 * MosaicWidthScalar)
+			* sb
+			MosaicWidth - sb
+
+		local vScalar : Math.sqrt (2 * MosaicWidthScalar)
+		local vBox : new Box
+			mix SymbolMid PlusTop (0.5 * vScalar)
+			mix SymbolMid PlusBot (0.5 * vScalar)
+			sb + 0.5 * (MosaicWidth - Width * vScalar)
+			(Width * vScalar - sb) + 0.5 * (MosaicWidth - Width * vScalar)
+
+		define sw : AdviceStroke 8 : Math.sqrt MosaicWidthScalar
+
+		create-glyph [MangleName "whiteRightPointingIndex"] [MangleUnicode 0x261E] : glyph-proc
+			set-width MosaicWidth
+			include : PointingHandShape hBox [Transform.Id] sw
+
+		create-glyph [MangleName "whiteLeftPointingIndex"] [MangleUnicode 0x261C] : glyph-proc
+			set-width MosaicWidth
+			include : PointingHandShape hBox [D4Transform MosaicMiddle 0 1] sw
+
+		create-glyph [MangleName "whiteDownPointingIndex"] [MangleUnicode 0x261F] : glyph-proc
+			set-width MosaicWidth
+			include : PointingHandShape vBox [D4Transform MosaicMiddle 3 0] sw
+
+		create-glyph [MangleName "whiteUpPointingIndex"] [MangleUnicode 0x261D] : glyph-proc
+			set-width MosaicWidth
+			local tfm : Transform.Combine
+			include : PointingHandShape vBox [D4Transform MosaicMiddle 3 1] sw

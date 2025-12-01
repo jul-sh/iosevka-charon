@@ -1,0 +1,264 @@
+$$include '../../meta/macros.ptl'
+
+import [mix fallback SuffixCfg] from "@iosevka/util"
+import [MathSansSerif] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Latin-Lower-G : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Mark-Adjustment : ExtendAboveBaseAnchors LeaningAnchor
+	glyph-block-import Letter-Shared : CreateAccentedComposition CreateTurnedLetter
+	glyph-block-import Letter-Shared-Shapes : OBarRight FlatHookDepth
+	glyph-block-import Letter-Shared-Shapes : CurlyTail PalatalHook TopHook
+
+	define [OverlayW bw] : glyph-proc
+		define l : mix 0 SB 0.3
+		define r : mix Width RightSB 0.3
+		include : HBar.m l r currentGlyph.baseAnchors.overlay.y bw
+
+	# overlay bar width for double-storey g
+	define obwDoubleStorey : Math.min (0.5 / 3 * (CAP - Stroke * 4)) : AdviceStroke 5
+
+	create-glyph 'g.doubleStoreyClosed' : glyph-proc
+		include : MarkSet.p
+		local obot : XH * DesignParameters.gBarPos - O - Stroke * 0.4
+		include : OShape XH obot SB (RightSB - 0.3 * SB)
+
+		local gleftx  : [mix 0 SB 0.85] + OX
+		local grightx : [mix Width RightSB 0.825] - OX
+		local groundy : Math.round : [mix Descender (XH * DesignParameters.gBarPos) 0.64] + HalfStroke
+		local gtipy   : [mix groundy (obot + Stroke + O) 1.005] - Stroke * CThin
+		include : dispiro
+			g4.left.start [mix SB RightSB 0.4] gtipy [widths 0 (Stroke * CThin)]
+			g4 ([mix SB RightSB 0.0575] + Stroke * 0.85) [mix groundy gtipy 0.5] [widths.rhs : Stroke * [mix CThin 1 0.5]]
+			flat [mix SB RightSB 0.435] groundy [widths.rhs Stroke]
+			curl [mix RightSB SB 0.435] groundy
+			archv 4
+			g4 grightx [mix (Descender + O) groundy (1.06 * SmallArchDepthA / (SmallArchDepthA + SmallArchDepthB))]
+			arch.rhs Descender
+			g4 gleftx  [mix (Descender + O) groundy (1.06 * SmallArchDepthB / (SmallArchDepthA + SmallArchDepthB))]
+			arcvh
+			g4 [mix SB RightSB 0.435] groundy [heading Rightward]
+		local gm : mix SB (RightSB - 0.3 * SB) 0.5
+		include : spiro-outline
+			corner (RightSB + 0.25 * SB - OX) XH
+			corner (RightSB + 0.25 * SB - OX) (XH - Stroke)
+			corner gm  (XH - Stroke - O)
+			corner gm  XH
+
+		set-base-anchor 'overlay' Middle [mix (Descender + O) groundy 0.5]
+		set-base-anchor 'strike' Middle (XH / 2)
+
+	derive-composites "gBar.doubleStoreyClosed" null "g.doubleStoreyClosed" [OverlayW obwDoubleStorey]
+
+	create-glyph 'g.doubleStoreyOpen' : glyph-proc
+		include : MarkSet.p
+		local obot : XH * DesignParameters.gBarPos - O - Stroke * 0.4
+		include : OShape XH obot SB (RightSB - 0.3 * SB)
+
+		local gleftx  : [mix 0 SB 0.85] + OX
+		local grightx : [mix Width RightSB 0.825] - OX
+		local groundy : Math.round : [mix Descender (XH * DesignParameters.gBarPos) 0.64] + HalfStroke
+		local gtipy   : [mix groundy (obot + Stroke + O) 1.005] - Stroke * CThin
+		include : dispiro
+			g4.left.start [mix SB RightSB 0.4] gtipy [widths 0 (Stroke * CThin)]
+			g4 ([mix SB RightSB 0.0575] + Stroke * 0.85) [mix groundy gtipy 0.5] [widths.rhs : Stroke * [mix CThin 1 0.5]]
+			flat [mix SB RightSB 0.435] groundy [widths.rhs Stroke]
+			curl [mix RightSB SB 0.435] groundy
+			archv 4
+			g4 grightx [mix (Descender + O) groundy (1.06 * SmallArchDepthA / (SmallArchDepthA + SmallArchDepthB))]
+			hookend Descender
+			g4 gleftx  [mix (Descender + O) groundy (1.06 * SmallArchDepthB / (SmallArchDepthA + SmallArchDepthB))]
+		local gm : mix SB (RightSB - 0.3 * SB) 0.5
+		include : spiro-outline
+			corner (RightSB + 0.25 * SB - OX) XH
+			corner (RightSB + 0.25 * SB - OX) (XH - Stroke)
+			corner gm  (XH - Stroke - O)
+			corner gm  XH
+
+		set-base-anchor 'overlay' Middle [mix (Descender + O) groundy 0.5]
+		set-base-anchor 'strike' Middle (XH / 2)
+
+	derive-composites "gBar.doubleStoreyOpen" null "g.doubleStoreyOpen" [OverlayW obwDoubleStorey]
+
+	define SingleStorey : namespace
+		export : define [BentHookT sink df yTop offset sw] : sink
+			widths.rhs sw
+			[if (sink == spiro-outline) corner flat] (df.rightSB - offset) yTop [heading Downward]
+			curl (df.rightSB - offset) (Descender + df.smallArchDepthA)
+			hookend (Descender + offset) (sw -- sw)
+			g4 (df.leftSB + offset) (Descender + SHook)
+			if (sink == spiro-outline) {[corner df.leftSB XH]} {}
+
+		export : define [BentHook df y0] : BentHookT dispiro df y0 0 df.mvs
+		export : define [FlatHook df y0] : begin
+			local hd : FlatHookDepth df (9 / 8)
+			local xTerminal : Math.min (df.rightSB - hd.x - TINY) : mix df.leftSB df.rightSB (1 / 5)
+			return : dispiro
+				widths.rhs df.mvs
+				flat df.rightSB y0 [heading Downward]
+				curl df.rightSB (Descender + hd.y)
+				arcvh.superness DesignParameters.tightHookSuperness
+				flat (df.rightSB - hd.x) Descender
+				curl xTerminal Descender
+		export : define [CrossedHook df y0] : begin
+			local fine : AdviceStroke 3.5 df.adws
+			return : dispiro
+				widths.rhs df.mvs
+				flat df.rightSB y0 [heading Downward]
+				curl df.rightSB (Descender + df.smallArchDepthA)
+				CurlyTail.n fine Descender df.leftSB df.width (Descender + 0.5 * fine)
+					yLoopTop -- (0.15 * Descender + 0.25 * fine)
+
+		export : define [SeriflessBody df top] : glyph-proc
+			include : OBarRight.shape
+				top   -- top
+				left  -- df.leftSB
+				right -- df.rightSB
+				sw    -- df.mvs
+				fine  -- df.shoulderFine
+				ada   -- df.smallArchDepthA
+				adb   -- df.smallArchDepthB
+
+		export : define [SerifedBody df top] : glyph-proc
+			include : SeriflessBody df top
+			include : tagged 'serifRT' : HSerif.rt df.rightSB top SideJut
+
+		export : define [TopCutBody df top] : glyph-proc
+			include : SeriflessBody df top
+			include : spiro-outline
+				corner  df.rightSB                     top
+				corner  df.rightSB                    (top - HalfStroke)
+				corner (df.rightSB - [HSwToV df.mvs]) (top - HalfStroke)
+
+		export : define [EarlessCornerBody df top] : glyph-proc
+			include : OBarRight.earlessCorner
+				top    -- top
+				left   -- df.leftSB
+				right  -- df.rightSB
+				rise   -- DToothlessRise
+				mBlend -- DMBlend
+				sw     -- df.mvs
+				fine   -- df.shoulderFine
+				ada    -- df.smallArchDepthA
+				adb    -- df.smallArchDepthB
+
+		export : define [EarlessRoundedBody df top] : glyph-proc
+			include : OBarRight.earlessRounded
+				top       -- top
+				left      -- df.leftSB
+				right     -- df.rightSB
+				yTerminal -- df.smallArchDepthA
+				sw        -- df.mvs
+				fine      -- df.shoulderFine
+				ada       -- df.smallArchDepthA
+				adb       -- df.smallArchDepthB
+
+	define SingleStoreyConfig : SuffixCfg.weave
+		object # hook
+			singleStoreyBentHook    SingleStorey.BentHook
+			singleStoreyFlatHook    SingleStorey.FlatHook
+		object # ear/serif
+			serifless             { SingleStorey.SeriflessBody      0                      }
+			serifed               { SingleStorey.SerifedBody        0                      }
+			earlessCorner         { SingleStorey.EarlessCornerBody  DToothlessRise         }
+			earlessCornerHTB      { SingleStorey.EarlessCornerBody  0                      }
+			earlessRounded        { SingleStorey.EarlessRoundedBody (XH - SmallArchDepthA) }
+			topCut                { SingleStorey.TopCutBody         HalfStroke             }
+
+	foreach { suffix { hookShape {bodyShape hookStart} } } [Object.entries SingleStoreyConfig] : do
+		create-glyph "g.\(suffix)" : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.p
+			set-base-anchor 'overlay' Middle (XH / 2)
+			set-base-anchor 'strike'  Middle (XH / 2)
+			include : bodyShape df  XH
+			include : hookShape df (XH - hookStart)
+
+		create-glyph "GScript.\(suffix)" : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capDesc
+			set-base-anchor 'overlay' Middle (CAP / 2)
+			include : bodyShape df  CAP
+			include : hookShape df (CAP - hookStart)
+
+		create-glyph "gPalatalHook.\(suffix)" : glyph-proc
+			local df : include : DivFrame para.advanceScaleM 1
+			include : df.markSet.p
+			set-base-anchor 'overlay' Middle (XH / 2)
+			local dfSub : DivFrame (0.75 * para.advanceScaleM) 2
+			include : bodyShape dfSub  XH
+			include : hookShape dfSub (XH - hookStart)
+			include : PalatalHook.r
+				x       -- df.rightSB
+				y       -- 0
+				xLink   -- dfSub.rightSB
+				refSw   -- dfSub.mvs
+				maskOut -- [intersection [MaskBelow 0] [MaskLeft dfSub.rightSB]]
+
+		create-glyph "gBar.\(suffix)" : glyph-proc
+			include [refer-glyph "g.\(suffix)"] AS_BASE ALSO_METRICS
+			include : OverlayW [AdviceStroke2 2 4 XH]
+
+		create-glyph "gScriptCrossedTail.\(suffix)" : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.p
+			set-base-anchor 'overlay' Middle (XH / 2)
+			include : bodyShape                df  XH
+			include : SingleStorey.CrossedHook df (XH - hookStart)
+
+	select-variant 'g' 'g'
+	link-reduced-variant 'g/sansSerif' 'g' MathSansSerif
+	link-reduced-variant 'g/doubleStorey' 'g'
+	CreateTurnedLetter 'turng' 0x1D77 'g' HalfAdvance [mix Descender XH 0.5]
+	select-variant "gBar" 0x1E5 (follow -- 'g')
+
+	select-variant 'gScript'            0x261  (follow -- [conditional-follow SLAB 'g/singleStorey/autoSerifed/slab' 'g/singleStorey/autoSerifed/sans']) (shapeFrom -- 'g')
+	select-variant 'GScript'            0xA7AC (follow -- [conditional-follow SLAB 'g/singleStorey/autoSerifed/slab' 'g/singleStorey/autoSerifed/sans'])
+	select-variant 'gScriptPalatalHook' 0x1D83 (follow -- [conditional-follow SLAB 'g/singleStorey/autoSerifed/slab' 'g/singleStorey/autoSerifed/sans']) (shapeFrom -- 'gPalatalHook')
+	select-variant 'gScriptBar'                (follow -- [conditional-follow SLAB 'g/singleStorey/autoSerifed/slab' 'g/singleStorey/autoSerifed/sans']) (shapeFrom -- 'gBar')
+	select-variant 'gScriptCrossedTail' 0xAB36 (follow -- [conditional-follow SLAB 'g/singleStoreyBentHook/autoSerifed/slab' 'g/singleStoreyBentHook/autoSerifed/sans'])
+
+	alias 'cyrl/de.BGR' null 'gScript'
+	alias 'cyrl/de.SRB' null 'gScript'
+
+	select-variant 'g/hookTopBase' (shapeFrom -- 'g')
+	derive-glyphs 'gHookTop' 0x260 "g/hookTopBase" : function [src gr] : glyph-proc
+		include [refer-glyph src] AS_BASE ALSO_METRICS
+		include : TopHook.toRight.rBarOuter RightSB 0 XH
+		include : LeaningAnchor.Above.VBar.r RightSB
+
+	glyph-block-import Letter-Blackboard : BBS BBD BBBarRight
+	create-glyph 'mathbb/g' 0x1D558 : glyph-proc
+		include : MarkSet.p
+		include : intersection
+			OShapeOutline.NoOvershoot XH 0 SB (RightSB - BBD - [HSwToV BBS])
+			VBar.l (SB + BBD + OX) 0 XH BBS
+		include : OBarRight.shape
+			left  -- SB
+			right -- (RightSB - BBD)
+			sw    -- BBS
+		include : SingleStorey.BentHookT dispiro [DivFrame 1] XH 0 BBS
+		include : HBar.t (RightSB - BBD) RightSB XH BBS
+		include : intersection
+			VBar.r (RightSB - BBD) Descender XH BBS
+			SingleStorey.BentHookT spiro-outline [DivFrame 1] XH 1 BBS
+
+	CreateAccentedComposition 'gCircumflex' 0x11D  'g' 'circumflexAbove'
+	CreateAccentedComposition 'gBreve'      0x11F  'g' 'breveAbove'
+	CreateAccentedComposition 'gDot'        0x121  'g' 'dotAbove'
+	CreateAccentedComposition 'gCedilla'    0x123  'g' 'turnCommaAbove'
+	CreateAccentedComposition 'gCaron'      0x1E7  'g' 'caronAbove'
+	CreateAccentedComposition 'gAcute'      0x1F5  'g' 'acuteAbove'
+	CreateAccentedComposition 'gMacron'     0x1E21 'g' 'macronAbove'
+
+	CreateAccentedComposition 'gCircumflex/doubleStorey' null 'g/doubleStorey' 'circumflexAbove'
+	CreateAccentedComposition 'gBreve/doubleStorey'      null 'g/doubleStorey' 'breveAbove'
+	CreateAccentedComposition 'gDot/doubleStorey'        null 'g/doubleStorey' 'dotAbove'
+	CreateAccentedComposition 'gCaron/doubleStorey'      null 'g/doubleStorey' 'caronAbove'
+	CreateAccentedComposition 'gAcute/doubleStorey'      null 'g/doubleStorey' 'acuteAbove'
+	CreateAccentedComposition 'gMacron/doubleStorey'     null 'g/doubleStorey' 'macronAbove'
+
+	derive-composites 'gCedilla/doubleStorey' null 'g/doubleStorey' 'cedillaExtShapeBelowSOArc'

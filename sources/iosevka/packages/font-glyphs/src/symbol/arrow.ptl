@@ -1,0 +1,19 @@
+$$include '../meta/macros.ptl'
+
+export : define [apply] : begin
+	define $$Capture$$ this
+
+	run-glyph-module "./arrow/shared.mjs"
+	run-glyph-module "./arrow/simple.mjs"
+	run-glyph-module "./arrow/dashed.mjs"
+	run-glyph-module "./arrow/angled.mjs"
+	run-glyph-module "./arrow/hook-loop.mjs"
+	run-glyph-module "./arrow/circular.mjs"
+	run-glyph-module "./arrow/zigzag.mjs"
+	run-glyph-module "./arrow/wave.mjs"
+	run-glyph-module "./arrow/legacy.mjs"
+	run-glyph-module "./arrow/thick.mjs"
+	run-glyph-module "./arrow/rounded.mjs"
+	run-glyph-module "./arrow/weighted.mjs"
+	run-glyph-module "./arrow/stacked.mjs"
+	run-glyph-module "./arrow/composite.mjs"

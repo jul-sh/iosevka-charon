@@ -1,0 +1,403 @@
+export : define iotaBelowToLfTf : object
+	'iotaBelow' 'iotaLF'
+
+export : define ogonekBelowToTRTf : object
+	'ogonekBelow' { 'ogonekTR/spacer' 'ogonekTR' }
+
+export : define ogonekBelowToTRTf_Y : object
+	'ogonekBelow' 'ogonekTR_Y'
+
+export : define upperGrekMarkToTonosTf : object
+	'tonosAbove'       'tonosGrekUpperTonos'
+	'variaAbove'       'variaGrekUpperTonos'
+	'oxiaAbove'        'oxiaGrekUpperTonos'
+	'graveAbove'       'variaGrekUpperTonos'
+	'acuteAbove'       'oxiaGrekUpperTonos'
+	'graveToneAbove'   'variaGrekUpperTonos'
+	'acuteToneAbove'   'oxiaGrekUpperTonos'
+	'commaAbove'       'commaGrekUpperTonos'
+	'revCommaAbove'    'revCommaGrekUpperTonos'
+	'psiliVaria'       'psiliVariaGrekUpperTonos'
+	'psiliOxia'        'psiliOxiaGrekUpperTonos'
+	'dasiaVaria'       'dasiaVariaGrekUpperTonos'
+	'dasiaOxia'        'dasiaOxiaGrekUpperTonos'
+	'psiliPerispomeni' 'psiliPerispomeniGrekUpperTonos'
+	'dasiaPerispomeni' 'dasiaPerispomeniGrekUpperTonos'
+
+export : define markCompositionTf : list
+	list { 'commaAbove' 'graveAbove'        } 'psiliVaria'
+	list { 'commaAbove' 'acuteAbove'        } 'psiliOxia'
+	list { 'commaAbove' 'perispomeniAbove'  } 'psiliPerispomeni'
+	list { 'commaAbove' 'cyrlPokrytieAbove' } 'commaCyrlPorkytieAbove'
+	list { 'revCommaAbove' 'graveAbove'       } 'dasiaVaria'
+	list { 'revCommaAbove' 'acuteAbove'       } 'dasiaOxia'
+	list { 'revCommaAbove' 'perispomeniAbove' } 'dasiaPerispomeni'
+	list { 'cyrlPsiliAbove' 'cyrlPokrytieAbove' } 'cyrlPsiliPokrytieAbove'
+
+export : define decompOverrides : object
+	# Latvians use comma instead of cedillas in several letters.
+	# Record them as custom decomposition.
+	0x122  { 'G' 'commaBelow' }
+	0x136  { 'K' 'commaBelow' }
+	0x137  { 'k' 'commaBelow' }
+	0x13B  { 'L' 'commaBelow' }
+	0x13C  { 'l' 'commaBelow' }
+	0x145  { 'N' 'commaBelow' }
+	0x146  { 'n' 'commaBelow' }
+	0x156  { 'R' 'commaBelow' }
+	0x157  { 'r' 'commaBelow' }
+	0x1E10 { 'D' 'commaBelow' }
+	0x1E11 { 'd' 'commaBelow' }
+
+	# Spacing marks
+	0xA8   { 'markBaseSpace' 'dieresisAbove' }
+	0xB8   { 'markBaseSpace' 'cedillaBelow' }
+	0x2C2  { 'markBaseSpace' 'leftArrowHeadAbove' }
+	0x2C3  { 'markBaseSpace' 'rightArrowHeadAbove' }
+	0x2C4  { 'markBaseSpace' 'upArrowHeadAbove' }
+	0x2C5  { 'markBaseSpace' 'downArrowHeadAbove' }
+	0x2C6  { 'markBaseSpace' 'circumflexAbove' }
+	0x2C7  { 'markBaseSpace' 'caronAbove' }
+	0x2C9  { 'markBaseSpace' 'macronAbove' }
+	0x2CA  { 'markBaseSpace' 'acuteAbove' }
+	0x2CB  { 'markBaseSpace' 'graveAbove' }
+	0x2CD  { 'markBaseSpace' 'macronBelow' }
+	0x2CE  { 'markBaseSpace' 'graveBelow' }
+	0x2CF  { 'markBaseSpace' 'acuteBelow' }
+	0x2D2  { 'markBaseSpace' 'rightHalfRingOver' }
+	0x2D3  { 'markBaseSpace' 'leftHalfRingOver' }
+	0x2D4  { 'markBaseSpace' 'upTackOver' }
+	0x2D5  { 'markBaseSpace' 'downTackOver' }
+	0x2D6  { 'markBaseSpace' 'plusOver' }
+	0x2D7  { 'markBaseSpace' 'minusOver' }
+	0x2D8  { 'markBaseSpace' 'breveAbove' }
+	0x2D9  { 'markBaseSpace' 'dotAbove' }
+	0x2DA  { 'markBaseSpace' 'ringAbove' }
+	0x2DB  { 'markBaseSpace' 'ogonekBelow' }
+	0x2DC  { 'markBaseSpace' 'tildeAbove' }
+	0x2DD  { 'markBaseSpace' 'doubleAcuteAbove' }
+	0x2DF  { 'markBaseSpace' 'crossAbove' }
+	0x2EC  { 'markBaseSpace' 'caronBelow' }
+	0x2EF  { 'markBaseSpace' 'downArrowHeadBelow' }
+	0x2F0  { 'markBaseSpace' 'upArrowHeadBelow' }
+	0x2F1  { 'markBaseSpace' 'leftArrowHeadBelow' }
+	0x2F2  { 'markBaseSpace' 'rightArrowHeadBelow' }
+	0x2F3  { 'markBaseSpace' 'ringBelow' }
+	0x2F7  { 'markBaseSpace' 'tildeBelow' }
+	0x2FF  { 'markBaseSpace' 'leftArrowBelow' }
+	0x37A  { 'markBaseSpace' 'iotaBelow' }
+	0x384  { 'markBaseSpace' 'tonosAbove' }
+	0x385  { 'markBaseSpace' 'dialytikaTonosAbove' }
+	0x1FBD { 'markBaseSpace' 'commaAbove' }
+	0x1FBE { 'markBaseSpace' 'iotaBelow' }
+	0x1FBF { 'markBaseSpace' 'commaAbove' }
+	0x1FC0 { 'markBaseSpace' 'perispomeniAbove' }
+	0x1FC1 { 'markBaseSpace' 'dieresisAbove' 'perispomeniAbove' }
+	0x1FED { 'markBaseSpace' 'dialytikaVariaAbove' }
+	0x1FEE { 'markBaseSpace' 'dialytikaOxiaAbove' }
+	0x1FEF { 'markBaseSpace' 'graveAbove' }
+	0x1FFD { 'markBaseSpace' 'acuteAbove' }
+	0x1FFE { 'markBaseSpace' 'revCommaAbove' }
+	0x2E2F { 'markBaseSpace' 'yerikAbove' }
+	0x2E45 { 'markBaseSpace' 'cyrlInvKavykaOver' }
+	0x2E47 { 'markBaseSpace' 'cyrlKavykaOver' }
+	0x2E48 { 'markBaseSpace' 'cyrlKavykaWithDotOver' }
+	0xA67E { 'markBaseSpace' 'cyrlKavykaAbove' }
+	0xA67F { 'markBaseSpace' 'cyrlPayerokAbove' }
+	0xA788 { 'markBaseSpace' 'circumflexBelow' }
+	0xA78A { 'markBaseSpace' 'equalOver' }
+	0xAB6A { 'markBaseSpace' 'leftTackOver' }
+	0xAB6B { 'markBaseSpace' 'rightTackOver' }
+
+	0x167  { 't' 'barOver' }
+
+	0x197  { 'I' 'barOver' }
+	0x19A  { 'l' 'barOver' }
+	0x1BB  { 'two.lnum' 'hStrike' }
+	0x23A  { 'A' 'longSlash' }
+	0x23B  { 'C' 'longSlash' }
+	0x23C  { 'c' 'shortSlash' }
+	0x23E  { 'T' 'longSlash' }
+	0x244  { 'U' 'hStrike' }
+	0x246  { 'E' 'longSlash' }
+	0x247  { 'e' 'shortSlash' }
+	0x248  { 'J' 'barOver' }
+	0x24D  { 'r' 'barOver' }
+	0x24F  { 'y' 'hStrike' }
+
+	0x386 { 'grek/Alpha'   'tonosGrekUpperTonos' }
+	0x388 { 'grek/Epsilon' 'tonosGrekUpperTonos' }
+	0x389 { 'grek/Eta'     'tonosGrekUpperTonos' }
+	0x38A { 'grek/Iota'    'tonosGrekUpperTonos' }
+	0x38C { 'grek/Omicron' 'tonosGrekUpperTonos' }
+	0x38E { 'grek/Upsilon' 'tonosGrekUpperTonos' }
+	0x38F { 'grek/Omega'   'tonosGrekUpperTonos' }
+	0x390 { 'grek/iota'    'dialytikaTonosAbove' }
+	0x3AC { 'grek/alpha'   'tonosAbove' }
+	0x3AD { 'grek/epsilon' 'tonosAbove' }
+	0x3AE { 'grek/eta'     'tonosAbove' }
+	0x3AF { 'grek/iota'    'tonosAbove' }
+	0x3B0 { 'grek/upsilon' 'dialytikaTonosAbove' }
+	0x3CC { 'grek/omicron' 'tonosAbove' }
+	0x3CD { 'grek/upsilon' 'tonosAbove' }
+	0x3CE { 'grek/omega'   'tonosAbove' }
+
+	0x46E  { 'cyrl/Ksi/base' 'caronAbove' }
+	0x46F  { 'cyrl/ksi/base' 'caronAbove' }
+	0x47C  { 'cyrl/BroadOmega' 'cyrlPsiliAbove' 'cyrlPokrytieAbove' }
+	0x47D  { 'cyrl/broadOmega' 'cyrlPsiliAbove' 'cyrlPokrytieAbove' }
+	0x47E  { 'cyrl/Omega' 'cyrl/teAbove' }
+	0x47F  { 'cyrl/omega' 'cyrl/teAbove' }
+
+	0x1D6C { 'b' 'tildeOverOnExension' }
+	0x1D6D { 'd' 'tildeOverOnExension' }
+	0x1D6E { 'f' 'tildeOver' }
+	0x1D6F { 'm' 'tildeStrike/adwsMM' }
+	0x1D70 { 'n' 'tildeStrike' }
+	0x1D71 { 'p' 'tildeOverOnExension' }
+	0x1D72 { 'r' 'tildeOver' }
+	0x1D73 { 'rFlap' 'tildeOver' }
+	0x1D74 { 's' 'tildeStrike' }
+	0x1D75 { 't' 'tildeOver' }
+	0x1D76 { 'z/reduced' 'tildeStrike2' }
+	0x1D7C { 'latn/iota'    'barOver' }
+	0x1D7D { 'p'            'hStrike' }
+	0x1D7E { 'smcpU'        'hStrike' }
+	0x1D7F { 'latn/upsilon' 'hStrike' }
+
+	0x1E08 { 'CCedilla' 'acuteAbove' }
+	0x1E09 { 'cCedilla' 'acuteAbove' }
+	0x1E9C { 'longs' 'shortSlashOver' }
+	0x1EDA { 'OHorn' 'acuteAbove' }
+	0x1EDB { 'oHorn' 'acuteAbove' }
+	0x1EDC { 'OHorn' 'graveAbove' }
+	0x1EDD { 'oHorn' 'graveAbove' }
+	0x1EDE { 'OHorn' 'hookAbove' }
+	0x1EDF { 'oHorn' 'hookAbove' }
+	0x1EE0 { 'OHorn' 'tildeAbove' }
+	0x1EE1 { 'oHorn' 'tildeAbove' }
+	0x1EE2 { 'OHorn' 'dotBelow' }
+	0x1EE3 { 'oHorn' 'dotBelow' }
+
+	0x1FD2 { 'grek/iota'    'dialytikaVariaAbove' }
+	0x1FD3 { 'grek/iota'    'dialytikaOxiaAbove' }
+	0x1FE2 { 'grek/upsilon' 'dialytikaVariaAbove' }
+	0x1FE3 { 'grek/upsilon' 'dialytikaOxiaAbove' }
+
+	0x2C61 { 'l' 'dblBarOver' }
+	0x2C65 { 'a' 'shortSlash' }
+	0x2C66 { 't' 'longSlash' }
+
+	0xA74A { 'O' 'hStrike' }
+	0xA74B { 'o' 'hStrike' }
+	0xA799 { 'f' 'barOver' }
+	0xA7A0 { 'G' 'oblStrike' }
+	0xA7A1 { 'g' 'oblStrike' }
+	0xA7A2 { 'K' 'oblStrike' }
+	0xA7A3 { 'k' 'oblStrike' }
+	0xA7A4 { 'N' 'oblStrike' }
+	0xA7A5 { 'n' 'oblStrike' }
+	0xA7A6 { 'R' 'oblStrike' }
+	0xA7A7 { 'r' 'oblStrike' }
+	0xA7A8 { 'S' 'oblStrike' }
+	0xA7A9 { 's' 'oblStrike' }
+	0xA7B8 { 'U' 'longSlash' }
+	0xA7B9 { 'u' 'shortSlash' }
+	0xA7BA { 'grek/Alpha'  'EgyptologicalYodTonos' }
+	0xA7BC { 'grek/Iota'   'EgyptologicalYodTonos' }
+	0xA7BE { 'U/withTonos' 'EgyptologicalYodTonos' }
+	0xA7BB { 'a' 'EgyptologicalYodAbove' }
+	0xA7BD { 'i' 'EgyptologicalYodAbove' }
+	0xA7BF { 'u' 'EgyptologicalYodAbove' }
+	0xA7C9 { 'S' 'hStrike' }
+	0xA7CA { 's' 'hStrike' }
+	0xA7CC { 'S' 'longSlash' }
+	0xA7CD { 's' 'shortSlash' }
+
+	0xAB3E { 'frak/o'    'shortSlash' }
+	0xAB4F { 'uShortLeg' 'hStrike' }
+	0xAB68 { 'turnr'     'tildeOver' }
+
+	0x1DF0B { 'esh'          'dblBarOver' }
+	0x1DF0C { 'eshCurlyTail' 'dblBarOver' }
+
+	# Aliasing of Armenian marks
+	0x559   { 'modifierLetterLeftHalfRing' }
+	0x55A   { 'modifierLetterRightHalfRing' }
+	0x55B   { 'prime' }
+	0x55D   { 'revprime' }
+
+# List of canonical and non-canonical combinations which may be applicable for ccmp feature
+export : define ccmpCombinations : list
+	# Long solidus overlays
+	list {0x003C 0x0338} 0x226E     # <
+	list {0x003D 0x0338} 0x2260     # =
+	list {0x003E 0x0338} 0x226F     # >
+	list {0x2190 0x0338} 0x219A     # ←
+	list {0x2192 0x0338} 0x219B     # →
+	list {0x2194 0x0338} 0x21AE     # ↔
+	list {0x21D0 0x0338} 0x21CD     # ⇐
+	list {0x21D2 0x0338} 0x21CF     # ⇒
+	list {0x21D4 0x0338} 0x21CE     # ⇔
+	list {0x2203 0x0338} 0x2204     # ∃
+	list {0x2208 0x0338} 0x2209     # ∈
+	list {0x220B 0x0338} 0x220C     # ∋
+	list {0x2223 0x0338} 0x2224     # ∣
+	list {0x2225 0x0338} 0x2226     # ∥
+	list {0x223C 0x0338} 0x2241     # ∼
+	list {0x2243 0x0338} 0x2244     # ≃
+	list {0x2245 0x0338} 0x2247     # ≅
+	list {0x2248 0x0338} 0x2249     # ≈
+	list {0x224D 0x0338} 0x226D     # ≍
+	list {0x2261 0x0338} 0x2262     # ≡
+	list {0x2264 0x0338} 0x2270     # ≤
+	list {0x2265 0x0338} 0x2271     # ≥
+	list {0x2272 0x0338} 0x2274     # ≲
+	list {0x2273 0x0338} 0x2275     # ≳
+	list {0x2276 0x0338} 0x2278     # ≶
+	list {0x2277 0x0338} 0x2279     # ≷
+	list {0x227A 0x0338} 0x2280     # ≺
+	list {0x227B 0x0338} 0x2281     # ≻
+	list {0x227C 0x0338} 0x22E0     # ≼
+	list {0x227D 0x0338} 0x22E1     # ≽
+	list {0x2282 0x0338} 0x2284     # ⊂
+	list {0x2283 0x0338} 0x2285     # ⊃
+	list {0x2286 0x0338} 0x2288     # ⊆
+	list {0x2287 0x0338} 0x2289     # ⊇
+	list {0x2291 0x0338} 0x22E2     # ⊑
+	list {0x2292 0x0338} 0x22E3     # ⊒
+	list {0x22A2 0x0338} 0x22AC     # ⊢
+	list {0x22A8 0x0338} 0x22AD     # ⊨
+	list {0x22A9 0x0338} 0x22AE     # ⊩
+	list {0x22AB 0x0338} 0x22AF     # ⊫
+	list {0x22B2 0x0338} 0x22EA     # ⊲
+	list {0x22B3 0x0338} 0x22EB     # ⊳
+	list {0x22B4 0x0338} 0x22EC     # ⊴
+	list {0x22B5 0x0338} 0x22ED     # ⊵
+	list {0x2ADD 0x0338} 0x2ADC     # ⫝
+
+	########## Data from DoNotEmit.txt
+
+	# Tilde overlays
+	list {0x004C 0x0334} 0x2C62     # L
+	list {0x0062 0x0334} 0x1D6C     # b
+	list {0x0064 0x0334} 0x1D6D     # d
+	list {0x0066 0x0334} 0x1D6E     # f
+	list {0x006C 0x0334} 0x026B     # l
+	list {0x006D 0x0334} 0x1D6F     # m
+	list {0x006E 0x0334} 0x1D70     # n
+	list {0x0070 0x0334} 0x1D71     # p
+	list {0x0072 0x0334} 0x1D72     # r
+	list {0x0073 0x0334} 0x1D74     # s
+	list {0x0074 0x0334} 0x1D75     # t
+	list {0x007A 0x0334} 0x1D76     # z
+	list {0x0279 0x0334} 0xAB68     # ɹ
+	list {0x027E 0x0334} 0x1D73     # ɾ
+	list {0x02E1 0x0334} 0xAB5E     # ˡ
+
+	# Palatal hooks
+	list {0x0043 0x0321} 0xA7C4     # C
+	list {0x005A 0x0321} 0xA7C6     # Z
+	list {0x0062 0x0321} 0x1D80     # b
+	list {0x0063 0x0321} 0xA794     # c
+	list {0x0064 0x0321} 0x1D81     # d
+	list {0x0066 0x0321} 0x1D82     # f
+	list {0x0068 0x0321} 0xA795     # h
+	list {0x006B 0x0321} 0x1D84     # k
+	list {0x006C 0x0321} 0x1D85     # l
+	list {0x006D 0x0321} 0x1D86     # m
+	list {0x006E 0x0321} 0x1D87     # n
+	list {0x0070 0x0321} 0x1D88     # p
+	list {0x0072 0x0321} 0x1D89     # r
+	list {0x0073 0x0321} 0x1D8A     # s
+	list {0x0074 0x0321} 0x01AB     # t
+	list {0x0076 0x0321} 0x1D8C     # v
+	list {0x0078 0x0321} 0x1D8D     # x
+	list {0x007A 0x0321} 0x1D8E     # z
+	list {0x014B 0x0321} 0x1DF14    # ŋ
+	list {0x0261 0x0321} 0x1D83     # ɡ
+	list {0x026C 0x0321} 0x1DF13    # ɬ
+	list {0x0279 0x0321} 0x1DF15    # ɹ
+	list {0x027E 0x0321} 0x1DF16    # ɾ
+	list {0x0283 0x0321} 0x1D8B     # ʃ
+	list {0x0292 0x0321} 0x1DF18    # ʒ
+	list {0x02A4 0x0321} 0x1DF12    # ʤ
+	list {0x02A7 0x0321} 0x1DF17    # ʧ
+	list {0x02E1 0x0321} 0x1DAA     # ˡ
+	list {0x1D57 0x0321} 0x1DB5     # ᵗ
+
+	# Retroflex hooks
+	list {0x0052 0x0322} 0x2C64     # R
+	list {0x0054 0x0322} 0x01AE     # T
+	list {0x0061 0x0322} 0x1D8F     # a
+	list {0x0063 0x0322} 0x1DF1D    # c
+	list {0x0064 0x0322} 0x0256     # d
+	list {0x0065 0x0322} 0x1D92     # e
+	list {0x0069 0x0322} 0x1D96     # i
+	list {0x006C 0x0322} 0x026D     # l
+	list {0x006E 0x0322} 0x0273     # n
+	list {0x006F 0x0322} 0x1DF1B    # o
+	list {0x0072 0x0322} 0x027D     # r
+	list {0x0074 0x0322} 0x0288     # t
+	list {0x0075 0x0322} 0x1D99     # u
+	list {0x007A 0x0322} 0x0290     # z
+	list {0x01AD 0x0322} 0x1DF09    # ƭ
+	list {0x01C3 0x0322} 0x1DF0A    # ǃ
+	list {0x0251 0x0322} 0x1D90     # ɑ
+	list {0x0254 0x0322} 0x1D97     # ɔ
+	list {0x0257 0x0322} 0x1D91     # ɗ
+	list {0x0259 0x0322} 0x1D95     # ə
+	list {0x025B 0x0322} 0x1D93     # ɛ
+	list {0x025C 0x0322} 0x1D94     # ɜ
+	list {0x0268 0x0322} 0x1DF1A    # ɨ
+	list {0x026C 0x0322} 0xA78E     # ɬ
+	list {0x026E 0x0322} 0x1DF05    # ɮ
+	list {0x027A 0x0322} 0x1DF08    # ɺ
+	list {0x0283 0x0322} 0x1D98     # ʃ
+	list {0x0292 0x0322} 0x1D9A     # ʒ
+	list {0x02A3 0x0322} 0xAB66     # ʣ
+	list {0x02A4 0x0322} 0x1DF19    # ʤ
+	list {0x02A6 0x0322} 0xAB67     # ʦ
+	list {0x02A7 0x0322} 0x1DF1C    # ʧ
+	list {0x02B3 0x0322} 0x107A8    # ʳ
+	list {0x02E1 0x0322} 0x1DA9     # ˡ
+	list {0x1D48 0x0322} 0x1078B    # ᵈ
+	list {0x1D57 0x0322} 0x107AF    # ᵗ
+	list {0x1DBB 0x0322} 0x1DBC     # ᶻ
+	list {0x207F 0x0322} 0x1DAF     # ⁿ
+	list {0x10787 0x0322} 0x10788   # 𐞇
+	list {0x1078C 0x0322} 0x1078D   # 𐞌
+	list {0x1079B 0x0322} 0x1079D   # 𐞛
+	list {0x1079E 0x0322} 0x1079F   # 𐞞
+	list {0x107A6 0x0322} 0x107A7   # 𐞦
+	list {0x107AC 0x0322} 0x107AD   # 𐞬
+
+	########## Additional composites which cannot be inferred from DoNotEmit.txt
+
+	# Retroflex hooks
+	list {0x0053 0x0322} 0xA7C5     # S
+	list {0x0071 0x0322} 0x024B     # q
+	list {0x0073 0x0322} 0x0282     # s
+	list {0x0279 0x0322} 0x027B     # ɹ
+	list {0x027F 0x0322} 0x0285     # ɿ
+	list {0x02AE 0x0322} 0x02AF     # ʮ
+	list {0x02B4 0x0322} 0x02B5     # ʴ
+	list {0x02E2 0x0322} 0x1DB3     # ˢ
+	list {0xA71D 0x0322} 0x107B9    # ꜝ
+
+	# Smooth breathings
+	list {0x0041 0x0486} 0xA7BA     # A
+	list {0x0049 0x0486} 0xA7BC     # I
+	list {0x0055 0x0486} 0xA7BE     # U
+	list {0x0061 0x0486} 0xA7BB     # a
+	list {0x0069 0x0486} 0xA7BD     # i
+	list {0x0075 0x0486} 0xA7BF     # u
+
+	# Ring overlays
+	list {0x006C 0x20D8} 0xAB39     # l
+	list {0x2190 0x20D8} 0x2B30     # ←
+	list {0x2192 0x20D8} 0x21F4     # →
+	list {0x2194 0x20D8} 0x2948     # ↔
+
+	# Reverse solidus overlays
+	list {0x2223 0x20E5} 0x2AEE     # ∣

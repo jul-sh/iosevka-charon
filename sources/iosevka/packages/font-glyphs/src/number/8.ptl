@@ -1,0 +1,269 @@
+$$include '../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [Box] from "@iosevka/geometry/box"
+
+glyph-module
+
+glyph-block Digits-Eight : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Digits-Shared : CodeLnum CodeOnum
+	glyph-block-import Letter-Blackboard : BBS BBD
+	glyph-block-import Letter-Latin-S : AdviceSArchDepth
+
+	local EightPr : StrokeWidthBlend 0.85 0.925
+	define [EightShape sw box p archDepthFactor _gizmo] : glyph-proc
+		local archDepth : (box.height / CAP) * ArchDepth * EightPr * archDepthFactor
+		local archDepthRefWidth : box.width + 2 * OX + 2 * SB
+		local adaTop : ArchDepthAOf (archDepth * p) archDepthRefWidth
+		local adbTop : ArchDepthBOf (archDepth * p) archDepthRefWidth
+		local adaBot : ArchDepthAOf  archDepth      archDepthRefWidth
+		local adbBot : ArchDepthBOf  archDepth      archDepthRefWidth
+		include : dispiro
+			arch.rhs.centerAt.rtl.b box.xMid box.bot (sw -- sw)
+			archv
+			g4 box.left (box.bot + adbBot) [widths.rhs sw]
+			alsoThru.g2 0.5 0.5 [widths.center sw]
+			g4 [box.xp p] (box.top - adbTop) [widths.lhs sw]
+			arcvh
+			arch.lhs.centerAt.rtl.t box.xMid box.top (sw -- sw)
+			archv
+			g4 [box.xp (1 - p)] (box.top - adaTop) [widths.lhs sw]
+			alsoThru.g2 0.5 0.5 [widths.center sw]
+			g4 box.right (box.bot + adaBot) [widths.rhs sw]
+			arcvh
+			close
+
+	create-glyph 'eight.lnum.crossing' : glyph-proc
+		include : MarkSet.capital
+		local box : new Box CAP 0 (SB + OX) (RightSB - OX)
+		include : EightShape [AdviceStroke2 2 3 CAP] box 0.96 1
+
+	define [EightCirclesShape stroke top] : begin
+		local pShrink 1.00
+		local pSizeDiffY : StrokeWidthBlend 0.95 0.94
+		local pSizeDiffX : StrokeWidthBlend 0.95 0.96
+
+		local yMid : top / (1 + pSizeDiffY)
+		local ada : ArchDepthAOf (ArchDepth * 0.9) Width
+		local adb : ArchDepthBOf (ArchDepth * 0.9) Width
+		local adaTop : ArchDepthAOf (ArchDepth * 0.9 * pSizeDiffY) Width
+		local adbTop : ArchDepthBOf (ArchDepth * 0.9 * pSizeDiffY) Width
+
+		local botLeft  : mix SB RightSB (1 - pShrink)
+		local botRight : mix SB RightSB pShrink
+		local topLeft  : mix SB RightSB (1 - pShrink * pSizeDiffX)
+		local topRight : mix SB RightSB (pShrink * pSizeDiffX)
+
+		local fine : stroke * CThin
+		local coFine : stroke / 2 - (stroke - fine)
+		local spT : StrokeWidthBlend 2.08 2.20
+		local spB : StrokeWidthBlend 2.18 2.20
+
+		return : union
+			dispiro
+				widths.rhs stroke
+				g4 (topRight - OX) [YSmoothMidR (top - O) (yMid - coFine) adaTop adbTop]
+				arcvh.superness spT
+				arch.rhs.centerAt.rtl.b Middle (yMid - coFine) (sw -- fine) (o -- 0)
+				archv.superness spT
+				g4 (topLeft + OX) [YSmoothMidL (top - O) (yMid - coFine) adaTop adbTop] [widths.rhs stroke]
+				arcvh.superness spB
+				arch.rhs.centerAt.ltr.t Middle top (sw -- stroke)
+				archv.superness spB
+				close
+			dispiro
+				widths.rhs stroke
+				g4 (botLeft + OX) [YSmoothMidL (yMid + coFine) O ada adb]
+				arcvh.superness spT
+				arch.rhs.centerAt.ltr.t Middle (yMid + coFine) (sw -- fine) (o -- 0)
+				archv.superness spT
+				g4 (botRight - OX) [YSmoothMidR (yMid + coFine) O ada adb] [widths.rhs stroke]
+				arcvh.superness spB
+				arch.rhs.centerAt.rtl.b Middle 0 (sw -- stroke)
+				archv.superness spB
+				close
+
+
+	create-glyph 'eight.lnum.twoCircles' : glyph-proc
+		include : MarkSet.capital
+		include : EightCirclesShape [AdviceStroke2 2 3 CAP] CAP
+
+	define [EightCrossingAsymmetricShape top] : begin
+		define stroke : AdviceStroke2 2 3 CAP
+		define fine   : AdviceStroke2 3 4 CAP
+		define p 0.96
+		define l : SB + OX
+		define r : RightSB - OX
+		define ad : ArchDepth * [mix 1 EightPr 0.5]
+
+		define gap : (r - l) * 0.25
+
+		define [Spine kty] : list
+			kty [arch.adjust-x.top Middle] (top - O) [widths.lhs stroke]
+			archv
+			g4 [mix r l p] (top - [ArchDepthAOf (ad * p) Width])
+			alsoThruThem { {0.34 0.45 (2 / 3)} {0.66 0.55 (1 / 3)} } : object
+				blend : function [rt] : widths (stroke * rt) (stroke * (1 - rt))
+			g4 r [ArchDepthAOf ad Width] [widths.rhs stroke]
+			arcvh
+			kty [arch.adjust-x.bot Middle] (O)
+
+		define [CoSpineMask xFar] : spiro-outline
+			corner xFar (2 * CAP)
+			corner [arch.adjust-x.top Middle] (2 * CAP)
+			Spine corner
+			corner [arch.adjust-x.bot Middle] (-CAP)
+			corner xFar (-CAP)
+
+		return : union
+			difference
+				dispiro
+					g4.right.mid [arch.adjust-x.top Middle] (top - O) [widths.rhs stroke]
+					g4.down.mid [mix l r p] (top - [ArchDepthBOf (ad * p) Width])
+					straight.left.end 0 (top * 0.4 - stroke * 0.5) [widths.rhs fine]
+				CoSpineMask (-Width * 4)
+				MaskBelow ad
+			difference
+				dispiro
+					straight.left.start Width (top * 0.6 + stroke * 0.5) [widths.lhs fine]
+					g4.down.mid l [ArchDepthBOf ad Width] [widths.lhs stroke]
+					g4.right.mid [arch.adjust-x.bot Middle] (O)
+				CoSpineMask (Width * 4)
+				MaskAbove (top - ad * p)
+			dispiro : Spine g4.left.mid
+
+	create-glyph 'eight.lnum.crossingAsymmetric' : glyph-proc
+		include : MarkSet.capital
+		include : EightCrossingAsymmetricShape CAP
+
+	select-variant 'eight.lnum' [CodeLnum '8'] (follow -- 'eight')
+	alias 'eight.onum' [CodeOnum '8'] 'eight.lnum'
+
+	define [PropToShape sw box p archDepthFactor _gizmo] : glyph-proc
+		local py 0.42
+		local archDepth : (box.height / CAP) * ArchDepth * EightPr * archDepthFactor
+		local archDepthRefWidth : box.width + 2 * OX + 2 * SB
+		local adaTop : ArchDepthAOf (archDepth * p) archDepthRefWidth
+		local adbTop : ArchDepthBOf (archDepth * p) archDepthRefWidth
+		include : dispiro
+			straight.up.start box.left box.bot [widths.rhs.heading sw Upward]
+			alsoThru.g2 0.5 (1 - py) [widths.center sw]
+			g4 [box.xp p] (box.top - adbTop) [widths.lhs sw]
+			arcvh
+			arch.lhs.centerAt.rtl.t box.xMid box.top (sw -- sw) # [widths.lhs sw]
+			archv
+			g4 [box.xp (1 - p)] (box.top - adaTop) [widths.lhs sw]
+			alsoThru.g2 0.5 py [widths.center sw]
+			straight.down.end box.right box.bot [widths.rhs.heading sw Downward]
+
+	define [InvLazySShape sw box p archDepthFactor _gizmo] : glyph-proc
+		local archDepth : AdviceSArchDepth box.height (+1) sw
+		# (box.height / CAP) * ArchDepth * EightPr * archDepthFactor
+		local archDepthRefWidth : box.width + 2 * OX + 2 * SB
+		local adaTop : ArchDepthAOf (archDepth * p) archDepthRefWidth
+		local adbTop : ArchDepthBOf (archDepth * p) archDepthRefWidth
+		local adaBot : ArchDepthAOf  archDepth      archDepthRefWidth
+		local adbBot : ArchDepthBOf  archDepth      archDepthRefWidth
+		include : dispiro
+			g4.down.start box.right (box.bot + adaBot) [widths.rhs.heading sw Downward]
+			arcvh
+			arch.rhs.centerAt.rtl.b box.xMid box.bot (sw -- sw)
+			archv
+			g4 box.left (box.bot + adbBot) [widths.rhs sw]
+			alsoThru.g2 0.5 0.5 [widths.center sw]
+			g4 [box.xp p] (box.top - adbTop) [widths.lhs sw]
+			arcvh
+			arch.lhs.centerAt.rtl.t box.xMid box.top (sw -- sw)
+			archv
+			g4.down.end [box.xp (1 - p)] (box.top - adaTop) [widths.lhs.heading sw Downward]
+
+	for-width-kinds WideWidth1 : do
+		define xSF : 1 / [Math.pow (2 / MosaicWidthScalar) 0.6]
+		define xSS : 1 / [Math.pow (2 / MosaicWidthScalar) 0.3]
+		define xl : mix (MosaicWidth / 2) (MosaicWidthScalar * SB)               (1 / xSF)
+		define xr : mix (MosaicWidth / 2) (MosaicWidth - MosaicWidthScalar * SB) (1 / xSF)
+		define yt : mix SymbolMid OperTop 0.75
+		define yb : mix SymbolMid OperBot 0.75
+		create-glyph [MangleName 'infty'] [MangleUnicode 0x221E] : glyph-proc
+			set-width MosaicWidth
+			include : PointingTo xr yt xr yb : function [] : glyph-proc
+				set currentGlyph.gizmo : Italify para.slopeAngle
+				local box : new Box (xr - xl) 0 0 (yt - yb)
+				include : EightShape (OperatorStroke / xSS) box 1 0.9
+				include : Italify (-para.slopeAngle)
+			include : ScaleAround (MosaicUnitWidth / 2) SymbolMid xSF xSF
+
+		create-glyph [MangleName 'propto'] [MangleUnicode 0x221D] : glyph-proc
+			set-width MosaicWidth
+			include : PointingTo xr yt xr yb : function [] : glyph-proc
+				set currentGlyph.gizmo : Italify para.slopeAngle
+				local box : new Box (xr - xl) 0 0 (yt - yb)
+				include : PropToShape (OperatorStroke / xSS) box 1 0.9
+				include : Italify (-para.slopeAngle)
+			include : ScaleAround (MosaicUnitWidth / 2) SymbolMid xSF xSF
+
+		create-glyph [MangleName 'invLazyS'] [MangleUnicode 0x223E] : glyph-proc
+			set-width MosaicWidth
+			include : PointingTo xr yt xr yb : function [] : glyph-proc
+				set currentGlyph.gizmo : Italify para.slopeAngle
+				local box : new Box (xr - xl) 0 0 (yt - yb)
+				include : InvLazySShape (OperatorStroke / xSS) box 1 0.9
+				include : Italify (-para.slopeAngle)
+			include : ScaleAround (MosaicUnitWidth / 2) SymbolMid xSF xSF
+
+	define [BBEightSd] : with-params [top swStart swEnd kTop sign OffsetLT OffsetRB OffsetC] : begin
+		define stroke : Math.max swStart swEnd
+		define fine   : Math.min swStart swEnd
+		define soStart : stroke - swStart
+		define soEnd   : stroke - swEnd
+		define bbOvershoot : BBD / 8
+		define xLeftTop  : [mix SB RightSB (1 - kTop)] - bbOvershoot
+		define xRightTop : mix SB RightSB kTop
+		define xLeftBot  : SB + OX
+		define xRightBot : RightSB - OX + bbOvershoot
+		define ada : ArchDepthAOf (ArchDepth * EightPr) Width
+		define adb : ArchDepthBOf (ArchDepth * EightPr) Width
+
+		define NcCenterX   : mix xLeftTop     xRightBot   0.5
+		define NcCenterY   : mix (top - ada)  (ada)       0.5
+
+		define [Center s] : object
+			x : mix (xLeftTop + [OffsetLT s].x) (xRightBot - [OffsetRB s].x) 0.5
+			y : mix (top - ada)                 (ada)                        0.5
+
+		return : dispiro
+			g2   ([Center 1].x + [OffsetC 1].x) ([Center 1].y + [OffsetC 1].y) [widths.center stroke]
+			g4   (xRightTop - [HSwToV soStart]) (top - adb) [widths.lhs fine]
+			arch.lhs (top - soStart) (sw -- stroke)
+			g4   (xLeftTop + [OffsetLT sign].x) (top - ada + [OffsetLT sign].y)
+			g2   ([Center sign].x + [OffsetC sign].x) ([Center sign].y + [OffsetC sign].y) [widths.center stroke]
+			g4   (xRightBot - [OffsetRB sign].x) (ada + [OffsetRB sign].y) [widths.rhs fine]
+			arch.rhs soEnd (sw -- stroke)
+			g4   (xLeftBot + [HSwToV soEnd]) adb [widths.rhs fine]
+			g2   ([Center (-1)].x + [OffsetC (-1)].x) ([Center (-1)].y + [OffsetC (-1)].y) [widths.center stroke]
+
+	create-glyph 'mathbb/eight' 0x1D7E0 : glyph-proc
+		include : MarkSet.capital
+		define theta : Math.PI / 4
+		foreach sign [items-of { 1 (-1) }] : begin
+			include : BBEightSd
+				top     -- CAP
+				swStart -- BBS * [if (sign > 0) CThin 1]
+				swEnd   -- BBS * [if (sign < 0) CThin 1]
+				kTop    -- 0.96
+				ess     -- BBD
+				sign    -- sign
+				OffsetC -- [lambda [s] {
+					.x (0.5 * s * BBD * [Math.sin theta])
+					.y (0.5 * s * BBD * [Math.cos theta])
+				}]
+				OffsetLT -- [lambda [s] {
+					.x [if (s > 0) (BBD / 2) 0]
+					.y ([if (s > 0) 0.25 0.375] * s * BBD * [Math.cos theta])
+				}]
+				OffsetRB -- [lambda [s] {
+					.x [if (s < 0) (BBD / 2) 0]
+					.y ([if (s < 0) 0.25 0.375] * s * BBD * [Math.cos theta])
+				}]

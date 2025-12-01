@@ -1,0 +1,179 @@
+$$include '../../meta/macros.ptl'
+
+import [mix fallback SuffixCfg] from "@iosevka/util"
+import [MathSansSerif] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Latin-Upper-J : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared : CreateAccentedComposition
+	glyph-block-import Letter-Shared-Shapes : CurlyTail FlatHookDepth
+	glyph-block-import Letter-Blackboard : BBS BBD
+	glyph-block-import Letter-Latin-Lower-J : FlatHookDotlessJShape
+
+	define [JBentHookBase df dfHook top] : glyph-proc
+		set-width df.width
+		include : df.markSet.[if (top > XH) 'capital' 'e']
+
+		local xBarRight : df.rightSB - JBalance2
+
+		set-base-anchor 'above'   (xBarRight - [HSwToV : 0.75 * Stroke])  top
+		set-base-anchor 'overlay' (xBarRight - [HSwToV : 0.75 * Stroke]) (top * OverlayPos)
+		set-base-anchor 'jTopSerifAttach' (xBarRight - [HSwToV HalfStroke]) top
+
+		local sw : Math.min Stroke : 0.4 * (xBarRight - df.leftSB)
+		local hookx : 0.75 * df.leftSB
+
+		include : dispiro
+			widths.rhs sw
+			flat xBarRight top [heading Downward]
+			curl xBarRight ArchDepthB
+			hookend 0 (sw -- sw)
+			g4 hookx Hook
+
+	define [JFlatHookBase df dfHook top] : glyph-proc
+		set-width df.width
+		include : df.markSet.[if (top > XH) 'capital' 'e']
+
+		local xBarRight : df.rightSB - JBalance2
+
+		set-base-anchor 'above'   (xBarRight - [HSwToV : 0.75 * Stroke])  top
+		set-base-anchor 'overlay' (xBarRight - [HSwToV : 0.75 * Stroke]) (top * OverlayPos)
+		set-base-anchor 'jTopSerifAttach' (xBarRight - [HSwToV HalfStroke]) top
+
+		local sw : Math.min Stroke : 0.4 * (xBarRight - df.leftSB)
+		local hookx : 0.75 * df.leftSB
+		local hd : FlatHookDepth dfHook
+
+		include : dispiro
+			flat xBarRight top [widths.rhs.heading sw Downward]
+			curl xBarRight (HalfStroke + 1.375 * hd.y)
+			arcvh.superness DesignParameters.tightHookSuperness
+			flat (xBarRight - [Math.min (0.625 * (df.rightSB - df.leftSB)) (1.375 * hd.x)]) 0 [widths.rhs Stroke]
+			curl df.leftSB 0
+
+	define [JDescendingBentHookBase df dfHook top] : glyph-proc
+		set-width df.width
+		include : df.markSet.[if (top > XH) 'capDesc' 'p']
+
+		local center : df.middle + JBalance + [HSwToV HalfStroke]
+		set-base-anchor 'above'   (center - [HSwToV HalfStroke])  top
+		set-base-anchor 'overlay' (center - [HSwToV HalfStroke]) (top / 2)
+		set-base-anchor 'jTopSerifAttach' (center - [HSwToV HalfStroke]) top
+
+		local hookx : center - (df.width * 0.5) - [HSwToV Stroke] + OXHook
+		local turn : arch.adjust-x.bot [mix center hookx 0.5]
+		include : dispiro
+			widths.rhs
+			flat center top [heading Downward]
+			curl center (Descender + ArchDepthA)
+			hookend Descender
+			g4 hookx (Descender + JHook)
+
+	set JBentHookBase.WithCurlyTail           : function [df top] : JCurlyTailBaseT df (df.rightSB - [HSwToV HalfStroke] - JBalance2) (df.leftSB)                    top 0         'capital'
+	set JDescendingBentHookBase.WithCurlyTail : function [df top] : JCurlyTailBaseT df (df.middle + JBalance) (df.middle + JBalance - LongJut - [HSwToV HalfStroke]) top Descender 'capDesc'
+	define [JCurlyTailBaseT df xc xCo top bottom markClass] : glyph-proc
+		set-width df.width
+		include : df.markSet.(markClass)
+
+		set-base-anchor 'above'   xc  top
+		set-base-anchor 'overlay' xc (top / 2)
+		set-base-anchor 'jTopSerifAttach' xc top
+
+		local fine : AdviceStroke 3.5
+		local rinner : LongJut / 2 - fine / 2
+		include : dispiro
+			widths.rhs
+			flat (xc + [HSwToV HalfStroke]) top [heading Downward]
+			curl (xc + [HSwToV HalfStroke]) (bottom + fine + rinner * 2)
+			CurlyTail.n fine bottom xCo
+				x2 -- df.width
+				y2 -- (bottom + 0.5 * fine)
+				yLoopTop -- (bottom + 2 * fine + 2 * rinner)
+
+	define [JDescendingFlatHookSeriflessBase df dfHook top] : glyph-proc
+		set-width df.width
+		include : df.markSet.[if (top > XH) 'capDesc' 'p']
+		include : FlatHookDotlessJShape df dfHook top
+			crossLeft -- (df.middle - (dfHook.middle - [mix 0 dfHook.leftSB : mix 1 dfHook.adws 2]))
+			barCenter -- (df.middle + 0.25 * JBalance * df.adws * [mix 1 df.adws 2])
+			serif -- false
+
+	define [JDescendingFlatHookSerifedBase df dfHook top] : glyph-proc
+		set-width df.width
+		include : df.markSet.[if (top > XH) 'capDesc' 'p']
+		include : FlatHookDotlessJShape df df top
+			crossLeft -- [mix 0 SB : mix 1 df.adws 2]
+			barCenter -- (df.middle + JBalance * df.adws)
+			serif -- true
+
+	define [JLeftwardSerif  df x top] : HSerif.lt x top LongJut
+	define [JBothSidesSerif df x top] : union [HSerif.lt x top LongJut] [HSerif.rt x top Jut]
+	define [JSymmetricSerif df x top] : HSerif.mt (x + OX) top MidJutCenter
+
+	define JConfig : SuffixCfg.weave
+		object # height and hook
+			bentHook                    { JBentHookBase                    [DivFrame 1]                  [DivFrame 1]                  }
+			flatHook                    { JFlatHookBase                    [DivFrame para.advanceScaleF] [DivFrame para.advanceScaleF] }
+			descendingBentHook          { JDescendingBentHookBase          [DivFrame 1]                  [DivFrame 1]                  }
+			descendingFlatHookSerifless { JDescendingFlatHookSeriflessBase [DivFrame para.advanceScaleI] [DivFrame para.advanceScaleI] }
+			descendingFlatHookSerifed   { JDescendingFlatHookSerifedBase   [DivFrame para.advanceScaleI] [DivFrame para.advanceScaleI] }
+		function [body] : if (body == 'descendingFlatHookSerifless' || body == 'descendingFlatHookSerifed') {."" null} : object
+			serifless         null
+			serifed           JLeftwardSerif
+			serifedBothSides  JBothSidesSerif
+			serifedSymmetric  JSymmetricSerif
+
+	foreach { suffix { {base df dfHook} serif } } [Object.entries JConfig] : do
+		create-glyph "J.\(suffix)" : glyph-proc
+			include : base df dfHook CAP
+			if serif : begin
+				local attach : currentGlyph.gizmo.unapply currentGlyph.baseAnchors.jTopSerifAttach
+				include : serif df attach.x CAP
+
+		create-glyph "smcpJ.\(suffix)" : glyph-proc
+			include : base df dfHook XH
+			if serif : begin
+				local attach : currentGlyph.gizmo.unapply currentGlyph.baseAnchors.jTopSerifAttach
+				include : serif df attach.x XH
+
+		if base.WithCurlyTail : create-glyph "JCurlyTail.\(suffix)" : glyph-proc
+			include : base.WithCurlyTail df CAP
+			if serif : begin
+				local attach : currentGlyph.gizmo.unapply currentGlyph.baseAnchors.jTopSerifAttach
+				include : serif df attach.x CAP
+
+	select-variant 'J' 'J'
+	select-variant 'J/noDescend' (shapeFrom -- 'J')
+	link-reduced-variant 'J/sansSerif' 'J' MathSansSerif
+	select-variant 'smcpJ' 0x1D0A (follow -- 'J')
+	alias 'cyrl/Je' 0x408 'J'
+	alias 'grek/Yot' 0x37F 'J'
+	select-variant 'JCurlyTail' 0xA7B2
+
+	CreateAccentedComposition 'JAcute' null 'J' 'acuteAbove'
+
+	create-glyph 'mathbb/J' 0x1D541 : glyph-proc
+		local hookx : 0.75 * SB
+
+		include : MarkSet.capital
+		set-base-anchor 'above'   (RightSB - [HSwToV : 0.75 * BBD] - JBalance2)  CAP
+		set-base-anchor 'overlay' (RightSB - [HSwToV : 0.75 * BBD] - JBalance2) (CAP * OverlayPos)
+
+		include : dispiro
+			widths.rhs BBS
+			flat (RightSB - JBalance2) CAP [heading Downward]
+			curl (RightSB - JBalance2) ArchDepthB
+			hookend 0 (sw -- BBS)
+			g4 hookx Hook
+		include : HBar.t (RightSB - JBalance2 - BBD) (RightSB - JBalance2) CAP BBS
+		include : intersection
+			VBar.r (RightSB - JBalance2 - BBD) 0 CAP BBS
+			spiro-outline
+				corner (RightSB - JBalance2 - 1) CAP [heading Downward]
+				curl (RightSB - JBalance2 - 1) ArchDepthB
+				hookend 1 (sw -- BBS)
+				g4 (hookx + 1) Hook
+				corner (hookx + 1) CAP

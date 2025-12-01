@@ -1,0 +1,64 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DependentSelector] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Armenian-Ca : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	# Common Params
+	define barPos : XH / 2
+	define highBarPos XH
+	define jut Jut
+
+	do "Ca"
+		create-glyph 'armn/Ca' 0x53E : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+
+			local yStart : CAP - VJut + df.mvs
+
+			local xStart : Math.min df.leftSB : Math.max
+				[mix df.leftSB df.rightSB 0.4] - [HSwToV : 1.5 * df.mvs] - jut
+				df.leftSB - jut + [HSwToV : 0.5 * df.mvs]
+
+			include : VBar.l xStart (yStart - df.mvs) CAP df.mvs
+			include : dispiro
+				widths.rhs.heading df.mvs Rightward
+				flat xStart yStart
+				curl df.middle yStart
+				archv
+				flatside.rd df.rightSB 0 yStart ArchDepthA ArchDepthB 0
+				arch.rhs 0 (sw -- df.mvs)
+				flatside.lu df.leftSB  0 yStart ArchDepthA ArchDepthB 0
+				arcvh
+				flat df.rightSB CAP
+				curl (df.rightSB + jut - [HSwToV : 0.5 * df.mvs]) CAP
+
+		create-glyph 'armn/ca' 0x56E : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.b
+
+			local x1 : mix df.leftSB df.rightSB 0.45
+			local x2 : mix df.leftSB df.rightSB 0.3
+			local y2 : mix XH Ascender 0.5
+
+			local x4 : mix df.leftSB df.rightSB 0.6
+
+			local rExt : Math.max df.rightSB : Math.min
+				x4 + [HSwToV : 1.5 * df.mvs] + jut
+				df.rightSB + jut - [HSwToV : 0.5 * df.mvs]
+
+			include : dispiro
+				flat x1 Ascender [widths.center.heading df.mvs Downward]
+				sharp-corner x2 y2
+				curl x4 XH [widths.center df.mvs]
+				flatside.rd df.rightSB 0 XH         SmallArchDepthA SmallArchDepthB nothing [widths.rhs df.mvs]
+				arch.rhs 0 (sw -- df.mvs)
+				flatside.lu df.leftSB  0 highBarPos SmallArchDepthA SmallArchDepthB
+				arcvh
+				flat df.middle highBarPos
+				curl rExt highBarPos
