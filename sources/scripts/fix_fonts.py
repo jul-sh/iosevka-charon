@@ -168,44 +168,52 @@ def fix_zero_width_glyphs(font):
         return False
 
     hmtx = font['hmtx']
+    glyf = font['glyf']
+    cmap = font.getBestCmap()
     fixed = []
 
-    # Characters that should have width
-    chars_to_fix = ['uni055F', 'uniEF01', 'uniEF02']
+    # Specific glyphs in Private Use Area that need width
+    # These are codepoints 0xEF06-0xEF0C (61190-61196)
+    pua_glyphs_to_fix = [
+        'uniEF06', 'uniEF07', 'uniEF08', 'uniEF09',
+        'uniEF0A', 'uniEF0B', 'uniEF0C'
+    ]
+
+    # Get the standard width for this font (monospaced)
+    if 'space' in hmtx.metrics:
+        new_width = hmtx['space'][0]
+    else:
+        # Fallback to average width
+        widths = [w for w, _ in hmtx.metrics.values() if w > 0]
+        new_width = sum(widths) // len(widths) if widths else 500
 
     glyph_order = font.getGlyphOrder()
 
-    # Characters that should have width - now scanning all
-    # But we should avoid fixing known marks if we can identify them.
-    # For now, scan all and fix if width is 0 and it has contours (not empty)
-
-    if 'glyf' not in font:
-        return False
-    glyf = font['glyf']
-
     for glyph_name in glyph_order:
-        if glyph_name in glyf:
-            width, lsb = hmtx[glyph_name]
-            if width == 0:
-                # Check if it has contours
-                glyph = glyf[glyph_name]
-                if hasattr(glyph, 'numberOfContours') and glyph.numberOfContours != 0:
-                    # It's a base character with contours but no width
-                    if 'space' in hmtx.metrics:
-                        new_width = hmtx['space'][0] # Use full space width for monospaced font
-                    else:
-                        new_width = 250
+        if glyph_name not in glyf:
+            continue
 
-                    hmtx[glyph_name] = (new_width, lsb)
-                    fixed.append(glyph_name)
+        width, lsb = hmtx[glyph_name]
+        if width == 0:
+            glyph = glyf[glyph_name]
+
+            # Check if this is a PUA glyph that needs fixing
+            is_pua_glyph = glyph_name in pua_glyphs_to_fix
+
+            # Check if it has contours (not just a composite or empty)
+            has_contours = (hasattr(glyph, 'numberOfContours') and
+                          glyph.numberOfContours is not None and
+                          glyph.numberOfContours != 0)
+
+            # Fix if it's a PUA glyph or has contours but no width
+            if is_pua_glyph or (has_contours and not glyph.isComposite()):
+                hmtx[glyph_name] = (new_width, lsb)
+                fixed.append(glyph_name)
 
     if fixed:
         print(f"  ✓ Fixed zero-width glyphs: {', '.join(fixed)}")
         # Update hhea.advanceWidthMax if needed
-        max_width = 0
-        for width, lsb in hmtx.metrics.values():
-            if width > max_width:
-                max_width = width
+        max_width = max((w for w, _ in hmtx.metrics.values()), default=0)
         if max_width > font['hhea'].advanceWidthMax:
             font['hhea'].advanceWidthMax = max_width
             print(f"  ✓ Updated hhea.advanceWidthMax to {max_width}")
@@ -216,60 +224,100 @@ def fix_zero_width_glyphs(font):
 def fix_font_names(font):
     """Fix font names to match Google Fonts requirements"""
     name_table = font['name']
-    is_bold = font['OS/2'].usWeightClass >= 700
+    weight_class = font['OS/2'].usWeightClass
     is_italic = bool(font['head'].macStyle & 2) or (font['OS/2'].fsSelection & 1)
 
     existing_family = name_table.getName(1, 3, 1, 0x409)
     family_hint = existing_family.toUnicode() if existing_family else ""
-    existing_style = name_table.getName(2, 3, 1, 0x409)
-    style_hint = existing_style.toUnicode() if existing_style else ""
     is_mono = "Mono" in family_hint or "Mono" in font.reader.file.name
-    family_name = "Iosevka Charon Mono" if is_mono else "Iosevka Charon"
+    base_family = "Iosevka Charon Mono" if is_mono else "Iosevka Charon"
+
+    # Google Fonts naming rules:
+    # - Regular/Bold/Italic/BoldItalic: Standard RIBBI naming
+    # - Other weights: Include weight in family name, subfamily is "Regular" or "Italic"
 
     weight_map = {
-        100: "Thin",
-        200: "ExtraLight",
-        300: "Light",
-        400: "Regular",
-        500: "Medium",
-        600: "SemiBold",
-        700: "Bold",
-        800: "ExtraBold",
-        900: "Heavy",
+        100: ("Thin", "thin"),
+        200: ("Extralight", "extralight"),
+        300: ("Light", "light"),
+        400: ("Regular", "regular"),
+        500: ("Medium", "medium"),
+        600: ("Semibold", "semibold"),
+        700: ("Bold", "bold"),
+        800: ("Extrabold", "extrabold"),
+        900: ("Black", "black"),
     }
-    style_base = weight_map.get(font["OS/2"].usWeightClass, style_hint.strip() or "Regular")
-    style_name = f"{style_base} Italic" if is_italic else style_base
+    weight_display, weight_lower = weight_map.get(weight_class, ("Regular", "regular"))
 
-    # Full name should be "Family Style"
-    full_name = f"{family_name} {style_name}"
-    if style_name == "Regular":
-        # For Regular, some tools prefer just Family Name for ID 4,
-        # but GF often wants Family Regular. Let's stick to Family Style for consistency
-        # unless it's already correct.
-        pass
+    # Determine naming based on Google Fonts rules
+    if weight_class == 400 and not is_italic:
+        # Regular
+        family_name = base_family
+        subfamily_name = "Regular"
+        full_name = f"{base_family} Regular"
+        ps_name = f"{base_family.replace(' ', '')}-Regular"
+        typographic_family = None
+        typographic_subfamily = None
+    elif weight_class == 700 and not is_italic:
+        # Bold
+        family_name = base_family
+        subfamily_name = "Bold"
+        full_name = f"{base_family} Bold"
+        ps_name = f"{base_family.replace(' ', '')}-Bold"
+        typographic_family = None
+        typographic_subfamily = None
+    elif weight_class == 400 and is_italic:
+        # Italic
+        family_name = base_family
+        subfamily_name = "Italic"
+        full_name = f"{base_family} Italic"
+        ps_name = f"{base_family.replace(' ', '')}-Italic"
+        typographic_family = None
+        typographic_subfamily = None
+    elif weight_class == 700 and is_italic:
+        # Bold Italic
+        family_name = base_family
+        subfamily_name = "Bold Italic"
+        full_name = f"{base_family} Bold Italic"
+        ps_name = f"{base_family.replace(' ', '')}-BoldItalic"
+        typographic_family = None
+        typographic_subfamily = None
+    else:
+        # Other weights: Include weight in family name
+        # Google Fonts requires nameID 16 and 17 for non-RIBBI fonts
+        family_name = f"{base_family} {weight_display}"
+        subfamily_name = "Italic" if is_italic else "Regular"
+        full_name = f"{base_family} {weight_display} Italic" if is_italic else f"{base_family} {weight_display}"
+        ps_suffix = "Italic" if is_italic else "Regular"
+        ps_name = f"{base_family.replace(' ', '')}{weight_display}-{ps_suffix}"
+        # Set typographic names for non-RIBBI fonts
+        typographic_family = base_family
+        typographic_subfamily = f"{weight_display} Italic" if is_italic else weight_display
 
-    # Postscript name: Family-Style (no spaces)
-    ps_style = style_name.replace(" ", "")
-    ps_name = f"{family_name.replace(' ', '')}-{ps_style}"
-
-    changed = False
-
+    # Set name IDs
     name_table.setName(family_name, 1, 3, 1, 0x409)
-    name_table.setName(style_name, 2, 3, 1, 0x409)
+    name_table.setName(subfamily_name, 2, 3, 1, 0x409)
     name_table.setName(full_name, 4, 3, 1, 0x409)
     name_table.setName(ps_name, 6, 3, 1, 0x409)
-    name_table.setName(family_name, 16, 3, 1, 0x409)
-    name_table.setName(style_name, 17, 3, 1, 0x409)
+
+    # Remove typographic names for RIBBI fonts, set them for others
+    if typographic_family is None:
+        # Remove nameID 16 and 17 for RIBBI fonts
+        name_table.names = [n for n in name_table.names if n.nameID not in (16, 17)]
+    else:
+        name_table.setName(typographic_family, 16, 3, 1, 0x409)
+        name_table.setName(typographic_subfamily, 17, 3, 1, 0x409)
 
     # Mirror to Mac platform
     name_table.setName(family_name, 1, 1, 0, 0)
-    name_table.setName(style_name, 2, 1, 0, 0)
+    name_table.setName(subfamily_name, 2, 1, 0, 0)
     name_table.setName(full_name, 4, 1, 0, 0)
     name_table.setName(ps_name, 6, 1, 0, 0)
-    name_table.setName(family_name, 16, 1, 0, 0)
-    name_table.setName(style_name, 17, 1, 0, 0)
+    if typographic_family:
+        name_table.setName(typographic_family, 16, 1, 0, 0)
+        name_table.setName(typographic_subfamily, 17, 1, 0, 0)
 
-    print(f"  ✓ Fixed font names: {full_name}")
+    print(f"  ✓ Fixed font names: {full_name} (ps: {ps_name})")
     return True
 
 
@@ -307,10 +355,23 @@ def add_fallback_mark_anchors(font):
         return False
 
     # Collect base glyphs (non-marks) present in the font.
+    # Include both glyphs in cmap AND all other glyphs (like glyph05405, etc.)
     base_glyphs = []
+    mark_glyph_names = {name for name, _ in mark_glyphs}
+
+    # First, add all glyphs from cmap that aren't marks
     for cp, name in sorted(glyph_for_cp.items()):
-        if not unicodedata.combining(chr(cp)):
+        if not unicodedata.combining(chr(cp)) and name not in mark_glyph_names:
             base_glyphs.append(name)
+
+    # Also add ALL other glyphs from glyph order that aren't in cmap and aren't marks
+    # This includes component glyphs like glyph05405, glyph06144, etc.
+    glyf_table = font['glyf']
+    for glyph_name in font.getGlyphOrder():
+        if glyph_name not in glyph_for_cp.values() and glyph_name not in mark_glyph_names:
+            # Check if this glyph actually has contours (not just a component or empty)
+            if glyph_name in glyf_table:
+                base_glyphs.append(glyph_name)
 
     # Use a single fallback mark class to keep the lookup compact.
     mark_class_index = 0
@@ -475,8 +536,8 @@ def post_process_font(font_path, output_path=None):
         if fix_fontbakery_version(font):
             fixes_applied.append("fontbakery_metadata")
 
-        # if fix_zero_width_glyphs(font):
-        #     fixes_applied.append("zero_width_glyphs")
+        if fix_zero_width_glyphs(font):
+            fixes_applied.append("zero_width_glyphs")
 
         if fix_font_names(font):
             fixes_applied.append("font_names")

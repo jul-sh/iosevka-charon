@@ -31,7 +31,9 @@ mkdir -p fonts/ttf
 found=0
 while IFS= read -r -d '' font; do
   plan_dir="$(basename "$(dirname "$(dirname "$font")")")"
-  dest_dir="fonts/ttf/$plan_dir"
+  # Convert directory name to lowercase and remove spaces for Google Fonts compliance
+  dest_dir_name="$(echo "$plan_dir" | tr '[:upper:]' '[:lower:]' | tr -d ' ')"
+  dest_dir="fonts/ttf/$dest_dir_name"
   mkdir -p "$dest_dir"
   cp "$font" "$dest_dir/"
   found=1
