@@ -14,10 +14,30 @@ echo "║          Running Complete Font Test Suite                     ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
-FAILED_TARGETS=()
+# Extract PHONY targets from Makefile
+if [ ! -f "Makefile" ]; then
+    echo "❌ Makefile not found"
+    exit 1
+fi
 
-# Targets to run in sequence
-TARGETS=("build" "test" "proof")
+# Get all PHONY targets and filter out non-test targets
+PHONY_LINE=$(grep "^\.PHONY:" Makefile | head -1)
+ALL_TARGETS=$(echo "$PHONY_LINE" | sed 's/\.PHONY://g' | tr ' ' '\n' | grep -v '^$')
+
+# Filter out targets we don't want to run in tests
+# Exclude: help (informational), clean (destructive)
+EXCLUDE_PATTERN="^(help|clean)$"
+TARGETS=($(echo "$ALL_TARGETS" | grep -Ev "$EXCLUDE_PATTERN" || true))
+
+if [ ${#TARGETS[@]} -eq 0 ]; then
+    echo "❌ No test targets found in Makefile"
+    exit 1
+fi
+
+echo "Test targets: ${TARGETS[*]}"
+echo ""
+
+FAILED_TARGETS=()
 
 for i in "${!TARGETS[@]}"; do
     target="${TARGETS[$i]}"
@@ -55,8 +75,12 @@ if [ ${#FAILED_TARGETS[@]} -eq 0 ]; then
     echo ""
     echo "Generated artifacts:"
     echo "  - Fonts: fonts/"
-    echo "  - Test reports: out/fontspector/"
-    echo "  - Proof documents: out/proof/"
+    if [ -d "out/fontspector" ]; then
+        echo "  - Test reports: out/fontspector/"
+    fi
+    if [ -d "out/proof" ]; then
+        echo "  - Proof documents: out/proof/"
+    fi
     echo ""
     exit 0
 else
