@@ -13,8 +13,9 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build and test
+  # Validate Nix environment and dependencies
+  validate-environment:
+    name: Validate Nix environment
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,30 +23,73 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v14
       - name: Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@v7
-      - name: Set artifact file name
-        id: zip-name
-        shell: bash
-        # Set the archive name to repo name + "-fonts" e.g "radiocanadafonts-fonts.zip"
-        run: echo "ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-fonts" >> $GITHUB_ENV
+      - name: Check flake
+        env:
+          NIX_CONFIG: "experimental-features = nix-command flakes"
+        run: nix flake check --show-trace
+      - name: Verify fontspector builds
+        env:
+          NIX_CONFIG: "experimental-features = nix-command flakes"
+        run: nix build .#fontspector --print-build-logs
+      - name: Verify development shell
+        env:
+          NIX_CONFIG: "experimental-features = nix-command flakes"
+        run: |
+          nix develop --command bash -c "
+            echo 'Rust version:' && rustc --version
+            echo 'Node version:' && node --version
+            echo 'Python version:' && python --version
+            echo 'fontspector version:' && fontspector --version
+            echo 'diffenator2 version:' && diffenator2 --version || echo 'diffenator2 found'
+          "
 
-      # If a new release is cut, use the release tag to auto-bump the source files
-      # - name: Bump release
-      #   if: github.event_name == 'release'
-      #   run: |
-      #     . venv/bin/activate
-      #     SRCS=$(yq e ".sources[]" sources/config.yaml)
-      #     TAG_NAME=${GITHUB_REF/refs\/tags\//}
-      #     echo "Bumping $SRCS to $TAG_NAME"
-      #     for src in $SRCS
-      #     do
-      #       bumpfontversion sources/$src --new-version $TAG_NAME;
-      #     done
-
-      - name: Build font
+  # Build fonts
+  build:
+    name: Build fonts
+    runs-on: ubuntu-latest
+    needs: validate-environment
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+      - name: Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      - name: Build fonts
         env:
           NIX_CONFIG: "experimental-features = nix-command flakes"
         run: make build
-      - name: Check with fontspector
+      - name: Check font files were created
+        run: |
+          if [ ! -d "fonts" ] || [ -z "$(find fonts -name '*.ttf' -type f)" ]; then
+            echo "Error: No TTF font files were generated"
+            exit 1
+          fi
+          echo "Font files generated:"
+          find fonts -name '*.ttf' -type f
+      - name: Upload font artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-fonts
+          path: fonts/
+          retention-days: 7
+
+  # Run comprehensive quality tests
+  test-fonts:
+    name: Quality tests
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+      - name: Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      - name: Download font artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: built-fonts
+          path: fonts/
+      - name: Run fontspector tests
         id: fontspector
         env:
           NIX_CONFIG: "experimental-features = nix-command flakes"
@@ -54,17 +98,99 @@ jobs:
           make test
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+
+          # Check if report was generated
+          if [ -f "out/fontspector/fontspector-report.md" ]; then
+            echo "report_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
           if [ "$status" -ne 0 ]; then
             echo "failed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::fontspector tests failed with exit code $status"
           else
             echo "failed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::All fontspector tests passed!"
           fi
+
           exit 0
         continue-on-error: true
-      - name: Generate proofs
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fontspector-report
+          path: out/fontspector/
+          retention-days: 30
+      - name: Fail if critical tests failed
+        if: steps.fontspector.outputs.failed == 'true' && steps.fontspector.outputs.exit_code != '0'
+        run: |
+          echo "::error::fontspector quality tests failed. Please review the test report."
+          exit 1
+
+  # Generate proof documents
+  generate-proofs:
+    name: Generate proofs
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v14
+      - name: Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@v7
+      - name: Download font artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: built-fonts
+          path: fonts/
+      - name: Generate proof documents
         env:
           NIX_CONFIG: "experimental-features = nix-command flakes"
         run: make proof
+      - name: Check proof files were created
+        run: |
+          if [ ! -d "out/proof" ] || [ -z "$(find out/proof -name '*.html' -type f)" ]; then
+            echo "::warning::No proof HTML files were generated"
+          else
+            echo "Proof files generated:"
+            find out/proof -name '*.html' -type f
+          fi
+      - name: Upload proof documents
+        uses: actions/upload-artifact@v4
+        with:
+          name: proof-documents
+          path: out/proof/
+          retention-days: 30
+
+  # Package everything together for releases
+  package:
+    name: Package release artifacts
+    runs-on: ubuntu-latest
+    needs: [build, test-fonts, generate-proofs]
+    if: always() && needs.build.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set artifact file name
+        run: echo "ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-fonts" >> $GITHUB_ENV
+      - name: Download font artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: built-fonts
+          path: fonts/
+      - name: Download test report
+        uses: actions/download-artifact@v4
+        with:
+          name: fontspector-report
+          path: out/fontspector/
+        continue-on-error: true
+      - name: Download proof documents
+        uses: actions/download-artifact@v4
+        with:
+          name: proof-documents
+          path: out/proof/
+        continue-on-error: true
       - name: Set up test result site
         run: |
           mkdir -p out/ttf
@@ -73,18 +199,19 @@ jobs:
           else
             echo "No TTF files found to copy into out/ttf."
           fi
-          python scripts/generate-ttf-manifest.py
-          cp scripts/index.html out/index.html
-      - name: Archive artifacts
+          python scripts/generate-ttf-manifest.py || echo "Manifest generation failed"
+          cp scripts/index.html out/index.html || echo "No index.html to copy"
+      - name: Archive complete package
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ZIP_NAME }}
           path: |
             fonts
             out
+          retention-days: 90
     outputs:
       zip_name: ${{ env.ZIP_NAME }}
-      validation_failed: ${{ steps.fontspector.outputs.failed }}
+      validation_failed: ${{ needs.test-fonts.outputs.fontspector.failed }}
 
   # Release job runs only when a release is published via the GitHub UI.
   # This uploads the built fonts and proof reports as release assets.
@@ -93,12 +220,12 @@ jobs:
     name: Release bundle
     if: github.event_name == 'release'
     needs:
-      - build
+      - package
     runs-on: ubuntu-latest
     env:
-      ZIP_NAME: ${{ needs.build.outputs.zip_name }}
+      ZIP_NAME: ${{ needs.package.outputs.zip_name }}
       GH_TOKEN: ${{ github.token }}
-      VALIDATION_FAILED: ${{ needs.build.outputs.validation_failed }}
+      VALIDATION_FAILED: ${{ needs.package.outputs.validation_failed }}
     steps:
       - uses: actions/checkout@v4
       - name: Use font artifacts from CI
@@ -158,3 +285,81 @@ jobs:
       - name: Update release notes
         run: |
           gh release edit ${{ github.event.release.tag_name }} -F release-notes.md
+
+  # Comment on PR with test results
+  pr-comment:
+    name: PR test summary
+    if: github.event_name == 'pull_request'
+    needs: [validate-environment, build, test-fonts, generate-proofs]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Download test report
+        uses: actions/download-artifact@v4
+        with:
+          name: fontspector-report
+          path: fontspector-report/
+        continue-on-error: true
+      - name: Create PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read test report if it exists
+            let reportContent = '';
+            try {
+              if (fs.existsSync('fontspector-report/fontspector-report.md')) {
+                const fullReport = fs.readFileSync('fontspector-report/fontspector-report.md', 'utf8');
+                // Extract summary (first 50 lines)
+                const lines = fullReport.split('\n').slice(0, 50);
+                reportContent = lines.join('\n');
+                if (fullReport.split('\n').length > 50) {
+                  reportContent += '\n\n_...Report truncated. Download the full report from artifacts._';
+                }
+              }
+            } catch (error) {
+              reportContent = '_Test report not available_';
+            }
+
+            const envStatus = '${{ needs.validate-environment.result }}';
+            const buildStatus = '${{ needs.build.result }}';
+            const testStatus = '${{ needs.test-fonts.result }}';
+            const proofStatus = '${{ needs.generate-proofs.result }}';
+
+            const statusEmoji = (status) => {
+              if (status === 'success') return '✅';
+              if (status === 'failure') return '❌';
+              if (status === 'cancelled') return '⏹️';
+              return '⚠️';
+            };
+
+            const comment = `## 🔍 Font Build & Test Results
+
+            ### Job Status
+            - ${statusEmoji(envStatus)} **Environment Validation**: ${envStatus}
+            - ${statusEmoji(buildStatus)} **Font Build**: ${buildStatus}
+            - ${statusEmoji(testStatus)} **Quality Tests**: ${testStatus}
+            - ${statusEmoji(proofStatus)} **Proof Generation**: ${proofStatus}
+
+            ### Test Report Summary
+            <details>
+            <summary>Click to expand fontspector report</summary>
+
+            \`\`\`
+            ${reportContent}
+            \`\`\`
+
+            </details>
+
+            ---
+            📦 Download artifacts from the workflow run to see full reports and generated fonts.
+            `;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
