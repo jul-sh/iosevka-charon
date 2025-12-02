@@ -242,13 +242,39 @@ def fix_zero_width_glyphs(font):
 def fix_font_names(font):
     """Fix font names to match Google Fonts requirements"""
     name_table = font['name']
-    weight_class = font['OS/2'].usWeightClass
     is_italic = bool(font['head'].macStyle & 2) or (font['OS/2'].fsSelection & 1)
 
     existing_family = name_table.getName(1, 3, 1, 0x409)
     family_hint = existing_family.toUnicode() if existing_family else ""
     is_mono = "Mono" in family_hint or "Mono" in font.reader.file.name
     base_family = "Iosevka Charon Mono" if is_mono else "Iosevka Charon"
+
+    # Detect weight from file name (more reliable than current OS/2 weight class)
+    file_name = Path(font.reader.file.name).stem
+    weight_from_name = None
+    for w in ["Heavy", "Light", "Medium", "Bold", "Thin", "ExtraLight", "SemiBold", "ExtraBold", "Black"]:
+        if w in file_name:
+            weight_from_name = w
+            break
+
+    # Map weight names to weight class values
+    weight_name_to_class = {
+        "Thin": 100,
+        "ExtraLight": 200,
+        "Light": 300,
+        "Medium": 500,
+        "SemiBold": 600,
+        "Bold": 700,
+        "ExtraBold": 800,
+        "Black": 900,
+        "Heavy": 900,
+    }
+
+    # Determine actual weight class from file name or existing value
+    if weight_from_name:
+        weight_class = weight_name_to_class.get(weight_from_name, 400)
+    else:
+        weight_class = font['OS/2'].usWeightClass
 
     # Google Fonts naming rules:
     # - Regular/Bold/Italic/BoldItalic: Standard RIBBI naming
@@ -263,7 +289,7 @@ def fix_font_names(font):
         600: ("Semibold", "semibold"),
         700: ("Bold", "bold"),
         800: ("Extrabold", "extrabold"),
-        900: ("Black", "black"),
+        900: ("Heavy", "heavy"),  # Use Heavy, not Black
     }
     weight_display, weight_lower = weight_map.get(weight_class, ("Regular", "regular"))
 
@@ -305,16 +331,32 @@ def fix_font_names(font):
         typographic_subfamily = None
     else:
         # Other weights: Include weight in family name
-        # Google Fonts requires nameID 16 and 17 for non-RIBBI fonts
         family_name = f"{base_family} {weight_display}"
         subfamily_name = "Italic" if is_italic else "Regular"
-        # Full name should include both weight AND subfamily (e.g., "Iosevka Charon Extrabold Regular")
-        full_name = f"{base_family} {weight_display} {subfamily_name}"
-        ps_suffix = "Italic" if is_italic else "Regular"
-        ps_name = f"{base_family.replace(' ', '')}{weight_display}-{ps_suffix}"
-        # Set typographic names for non-RIBBI fonts
+
+        # Google Fonts expects for non-RIBBI fonts:
+        # - Family Name (ID 1): "Iosevka Charon Light" (includes weight)
+        # - Subfamily Name (ID 2): "Regular" or "Italic"
+        # - Full Name (ID 4): "Iosevka Charon Light" or "Iosevka Charon Light Italic" (no "Regular" for upright)
+        # - Postscript Name (ID 6): "IosevkaCharon-Light" or "IosevkaCharon-LightItalic" (weight after hyphen)
+        # - Typographic Family (ID 16): "Iosevka Charon"
+        # - Typographic Subfamily (ID 17): "Light" or "Light Italic"
+        if is_italic:
+            full_name = f"{base_family} {weight_display} Italic"
+            ps_name = f"{base_family.replace(' ', '')}-{weight_display}Italic"
+            typographic_subfamily = f"{weight_display} Italic"
+        else:
+            full_name = f"{base_family} {weight_display}"
+            ps_name = f"{base_family.replace(' ', '')}-{weight_display}"
+            typographic_subfamily = weight_display
+
         typographic_family = base_family
-        typographic_subfamily = f"{weight_display} Italic" if is_italic else weight_display
+
+        # Keep actual weight class (don't set to 400)
+        # weight_class is already set from weight_from_name above
+
+    # Set correct OS/2 usWeightClass
+    font['OS/2'].usWeightClass = weight_class
 
     # Set name IDs
     name_table.setName(family_name, 1, 3, 1, 0x409)
@@ -340,11 +382,6 @@ def fix_font_names(font):
     if typographic_family:
         name_table.setName(typographic_family, 16, 1, 0, 0)
         name_table.setName(typographic_subfamily, 17, 1, 0, 0)
-
-    # For non-RIBBI fonts, OS/2 usWeightClass should be 400 (Regular)
-    # The weight information is encoded in the family name and typographic subfamily
-    if typographic_family:
-        font['OS/2'].usWeightClass = 400
 
     print(f"  ✓ Fixed font names: {full_name} (ps: {ps_name})")
     return True

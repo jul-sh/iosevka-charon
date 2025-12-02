@@ -38,11 +38,21 @@ shape = 500
 menu = 5
 css = "normal"
 
-# ONLY Regular and Bold weights
+# Light, Regular, Medium, Bold, Heavy weights
+[buildPlans.IosevkaCharon.weights.Light]
+shape = 300
+menu = 300
+css  = 300
+
 [buildPlans.IosevkaCharon.weights.Regular]
 shape = 400
 menu = 400
 css  = 400
+
+[buildPlans.IosevkaCharon.weights.Medium]
+shape = 500
+menu = 500
+css  = 500
 
 [buildPlans.IosevkaCharon.weights.Bold]
 shape = 700
@@ -103,15 +113,26 @@ shape = 500
 menu = 5
 css = "normal"
 
+[buildPlans.IosevkaCharonMono.weights.Light]
+shape = 300
+menu = 300
+css  = 300
+
 [buildPlans.IosevkaCharonMono.weights.Regular]
 shape = 400
 menu = 400
 css  = 400
 
+[buildPlans.IosevkaCharonMono.weights.Medium]
+shape = 500
+menu = 500
+css  = 500
+
 [buildPlans.IosevkaCharonMono.weights.Bold]
 shape = 700
 menu = 700
 css  = 700
+
 
 [buildPlans.IosevkaCharonMono.slopes.Upright]
 angle = 0
