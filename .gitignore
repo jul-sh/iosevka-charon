@@ -7,6 +7,7 @@ postprocess.stamp
 proof
 fonts
 .venv
+.venv-drawbot
 out
 sources/output
 __pycache__/

@@ -5,6 +5,10 @@ PLAN := sources/private-build-plans.toml
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) $(shell find sources/scripts -name "build_fonts.py" 2>/dev/null)
 POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null)
 
+# DrawBot image generation
+DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
+DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g')
+
 help:
 	@echo "###"
 	@echo "# Build targets for Iosevka Charon"
@@ -14,6 +18,7 @@ help:
 	@echo "  make build PLAN=<path-to-toml>:      Builds fonts using a custom build plan"
 	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → sources/output/)"
 	@echo "  make postprocess:                    Post-processes fonts (stage 2: sources/output/ → fonts/)"
+	@echo "  make images:                         Generates specimen images via DrawBot (in Nix)"
 	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
@@ -42,6 +47,12 @@ postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 
 postprocess: postprocess.stamp
 
+# Stage 3: Generate specimen images with DrawBot
+images: postprocess.stamp $(DRAWBOT_OUTPUT)
+
+documentation/%.png: documentation/%.py postprocess.stamp
+	$(ENV_RUNNER) python3 $< --output $@
+
 # Testing and proofing
 test: postprocess.stamp
 	$(ENV_RUNNER) bash -c 'which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1); \
@@ -62,4 +73,4 @@ clean:
 	rm -f fonts.stamp postprocess.stamp
 	git stash && git clean -fdx && git stash pop
 
-.PHONY: help build fonts postprocess test proof clean
+.PHONY: help build fonts postprocess images test proof clean
