@@ -28,6 +28,7 @@
           ufolint
           defcon
           fontmath
+          diffenator2
 
           # Additional font processing dependencies
           brotli

@@ -11,8 +11,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   build:
@@ -24,10 +22,6 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@v14
       - name: Nix cache
         uses: DeterminateSystems/magic-nix-cache-action@v7
-      - name: Setup fontspector
-        uses: fonttools/setup-fontspector@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Set artifact file name
         id: zip-name
         shell: bash
@@ -52,7 +46,7 @@ jobs:
           NIX_CONFIG: "experimental-features = nix-command flakes"
         run: make build
       - name: Check with fontspector
-        id: fontbakery
+        id: fontspector
         env:
           NIX_CONFIG: "experimental-features = nix-command flakes"
         run: |
@@ -81,11 +75,6 @@ jobs:
           fi
           python scripts/generate-ttf-manifest.py
           cp scripts/index.html out/index.html
-      - name: Collect deployment assets
-        if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./out
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -95,25 +84,7 @@ jobs:
             out
     outputs:
       zip_name: ${{ env.ZIP_NAME }}
-      validation_failed: ${{ steps.fontbakery.outputs.failed }}
-
-  deploy:
-    name: Deploy results to GitHub Pages
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/') }}
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-    outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
+      validation_failed: ${{ steps.fontspector.outputs.failed }}
 
   # There are two ways a release can be created: either by pushing a tag, or by
   # creating a release from the GitHub UI. Pushing a tag does not automatically
@@ -126,12 +97,10 @@ jobs:
     if: github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/')
     needs:
       - build
-      - deploy
     runs-on: ubuntu-latest
     env:
       ZIP_NAME: ${{ needs.build.outputs.zip_name }}
       GH_TOKEN: ${{ github.token }}
-      PAGE_URL: ${{ needs.deploy.outputs.page_url }}
       VALIDATION_FAILED: ${{ needs.build.outputs.validation_failed }}
     steps:
       - uses: actions/checkout@v4
@@ -168,18 +137,13 @@ jobs:
           if [ "${VALIDATION_FAILED}" = "true" ]; then
             STATUS="Failed"
           fi
-          PROOF_LINK=${PAGE_URL%/}/proof/diffenator2-report.html
-          FONTBAKERY_LINK=${PAGE_URL%/}/fontbakery
           {
             echo "## ${GITHUB_REF_NAME}"
             echo ""
-            echo "- Demo and reports: ${PAGE_URL:-N/A}"
-            echo "- Hosted proof: ${PROOF_LINK:-N/A}"
-            echo "- FontBakery reports: ${FONTBAKERY_LINK:-N/A}"
             echo "- Validation status: ${STATUS}"
             if [ "${VALIDATION_FAILED}" = "true" ]; then
               echo ""
-              echo "FontBakery reported issues during validation. See attached and hosted reports for details."
+              echo "fontspector reported issues during validation. See attached report for details."
             fi
           } > release-notes.md
       - name: Check for release
