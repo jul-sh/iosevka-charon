@@ -63,6 +63,16 @@
 
           cargoHash = "sha256-5C/u25SYNAdPjvJ8Lb2s6EBuHR593eYe5Bps5hwiC4s=";
 
+          # Patch to make fontspector-checkapi offline-buildable for Nix sandboxed builds
+          patches = [ ./nix/patches/fontspector-offline.patch ];
+
+          # Vendor the generated script_tags.rs and language_tags.rs files
+          # to avoid network access during build
+          postPatch = ''
+            cp ${./nix/patches/fontspector-checkapi-src/script_tags.rs} fontspector-checkapi/src/script_tags.rs
+            cp ${./nix/patches/fontspector-checkapi-src/language_tags.rs} fontspector-checkapi/src/language_tags.rs
+          '';
+
           # Build only the CLI binary, not all workspace members
           cargoBuildFlags = [ "-p" "fontspector" ];
           cargoTestFlags = [ "-p" "fontspector" ];
