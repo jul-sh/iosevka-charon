@@ -38,6 +38,9 @@ Definitions
 Holder(s) under this license and clearly marked as such. This may
 include source files, build scripts and documentation.
 
+`"Reserved Font Name"` refers to any names specified as such after the
+copyright statement(s).
+
 `"Original Version"` refers to the collection of Font Software components as
 distributed by the Copyright Holder(s).
 
