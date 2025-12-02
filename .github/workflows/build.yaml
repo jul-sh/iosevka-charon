@@ -150,13 +150,28 @@ jobs:
         continue-on-error: true
       - name: Copy OFL.txt to release directory
         run: cp OFL.txt ${{ env.ZIP_NAME }}/OFL.txt
-      - name: Remove proof/test outputs from release
-        run: rm -rf ${{ env.ZIP_NAME }}/out
       - name: Set release file name
         shell: bash
         run: echo "RELEASE_ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-      - name: Create release bundle
-        run: mv ${{ env.ZIP_NAME }} ${{ env.RELEASE_ZIP_NAME }}; zip -r ${{ env.RELEASE_ZIP_NAME }}.zip ${{ env.RELEASE_ZIP_NAME }}
+      - name: Create fonts zip archive
+        run: |
+          cd ${{ env.ZIP_NAME }}
+          zip -r ../${{ env.RELEASE_ZIP_NAME }}-fonts.zip fonts/
+          cd ..
+      - name: Create QA reports and proofs zip archive
+        run: |
+          cd ${{ env.ZIP_NAME }}
+          zip -r ../${{ env.RELEASE_ZIP_NAME }}-qa-reports.zip out/
+          cd ..
+      - name: Create release bundle (fonts only for main zip)
+        run: |
+          mkdir -p ${{ env.RELEASE_ZIP_NAME }}
+          cp -r ${{ env.ZIP_NAME }}/fonts ${{ env.RELEASE_ZIP_NAME }}/
+          cp ${{ env.ZIP_NAME }}/OFL.txt ${{ env.RELEASE_ZIP_NAME }}/
+          if [ -f ${{ env.ZIP_NAME }}/ARTICLE.en_us.html ]; then
+            cp ${{ env.ZIP_NAME }}/ARTICLE.en_us.html ${{ env.RELEASE_ZIP_NAME }}/
+          fi
+          zip -r ${{ env.RELEASE_ZIP_NAME }}.zip ${{ env.RELEASE_ZIP_NAME }}
       - name: Build release notes
         run: |
           STATUS="Passed"
@@ -181,6 +196,10 @@ jobs:
       - name: Upload proof report asset
         if: ${{ steps.proof.outputs.asset != '' }}
         run: gh release upload ${{ github.event.release.tag_name }} ${{ steps.proof.outputs.asset }} --clobber
+      - name: Upload fonts zip archive
+        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}-fonts.zip --clobber
+      - name: Upload QA reports zip archive
+        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}-qa-reports.zip --clobber
       - name: Populate release
         run: |
           gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}.zip --clobber
