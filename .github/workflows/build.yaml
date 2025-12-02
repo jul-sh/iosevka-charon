@@ -42,7 +42,7 @@ jobs:
       - name: Build fonts
         env:
           NIX_CONFIG: "experimental-features = nix-command flakes"
-        run: bash tests/build-fonts.sh
+        run: make build
       - name: Upload font artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -72,7 +72,7 @@ jobs:
           NIX_CONFIG: "experimental-features = nix-command flakes"
         run: |
           set +e
-          bash tests/test-fonts.sh
+          make test
           status=$?
 
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
@@ -111,7 +111,7 @@ jobs:
       - name: Generate proof documents
         env:
           NIX_CONFIG: "experimental-features = nix-command flakes"
-        run: bash tests/generate-proofs.sh
+        run: make proof
       - name: Upload proof documents
         uses: actions/upload-artifact@v4
         with:
