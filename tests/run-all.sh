@@ -14,20 +14,21 @@ echo "║          Running Complete Font Test Suite                     ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo ""
 
-# Extract PHONY targets from Makefile
+# Extract TEST_TARGETS from Makefile
 if [ ! -f "Makefile" ]; then
     echo "❌ Makefile not found"
     exit 1
 fi
 
-# Get all PHONY targets and filter out non-test targets
-PHONY_LINE=$(grep "^\.PHONY:" Makefile | head -1)
-ALL_TARGETS=$(echo "$PHONY_LINE" | sed 's/\.PHONY://g' | tr ' ' '\n' | grep -v '^$')
+# Extract the TEST_TARGETS variable from the Makefile
+TEST_TARGETS_LINE=$(grep "^TEST_TARGETS :=" Makefile | head -1)
+if [ -z "$TEST_TARGETS_LINE" ]; then
+    echo "❌ TEST_TARGETS variable not found in Makefile"
+    exit 1
+fi
 
-# Filter out targets we don't want to run in tests
-# Exclude: help (informational), clean (destructive)
-EXCLUDE_PATTERN="^(help|clean)$"
-TARGETS=($(echo "$ALL_TARGETS" | grep -Ev "$EXCLUDE_PATTERN" || true))
+# Parse the targets from the variable definition
+TARGETS=($(echo "$TEST_TARGETS_LINE" | sed 's/TEST_TARGETS :=//g'))
 
 if [ ${#TARGETS[@]} -eq 0 ]; then
     echo "❌ No test targets found in Makefile"

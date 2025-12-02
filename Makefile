@@ -1,6 +1,9 @@
 ENV_RUNNER := ./scripts/run-in-nix.sh
 PLAN := sources/private-build-plans.toml
 
+# Targets that should be included in automated test runs
+TEST_TARGETS := build fonts postprocess images test proof
+
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) $(shell find sources/scripts -name "build_fonts.py" 2>/dev/null)
 POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null)
@@ -21,6 +24,7 @@ help:
 	@echo "  make images:                         Generates specimen images via DrawBot (in Nix)"
 	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
+	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
 
@@ -73,4 +77,17 @@ clean:
 	rm -f fonts.stamp postprocess.stamp
 	git stash && git clean -fdx && git stash pop
 
-.PHONY: help build fonts postprocess images test proof clean
+# Update Iosevka subtree to a new version
+# Usage: make update-subtree TAG=v34.0.0
+update-subtree:
+	@if [ -z "$(TAG)" ]; then \
+		echo "Error: TAG parameter is required"; \
+		echo "Usage: make update-subtree TAG=v34.0.0"; \
+		exit 1; \
+	fi
+	@echo "==> Updating Iosevka subtree to $(TAG)..."
+	git fetch iosevka-upstream tag $(TAG) --no-tags
+	git subtree pull --prefix=sources/iosevka iosevka-upstream $(TAG) -m "Update Iosevka subtree to $(TAG)"
+	@echo "==> Subtree updated successfully to $(TAG)"
+
+.PHONY: $(TEST_TARGETS) help clean update-subtree
