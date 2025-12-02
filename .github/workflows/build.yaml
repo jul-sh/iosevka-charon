@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - main
-      - release
-      - release/**
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -86,15 +86,12 @@ jobs:
       zip_name: ${{ env.ZIP_NAME }}
       validation_failed: ${{ steps.fontspector.outputs.failed }}
 
-  # There are two ways a release can be created: either by pushing a tag, or by
-  # creating a release from the GitHub UI. Pushing a tag does not automatically
-  # create a release, so we have to do that ourselves. However, creating a
-  # release from the GitHub UI *does* push a tag, and we don't want to create
-  # a new release in that case because one already exists!
+  # Release job runs only when a release is published via the GitHub UI.
+  # This uploads the built fonts and proof reports as release assets.
 
   release:
     name: Release bundle
-    if: github.ref == 'refs/heads/release' || startsWith(github.ref, 'refs/heads/release/')
+    if: github.event_name == 'release'
     needs:
       - build
     runs-on: ubuntu-latest
@@ -128,7 +125,7 @@ jobs:
         run: rm -rf ${{ env.ZIP_NAME }}/out
       - name: Set release file name
         shell: bash
-        run: echo "RELEASE_ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-${{github.ref_name}}" >> $GITHUB_ENV
+        run: echo "RELEASE_ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-${{ github.event.release.tag_name }}" >> $GITHUB_ENV
       - name: Create release bundle
         run: mv ${{ env.ZIP_NAME }} ${{ env.RELEASE_ZIP_NAME }}; zip -r ${{ env.RELEASE_ZIP_NAME }}.zip ${{ env.RELEASE_ZIP_NAME }}
       - name: Build release notes
@@ -138,7 +135,7 @@ jobs:
             STATUS="Failed"
           fi
           {
-            echo "## ${GITHUB_REF_NAME}"
+            echo "## ${{ github.event.release.tag_name }}"
             echo ""
             echo "- Validation status: ${STATUS}"
             if [ "${VALIDATION_FAILED}" = "true" ]; then
@@ -146,24 +143,18 @@ jobs:
               echo "fontspector reported issues during validation. See attached report for details."
             fi
           } > release-notes.md
-      - name: Check for release
-        id: create_release
-        run: |
-          if ! gh release view ${{ github.ref_name }}; then
-          gh release create ${{ github.ref_name }} -t ${{ github.ref_name }} -F release-notes.md
-          fi
       - name: Upload TTF assets
         run: |
           mapfile -t ttfs < <(find "${{ env.RELEASE_ZIP_NAME }}/fonts/ttf" -type f -name "*.ttf")
           if [ ${#ttfs[@]} -gt 0 ]; then
-            gh release upload ${{ github.ref_name }} "${ttfs[@]}" --clobber
+            gh release upload ${{ github.event.release.tag_name }} "${ttfs[@]}" --clobber
           fi
       - name: Upload proof report asset
         if: ${{ steps.proof.outputs.asset != '' }}
-        run: gh release upload ${{ github.ref_name }} ${{ steps.proof.outputs.asset }} --clobber
+        run: gh release upload ${{ github.event.release.tag_name }} ${{ steps.proof.outputs.asset }} --clobber
       - name: Populate release
         run: |
-          gh release upload ${{ github.ref_name }} ${{ env.RELEASE_ZIP_NAME }}.zip --clobber
-      - name: Set release live
+          gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}.zip --clobber
+      - name: Update release notes
         run: |
-          gh release edit ${{ github.ref_name }} --draft=false -F release-notes.md
+          gh release edit ${{ github.event.release.tag_name }} -F release-notes.md
