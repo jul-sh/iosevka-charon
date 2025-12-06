@@ -2,7 +2,7 @@ ENV_RUNNER := ./scripts/run-in-nix.sh
 PLAN := sources/private-build-plans.toml
 
 # Targets that should be included in automated test runs
-TEST_TARGETS := build fonts postprocess images test proof
+TEST_TARGETS := build fonts postprocess images test proof diff-postprocess
 
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) $(shell find sources/scripts -name "build_fonts.py" 2>/dev/null)
@@ -24,6 +24,7 @@ help:
 	@echo "  make images:                         Generates specimen images via DrawBot (in Nix)"
 	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
+	@echo "  make diff-postprocess:               Compares raw vs post-processed fonts (in Nix)"
 	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
@@ -72,6 +73,19 @@ proof: postprocess.stamp
 	$(ENV_RUNNER) bash -c 'TOCHECK=$$(find fonts -type f -name "*.ttf" 2>/dev/null); \
 		mkdir -p out/proof; \
 		diffenator2 proof $$TOCHECK -o out/proof'
+
+diff-postprocess: postprocess.stamp
+	$(ENV_RUNNER) bash -c 'BEFORE=$$(find sources/output -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
+		AFTER=$$(find fonts -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
+		mkdir -p out/diff-postprocess; \
+		if [ -z "$$BEFORE" ] || [ -z "$$AFTER" ]; then \
+			echo "Error: Could not find fonts to compare"; \
+			exit 1; \
+		fi; \
+		diffenator2 diff --fonts-before $$BEFORE --fonts-after $$AFTER -o out/diff-postprocess --no-diffenator || true; \
+		echo ""; \
+		echo "==> Visual comparison complete!"; \
+		echo "==> Open out/diff-postprocess/diffenator2-report.html to view results"'
 
 clean:
 	rm -f fonts.stamp postprocess.stamp
