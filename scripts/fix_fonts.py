@@ -26,8 +26,12 @@ from gftools.fix import fix_font as gftools_fix_font
 import unicodedata
 
 # Keep family-wide vertical metrics consistent to satisfy FontBakery family checks.
-TARGET_WIN_ASCENT = 1200
-TARGET_WIN_DESCENT = 607
+# Win metrics must cover glyph bounds (for clipping prevention)
+# but hhea metrics control line spacing (keep tighter like original Iosevka)
+TARGET_WIN_ASCENT = 1198  # Fontspector requires this to cover all glyphs
+TARGET_WIN_DESCENT = 604  # Fontspector requires this to cover all descenders
+TARGET_HHEA_ASCENDER = 975  # Slightly above original 965 to cover tallest glyphs
+TARGET_HHEA_DESCENDER = -255  # Slightly below original -215 for descenders
 
 def fix_font_revision(font):
     """Fix font revision and nameID5 to exact value (Version 32.5.0)."""
@@ -68,22 +72,24 @@ def fix_windows_metrics(font):
 
 def fix_vertical_metrics(font):
     """Fix hhea vertical metrics for Google Fonts"""
-    # Google Fonts requires hhea metrics to cover the bounding box
-    # and match OS/2 typo metrics.
-    # Set all of them to match Win metrics which cover the bounding box.
-    font['hhea'].ascender = TARGET_WIN_ASCENT
-    font['hhea'].descender = -TARGET_WIN_DESCENT
+    # Strategy: Win metrics cover glyph bounds (clipping prevention)
+    # but hhea/Typo metrics control line spacing (keep tighter)
+    font['hhea'].ascender = TARGET_HHEA_ASCENDER
+    font['hhea'].descender = TARGET_HHEA_DESCENDER
     font['hhea'].lineGap = 0
 
-    font['OS/2'].sTypoAscender = TARGET_WIN_ASCENT
-    font['OS/2'].sTypoDescender = -TARGET_WIN_DESCENT
+    # Typo metrics should match hhea for consistency
+    font['OS/2'].sTypoAscender = TARGET_HHEA_ASCENDER
+    font['OS/2'].sTypoDescender = TARGET_HHEA_DESCENDER
     font['OS/2'].sTypoLineGap = 0
 
-    print(f"  ✓ Fixed hhea and Typo metrics to match Win metrics: "
-          f"ascender={font['hhea'].ascender}, descender={font['hhea'].descender}")
+    # Enable USE_TYPO_METRICS flag (bit 7) so apps use Typo instead of Win for line spacing
+    font['OS/2'].fsSelection |= (1 << 7)
 
+    total_height = font['hhea'].ascender - font['hhea'].descender
     print(f"  ✓ Fixed hhea metrics: ascender={font['hhea'].ascender}, "
-          f"descender={font['hhea'].descender}, lineGap=0")
+          f"descender={font['hhea'].descender}, total={total_height}")
+    print(f"  ✓ Fixed Typo metrics to match hhea (USE_TYPO_METRICS enabled)")
     return True
 
 
