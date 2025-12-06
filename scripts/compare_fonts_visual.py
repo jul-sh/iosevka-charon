@@ -147,6 +147,16 @@ def main():
     alphabet_lower = "abcdefghijklmnopqrstuvwxyz"
     digits = "0123456789"
     sample_text = "The quick brown fox jumps over the lazy dog"
+    complex_block = """s-ôtes vre̊ymint 
+ecretario.general@interlingua.com Көдэҥ параԝааньэрэҥ Йаԝнай GWIRIOÙ СНЕЖНЯ Арганізацыі Абʼяднаных правоў 
+яе тэрыторый». ГЕНЕРАЛЬНАЯ үйелменінің құқықтарының алынбайтындығын Ұлттар Әр Құлдық Өзінің Ҳар kǎ 
+ɔŋɔ̌ kǒ nüxü̃́ ĨXẼ qaỹaỹateeta nai>>ctaxa ƏBİLOV ləyoğətə Çəvon po'ñoc̈h Ḽifhasi Ḽoṱhe Nyanḓadzamafhungo ḽa ṅwaha 
+ewa DPI/876/Rev3-07–07-30950-Shundunthule-2007.40M кӱнинде тӧзӧгӧзи Ӱредӱлик учурлу.Ӧскӧ manuśenqe famělia 
+spirŕcia akalaɵar trąden rňdel teritorűqesqiri, maźutipen naśărdől Âaj procedůra. d´fhiacha Южно-Сахалинск Ниғвӊ 
+уфтоӿ салӻанӿунвд ӷавргуйныр̌кир̌ Ыткғун Ӿаӊы Генеральнай айӈаниду į žmonių giminės sąžinę, Įgyvendindamas 
+рођеног Òmma Фэдэр neɗɗo ɓesngu moƴƴam, kelliƭuya Ɗii Ês Ĝenerala ĉiuj efektiviĝo kontraŭ Ĉarto Ŝtatoj-Membroj paŝoj 
+osedaĵoj, tjuta! Ó KU`OTENESE nɑn ʒem Được đồng phẩm jǐ Nǔ Åtta Үөрэхтээһин éyaltai{ab Enyiń mpɔ̂ Það þetta 
+éttlætis lýst, ΔΕΚΕΜΒΡΙΟΥ Ἐπειδὴ ἡ ἀναγνώριση τῆς ἀξιοπρέπειας, ποὺ εἶναι σύμφυτη"""
     multiline_sample = [
         "The quick brown fox",
         "jumps over the lazy dog.",
@@ -171,6 +181,19 @@ def main():
             combined.paste(after_img, (before_img.width, 0))
             combined.save(output_dir / f"{name}-comparison.png")
             print(f"  ✓ Generated {name}-comparison.png")
+
+    # Render complex multilingual sample to catch edge shaping/marks
+    complex_lines = complex_block.splitlines()
+    before_complex = render_multiline_sample(before_regular, complex_lines, 26)
+    after_complex = render_multiline_sample(after_regular, complex_lines, 26)
+
+    if before_complex and after_complex:
+        max_width = max(before_complex.width, after_complex.width)
+        combined = Image.new('RGB', (max_width, before_complex.height + after_complex.height + 20), 'white')
+        combined.paste(before_complex, (0, 0))
+        combined.paste(after_complex, (0, before_complex.height + 20))
+        combined.save(output_dir / "complex-multilingual-comparison.png")
+        print(f"  ✓ Generated complex-multilingual-comparison.png")
 
     # Render multiline sample to show line spacing issue
     before_multi = render_multiline_sample(before_regular, multiline_sample, 32)
