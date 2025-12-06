@@ -30,8 +30,9 @@ import unicodedata
 # but hhea metrics control line spacing (keep tighter like original Iosevka)
 TARGET_WIN_ASCENT = 1198  # Fontspector requires this to cover all glyphs
 TARGET_WIN_DESCENT = 604  # Fontspector requires this to cover all descenders
-TARGET_HHEA_ASCENDER = 975  # Slightly above original 965 to cover tallest glyphs
-TARGET_HHEA_DESCENDER = -255  # Slightly below original -215 for descenders
+TARGET_HHEA_ASCENDER = 1015  # Mildly increase total height for looser leading
+TARGET_HHEA_DESCENDER = -265  # Mildly increase total height for looser leading
+TARGET_HHEA_LINE_GAP = 0  # Keep gap at zero for GF compliance
 
 def fix_font_revision(font):
     """Fix font revision and nameID5 to exact value (Version 32.5.0)."""
@@ -76,19 +77,19 @@ def fix_vertical_metrics(font):
     # but hhea/Typo metrics control line spacing (keep tighter)
     font['hhea'].ascender = TARGET_HHEA_ASCENDER
     font['hhea'].descender = TARGET_HHEA_DESCENDER
-    font['hhea'].lineGap = 0
+    font['hhea'].lineGap = TARGET_HHEA_LINE_GAP
 
     # Typo metrics should match hhea for consistency
     font['OS/2'].sTypoAscender = TARGET_HHEA_ASCENDER
     font['OS/2'].sTypoDescender = TARGET_HHEA_DESCENDER
-    font['OS/2'].sTypoLineGap = 0
+    font['OS/2'].sTypoLineGap = TARGET_HHEA_LINE_GAP
 
     # Enable USE_TYPO_METRICS flag (bit 7) so apps use Typo instead of Win for line spacing
     font['OS/2'].fsSelection |= (1 << 7)
 
-    total_height = font['hhea'].ascender - font['hhea'].descender
+    total_height = font['hhea'].ascender - font['hhea'].descender + font['hhea'].lineGap
     print(f"  ✓ Fixed hhea metrics: ascender={font['hhea'].ascender}, "
-          f"descender={font['hhea'].descender}, total={total_height}")
+          f"descender={font['hhea'].descender}, lineGap={font['hhea'].lineGap}, total={total_height}")
     print(f"  ✓ Fixed Typo metrics to match hhea (USE_TYPO_METRICS enabled)")
     return True
 
