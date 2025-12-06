@@ -62,7 +62,7 @@ test: postprocess.stamp
 	$(ENV_RUNNER) bash -c 'which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1); \
 		TOCHECK=$$(find fonts -type f -name "*.ttf" 2>/dev/null); \
 		mkdir -p out/fontspector; \
-		fontspector --profile googlefonts -l fail --full-lists --succinct \
+		fontspector --profile googlefonts -l warn --full-lists --succinct \
 			--html out/fontspector/fontspector-report.html \
 			--ghmarkdown out/fontspector/fontspector-report.md \
 			--badges out/badges $$TOCHECK || \

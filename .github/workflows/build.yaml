@@ -116,7 +116,7 @@ jobs:
       validation_failed: ${{ needs.test.outputs.tests.failed }}
 
   # Release job runs only when a release is published via the GitHub UI.
-  # This uploads the built fonts and proof reports as release assets.
+  # This uploads the built fonts as a single release asset with QA summary in the description.
 
   release:
     name: Release bundle
@@ -135,15 +135,25 @@ jobs:
         with:
           name: ${{ env.ZIP_NAME }}
           path: ${{ env.ZIP_NAME }}
-      - name: Prepare proof asset
-        id: proof
+      - name: Extract fontspector summary and report
+        id: fontspector
         run: |
-          PROOF_PATH=$(find "${{ env.ZIP_NAME }}" -path "*/out/proof/diffenator2-report.html" | head -n 1 || true)
-          if [ -n "$PROOF_PATH" ]; then
-            cp "$PROOF_PATH" proof-report.html
-            echo "asset=proof-report.html" >> "$GITHUB_OUTPUT"
+          REPORT_MD=$(find "${{ env.ZIP_NAME }}" -path "*/out/fontspector/fontspector-report.md" | head -n 1 || true)
+          REPORT_HTML=$(find "${{ env.ZIP_NAME }}" -path "*/out/fontspector/fontspector-report.html" | head -n 1 || true)
+
+          if [ -n "$REPORT_MD" ]; then
+            # Extract just the summary table from the markdown report (heading + 6 lines)
+            grep -A 6 "### Summary" "$REPORT_MD" > fontspector-summary.md
+            echo "has_summary=true" >> "$GITHUB_OUTPUT"
           else
-            echo "asset=" >> "$GITHUB_OUTPUT"
+            echo "has_summary=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$REPORT_HTML" ]; then
+            cp "$REPORT_HTML" fontspector-report.html
+            echo "has_html=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_html=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Copy ARTICLE.en_us.html to release directory
         run: cp documentation/ARTICLE.en_us.html ${{ env.ZIP_NAME }}/ARTICLE.en_us.html
@@ -153,17 +163,7 @@ jobs:
       - name: Set release file name
         shell: bash
         run: echo "RELEASE_ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-      - name: Create fonts zip archive
-        run: |
-          cd ${{ env.ZIP_NAME }}
-          zip -r ../${{ env.RELEASE_ZIP_NAME }}-fonts.zip fonts/
-          cd ..
-      - name: Create QA reports and proofs zip archive
-        run: |
-          cd ${{ env.ZIP_NAME }}
-          zip -r ../${{ env.RELEASE_ZIP_NAME }}-qa-reports.zip out/
-          cd ..
-      - name: Create release bundle (fonts only for main zip)
+      - name: Create release bundle (fonts only)
         run: |
           mkdir -p ${{ env.RELEASE_ZIP_NAME }}
           cp -r ${{ env.ZIP_NAME }}/fonts ${{ env.RELEASE_ZIP_NAME }}/
@@ -182,27 +182,18 @@ jobs:
             echo "## ${{ github.event.release.tag_name }}"
             echo ""
             echo "- Validation status: ${STATUS}"
-            if [ "${VALIDATION_FAILED}" = "true" ]; then
+            echo ""
+            if [ -f fontspector-summary.md ]; then
+              echo "## Fontspector QA Report"
               echo ""
-              echo "fontspector reported issues during validation. See attached report for details."
+              cat fontspector-summary.md
             fi
           } > release-notes.md
-      - name: Upload TTF assets
-        run: |
-          mapfile -t ttfs < <(find "${{ env.RELEASE_ZIP_NAME }}/fonts/ttf" -type f -name "*.ttf")
-          if [ ${#ttfs[@]} -gt 0 ]; then
-            gh release upload ${{ github.event.release.tag_name }} "${ttfs[@]}" --clobber
-          fi
-      - name: Upload proof report asset
-        if: ${{ steps.proof.outputs.asset != '' }}
-        run: gh release upload ${{ github.event.release.tag_name }} ${{ steps.proof.outputs.asset }} --clobber
-      - name: Upload fonts zip archive
-        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}-fonts.zip --clobber
-      - name: Upload QA reports zip archive
-        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}-qa-reports.zip --clobber
-      - name: Populate release
-        run: |
-          gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}.zip --clobber
+      - name: Upload release bundle
+        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}.zip --clobber
+      - name: Upload fontspector HTML report
+        if: ${{ steps.fontspector.outputs.has_html == 'true' }}
+        run: gh release upload ${{ github.event.release.tag_name }} fontspector-report.html --clobber
       - name: Update release notes
         run: |
           gh release edit ${{ github.event.release.tag_name }} -F release-notes.md
