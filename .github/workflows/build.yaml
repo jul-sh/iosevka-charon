@@ -122,6 +122,7 @@ jobs:
           name: ${{ env.ZIP_NAME }}
           path: |
             fonts
+            general_use_fonts
             out
           retention-days: 90
     outputs:
