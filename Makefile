@@ -32,24 +32,22 @@ help:
 # Full build pipeline
 build: postprocess.stamp
 
-# Stage 1: Build raw fonts from Iosevka, into sources/output
+# Stage 1: Build raw fonts from Iosevka, into general_use_fonts/
 fonts.stamp: $(BUILD_SOURCES)
 	@echo "==> Stage 1: Building raw fonts from Iosevka sources..."
 	@echo "Using build plan: $(PLAN)"
+	rm -rf general_use_fonts
 	$(ENV_RUNNER) python3 sources/scripts/build_fonts.py "$(PLAN)"
 	@touch fonts.stamp
-	@echo "==> Raw fonts built successfully in sources/output/"
+	@echo "==> Raw fonts built successfully in general_use_fonts/"
 
 fonts: fonts.stamp
 
 # Stage 2: Post-process fonts for Google Fonts compliance and output to fonts/
 postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 	@echo "==> Stage 2: Post-processing fonts for GF compliance..."
-	rm -rf fonts general_use_fonts
+	rm -rf fonts
 	$(ENV_RUNNER) python3 scripts/post_process_parallel.py
-	@echo "==> Copying raw fonts to general_use_fonts/ for general use distribution..."
-	mkdir -p general_use_fonts
-	find sources/output -type f -name "*.ttf" -exec cp {} general_use_fonts/ \;
 	@touch postprocess.stamp
 	@echo "==> Final fonts available in fonts/ (Google Fonts version) and general_use_fonts/ (general use)"
 
@@ -78,7 +76,7 @@ proof: postprocess.stamp
 		diffenator2 proof $$TOCHECK -o out/proof'
 
 diff-postprocess: postprocess.stamp
-	$(ENV_RUNNER) bash -c 'BEFORE=$$(find sources/output -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
+	$(ENV_RUNNER) bash -c 'BEFORE=$$(find general_use_fonts -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
 		AFTER=$$(find fonts -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
 		mkdir -p out/diff-postprocess; \
 		if [ -z "$$BEFORE" ] || [ -z "$$AFTER" ]; then \
@@ -92,6 +90,7 @@ diff-postprocess: postprocess.stamp
 
 clean:
 	rm -f fonts.stamp postprocess.stamp
+	rm -rf fonts general_use_fonts
 	git stash && git clean -fdx && git stash pop
 
 # Update Iosevka subtree to a new version

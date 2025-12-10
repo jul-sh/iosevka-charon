@@ -24,7 +24,7 @@ from typing import List, Optional
 # ----------------------------------------------------------------------------
 
 # Directory structure
-OUTPUT_DIR: str = "sources/output"
+OUTPUT_DIR: str = "general_use_fonts"
 WORKDIR: str = "sources/workdir"
 REPO_DIR: str = "sources/iosevka"  # Git subtree containing Iosevka sources
 
@@ -87,17 +87,8 @@ def prep_environment(build_plan_file: str) -> None:
         print("[prep_environment] Installing npm dependencies...")
         run_cmd("npm ci", cwd=REPO_DIR)
 
-        # Clean the output directory
-        if os.path.isdir(OUTPUT_DIR):
-            print(f"[prep_environment] Cleaning output directory: '{OUTPUT_DIR}'...")
-            for item in os.listdir(OUTPUT_DIR):
-                item_path = os.path.join(OUTPUT_DIR, item)
-                if os.path.isfile(item_path):
-                    os.remove(item_path)
-                else:
-                    shutil.rmtree(item_path)
-        else:
-            os.makedirs(OUTPUT_DIR, exist_ok=True)
+        # Ensure output directory exists (Makefile handles cleaning)
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     except Exception as e:
         print(f"ERROR during environment preparation: {str(e)}")

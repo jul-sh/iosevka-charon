@@ -58,12 +58,12 @@ def process_and_copy_font(font_path):
 
 
 def main():
-    root = pathlib.Path("sources/output")
+    root = pathlib.Path("general_use_fonts")
     fonts = sorted(root.glob("**/*.ttf"))
 
     if not fonts:
         print(
-            "ERROR: No TTF files found in sources/output to post-process.",
+            "ERROR: No TTF files found in general_use_fonts/ to post-process.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -78,7 +78,7 @@ def main():
     # Parallelize post-processing using all available CPU cores
     num_workers = cpu_count()
     print(f"Post-processing {len(fonts)} fonts using {num_workers} parallel workers...")
-    print(f"Input:  sources/output/")
+    print(f"Input:  general_use_fonts/")
     print(f"Output: fonts/")
     print()
 
