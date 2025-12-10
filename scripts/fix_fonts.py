@@ -452,9 +452,30 @@ def add_fallback_mark_anchors(font):
 
     glyf = font['glyf']
     hmtx = font['hmtx']
+    # Avoid overriding existing mark-to-base anchors. Collect bases already covered
+    # by any mark-to-base lookup referenced by the 'mark' feature.
+    gpos_table = font['GPOS'].table
+    existing_mark_bases = set()
+    if gpos_table.FeatureList and gpos_table.LookupList:
+        mark_lookup_indices = set()
+        for record in gpos_table.FeatureList.FeatureRecord:
+            if record.FeatureTag == "mark":
+                mark_lookup_indices.update(record.Feature.LookupListIndex)
+        for idx in sorted(mark_lookup_indices):
+            if idx >= len(gpos_table.LookupList.Lookup):
+                continue
+            lookup = gpos_table.LookupList.Lookup[idx]
+            if lookup.LookupType != 4:  # MarkToBase
+                continue
+            for subtable in lookup.SubTable:
+                if hasattr(subtable, "BaseCoverage") and subtable.BaseCoverage:
+                    existing_mark_bases.update(subtable.BaseCoverage.glyphs)
+
     base_anchors = {}
     for base in base_glyphs:
         if base not in glyf or base not in hmtx.metrics:
+            continue
+        if base in existing_mark_bases:
             continue
         glyph = glyf[base]
         if not hasattr(glyph, "xMax") or glyph.xMax is None:
