@@ -13,6 +13,8 @@ help:
 	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → general_use_fonts/)"
 	@echo "  make postprocess:                    Post-processes fonts (stage 2: general_use_fonts/ → fonts/)"
 	@echo "  make images:                         Generates specimen images via DrawBot (in Nix)"
+	@echo "  make multilingual-test:              Generates multilingual character support test image"
+	@echo "  make font-comparison:                Generates side-by-side comparison of GF vs. general use fonts"
 	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
 	@echo "  make diff-postprocess:               Compares raw vs post-processed fonts (in Nix)"
@@ -62,6 +64,16 @@ images: postprocess.stamp $(DRAWBOT_OUTPUT)
 documentation/%.png: documentation/%.py postprocess.stamp
 	python3 $< --output $@
 
+# Multilingual character support test
+multilingual-test: postprocess.stamp
+	python3 documentation/multilingual-test.py --output documentation/multilingual-test.png
+	@echo "===> Multilingual test image generated at documentation/multilingual-test.png"
+
+# Font comparison (Google Fonts vs General Use)
+font-comparison: postprocess.stamp
+	python3 documentation/font-comparison.py --output documentation/font-comparison.png
+	@echo "===> Font comparison image generated at documentation/font-comparison.png"
+
 # Testing and proofing
 test: postprocess.stamp
 	which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1)
@@ -104,4 +116,4 @@ update-subtree:
 	git subtree pull --prefix=sources/iosevka iosevka-upstream $(TAG) -m "Update Iosevka subtree to $(TAG)"
 	@echo "==> Subtree updated successfully to $(TAG)"
 
-.PHONY: $(TEST_TARGETS) help clean update-subtree
+.PHONY: $(TEST_TARGETS) help clean update-subtree multilingual-test font-comparison
