@@ -45,10 +45,13 @@ fonts: fonts.stamp
 # Stage 2: Post-process fonts for Google Fonts compliance and output to fonts/
 postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 	@echo "==> Stage 2: Post-processing fonts for GF compliance..."
-	rm -rf fonts
+	rm -rf fonts general_use_fonts
 	$(ENV_RUNNER) python3 scripts/post_process_parallel.py
+	@echo "==> Copying raw fonts to general_use_fonts/ for general use distribution..."
+	mkdir -p general_use_fonts
+	find sources/output -type f -name "*.ttf" -exec cp {} general_use_fonts/ \;
 	@touch postprocess.stamp
-	@echo "==> Final fonts available in fonts/"
+	@echo "==> Final fonts available in fonts/ (Google Fonts version) and general_use_fonts/ (general use)"
 
 postprocess: postprocess.stamp
 

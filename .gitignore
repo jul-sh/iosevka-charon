@@ -6,6 +6,7 @@ fonts.stamp
 postprocess.stamp
 proof
 fonts
+general_use_fonts
 .venv
 .venv-drawbot
 out

@@ -64,6 +64,13 @@ jobs:
           name: built-fonts
           path: fonts/
           retention-days: 7
+      - name: Upload general use fonts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: general-use-fonts
+          path: general_use_fonts/
+          retention-days: 7
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -92,6 +99,12 @@ jobs:
         with:
           name: test-reports
           path: out/
+        continue-on-error: true
+      - name: Download general use fonts
+        uses: actions/download-artifact@v4
+        with:
+          name: general-use-fonts
+          path: general_use_fonts/
         continue-on-error: true
       - name: Set up test result site
         run: |
@@ -134,22 +147,45 @@ jobs:
         with:
           name: ${{ env.ZIP_NAME }}
           path: release
-      - name: Create prerelease bundle
+      - name: Create prerelease bundles
         run: |
           TAG="pre-${GITHUB_SHA}"
           TITLE="Pre-release ${GITHUB_SHA::7}"
-          RELEASE_ZIP="${TAG}.zip"
-          NOTES="Automated prerelease for commit ${GITHUB_SHA}."
-
-          zip -r "$RELEASE_ZIP" release
+          
+          # Create three separate zip files
+          GENERAL_ZIP="iosevka-charon.zip"
+          GF_ZIP="iosevka-charon-google-fonts-version.zip"
+          QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
+          
+          # Package general use fonts
+          if [ -d "release/general_use_fonts" ]; then
+            cd release/general_use_fonts && zip -r "../../${GENERAL_ZIP}" . && cd ../..
+          fi
+          
+          # Package Google Fonts version
+          if [ -d "release/fonts" ]; then
+            cd release/fonts && zip -r "../../${GF_ZIP}" . && cd ../..
+          fi
+          
+          # Package QA report
+          if [ -d "release/out/fontspector" ]; then
+            cd release/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
+          fi
+          
+          printf -v NOTES "Automated prerelease for commit %s.\n\n**For general use, download \`iosevka-charon.zip\`**\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka)\n- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build" "${GITHUB_SHA}"
 
           gh release delete "$TAG" -y 2>/dev/null || true
-          gh release create "$TAG" "$RELEASE_ZIP" \
+          gh release create "$TAG" \
             --title "$TITLE" \
             --notes "$NOTES" \
             --prerelease \
             --latest=false \
             --target "$GITHUB_SHA"
+          
+          # Upload the three zip files
+          [ -f "${GENERAL_ZIP}" ] && gh release upload "$TAG" "${GENERAL_ZIP}" --clobber
+          [ -f "${GF_ZIP}" ] && gh release upload "$TAG" "${GF_ZIP}" --clobber
+          [ -f "${QA_ZIP}" ] && gh release upload "$TAG" "${QA_ZIP}" --clobber
 
   release:
     name: Release bundle
@@ -196,15 +232,41 @@ jobs:
       - name: Set release file name
         shell: bash
         run: echo "RELEASE_ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-${{ github.event.release.tag_name }}" >> $GITHUB_ENV
-      - name: Create release bundle (fonts only)
+      - name: Create release bundles (three separate archives)
         run: |
-          mkdir -p ${{ env.RELEASE_ZIP_NAME }}
-          cp -r ${{ env.ZIP_NAME }}/fonts ${{ env.RELEASE_ZIP_NAME }}/
-          cp ${{ env.ZIP_NAME }}/OFL.txt ${{ env.RELEASE_ZIP_NAME }}/
-          if [ -f ${{ env.ZIP_NAME }}/ARTICLE.en_us.html ]; then
-            cp ${{ env.ZIP_NAME }}/ARTICLE.en_us.html ${{ env.RELEASE_ZIP_NAME }}/
+          # Create three separate zip files
+          GENERAL_ZIP="iosevka-charon.zip"
+          GF_ZIP="iosevka-charon-google-fonts-version.zip"
+          QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
+          
+          # Package 1: General use fonts
+          if [ -d "${{ env.ZIP_NAME }}/general_use_fonts" ]; then
+            mkdir -p temp_general
+            cp -r ${{ env.ZIP_NAME }}/general_use_fonts/* temp_general/
+            cp ${{ env.ZIP_NAME }}/OFL.txt temp_general/
+            if [ -f ${{ env.ZIP_NAME }}/ARTICLE.en_us.html ]; then
+              cp ${{ env.ZIP_NAME }}/ARTICLE.en_us.html temp_general/
+            fi
+            cd temp_general && zip -r "../${GENERAL_ZIP}" . && cd ..
+            rm -rf temp_general
           fi
-          zip -r ${{ env.RELEASE_ZIP_NAME }}.zip ${{ env.RELEASE_ZIP_NAME }}
+          
+          # Package 2: Google Fonts version
+          if [ -d "${{ env.ZIP_NAME }}/fonts" ]; then
+            mkdir -p temp_gf
+            cp -r ${{ env.ZIP_NAME }}/fonts/* temp_gf/
+            cp ${{ env.ZIP_NAME }}/OFL.txt temp_gf/
+            if [ -f ${{ env.ZIP_NAME }}/ARTICLE.en_us.html ]; then
+              cp ${{ env.ZIP_NAME }}/ARTICLE.en_us.html temp_gf/
+            fi
+            cd temp_gf && zip -r "../${GF_ZIP}" . && cd ..
+            rm -rf temp_gf
+          fi
+          
+          # Package 3: QA Report
+          if [ -d "${{ env.ZIP_NAME }}/out/fontspector" ]; then
+            cd ${{ env.ZIP_NAME }}/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
+          fi
       - name: Build release notes
         run: |
           STATUS="Passed"
@@ -214,16 +276,32 @@ jobs:
           {
             echo "## ${{ github.event.release.tag_name }}"
             echo ""
-            echo "- Validation status: ${STATUS}"
+            echo "**For general use, download \`iosevka-charon.zip\`**"
+            echo ""
+            echo "This release includes three archives:"
+            echo "- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka, suitable for general use)"
+            echo "- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts"
+            echo "- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build"
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Validation Status: ${STATUS}"
             echo ""
             if [ -f fontspector-summary.md ]; then
-              echo "## Fontspector QA Report"
+              echo "### Fontspector QA Report"
               echo ""
               cat fontspector-summary.md
             fi
           } > release-notes.md
-      - name: Upload release bundle
-        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_ZIP_NAME }}.zip --clobber
+      - name: Upload release bundles
+        run: |
+          GENERAL_ZIP="iosevka-charon.zip"
+          GF_ZIP="iosevka-charon-google-fonts-version.zip"
+          QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
+          
+          [ -f "${GENERAL_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GENERAL_ZIP}" --clobber
+          [ -f "${GF_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GF_ZIP}" --clobber
+          [ -f "${QA_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${QA_ZIP}" --clobber
       - name: Upload fontspector HTML report
         if: ${{ steps.fontspector.outputs.has_html == 'true' }}
         run: gh release upload ${{ github.event.release.tag_name }} fontspector-report.html --clobber
