@@ -18,6 +18,7 @@ package.json
 master_ufo
 instance_ufos
 .ninja_log
+.ninja_lock
 build.ninja
 
 # OS generated files #
