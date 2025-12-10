@@ -1,4 +1,3 @@
-ENV_RUNNER := ./scripts/run-in-nix.sh
 PLAN := sources/private-build-plans.toml
 
 # Targets that should be included in automated test runs
@@ -11,6 +10,9 @@ POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "f
 # DrawBot image generation
 DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
 DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g')
+
+# Run all recipes through the nix environment
+SHELL := ./scripts/run-in-nix.sh
 
 help:
 	@echo "###"
@@ -37,7 +39,8 @@ fonts.stamp: $(BUILD_SOURCES)
 	@echo "==> Stage 1: Building raw fonts from Iosevka sources..."
 	@echo "Using build plan: $(PLAN)"
 	rm -rf general_use_fonts
-	$(ENV_RUNNER) python3 sources/scripts/build_fonts.py "$(PLAN)"
+	rm -rf sources/iosevka/dist
+	python3 sources/scripts/build_fonts.py "$(PLAN)"
 	@touch fonts.stamp
 	@echo "==> Raw fonts built successfully in general_use_fonts/"
 
@@ -47,7 +50,7 @@ fonts: fonts.stamp
 postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 	@echo "==> Stage 2: Post-processing fonts for GF compliance..."
 	rm -rf fonts
-	$(ENV_RUNNER) python3 scripts/post_process_parallel.py
+	python3 scripts/post_process_parallel.py
 	@touch postprocess.stamp
 	@echo "==> Final fonts available in fonts/ (Google Fonts version) and general_use_fonts/ (general use)"
 
@@ -57,36 +60,31 @@ postprocess: postprocess.stamp
 images: postprocess.stamp $(DRAWBOT_OUTPUT)
 
 documentation/%.png: documentation/%.py postprocess.stamp
-	$(ENV_RUNNER) python3 $< --output $@
+	python3 $< --output $@
 
 # Testing and proofing
 test: postprocess.stamp
-	$(ENV_RUNNER) bash -c 'which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1); \
-		TOCHECK=$$(find fonts -type f -name "*.ttf" 2>/dev/null); \
-		mkdir -p out/fontspector; \
-		fontspector --profile googlefonts -l warn --full-lists --succinct \
-			--html out/fontspector/fontspector-report.html \
-			--ghmarkdown out/fontspector/fontspector-report.md \
-			--badges out/badges $$TOCHECK || \
-		echo "::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report."'
+	which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1)
+	mkdir -p out/fontspector
+	fontspector --profile googlefonts -l warn --full-lists --succinct \
+		--html out/fontspector/fontspector-report.html \
+		--ghmarkdown out/fontspector/fontspector-report.md \
+		--badges out/badges $$(find fonts -type f -name "*.ttf") || \
+		echo "::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report."
 
 proof: postprocess.stamp
-	$(ENV_RUNNER) bash -c 'TOCHECK=$$(find fonts -type f -name "*.ttf" 2>/dev/null); \
-		mkdir -p out/proof; \
-		diffenator2 proof $$TOCHECK -o out/proof'
+	mkdir -p out/proof
+	diffenator2 proof $$(find fonts -type f -name "*.ttf") -o out/proof
 
 diff-postprocess: postprocess.stamp
-	$(ENV_RUNNER) bash -c 'BEFORE=$$(find general_use_fonts -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
-		AFTER=$$(find fonts -type f -name "*.ttf" 2>/dev/null | tr "\n" " "); \
-		mkdir -p out/diff-postprocess; \
-		if [ -z "$$BEFORE" ] || [ -z "$$AFTER" ]; then \
-			echo "Error: Could not find fonts to compare"; \
-			exit 1; \
-		fi; \
-		diffenator2 diff --fonts-before $$BEFORE --fonts-after $$AFTER -o out/diff-postprocess --no-diffenator || true; \
-		echo ""; \
-		echo "==> Visual comparison complete!"; \
-		echo "==> Open out/diff-postprocess/diffenator2-report.html to view results"'
+	mkdir -p out/diff-postprocess
+	diffenator2 diff \
+		--fonts-before $$(find general_use_fonts -type f -name "*.ttf") \
+		--fonts-after $$(find fonts -type f -name "*.ttf") \
+		-o out/diff-postprocess --no-diffenator || true
+	@echo ""
+	@echo "==> Visual comparison complete!"
+	@echo "==> Open out/diff-postprocess/diffenator2-report.html to view results"
 
 clean:
 	rm -f fonts.stamp postprocess.stamp

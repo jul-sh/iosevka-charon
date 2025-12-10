@@ -124,14 +124,6 @@
             # Workaround for protobuf compatibility with gflanguages
             export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 
-            echo "Starting Iosevka Charon development environment..."
-            echo "Rust version: $(rustc --version)"
-            echo "Node version: $(node --version)"
-            echo "Python version: $(python --version)"
-            echo "fontspector version: $(fontspector --version)"
-            echo "fonttools version: $(python -c 'import fontTools; print(fontTools.__version__)' 2>/dev/null || echo 'check failed')"
-            echo "gftools available: $(python -c 'import gftools; print(\"yes\")' 2>/dev/null || echo 'no')"
-            echo "Ready to build Iosevka Charon!"
           '';
         };
       });
