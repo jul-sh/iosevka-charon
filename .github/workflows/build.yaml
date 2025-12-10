@@ -106,16 +106,6 @@ jobs:
           name: general-use-fonts
           path: general_use_fonts/
         continue-on-error: true
-      - name: Set up test result site
-        run: |
-          mkdir -p out/ttf
-          if compgen -G "fonts/ttf/*.ttf" > /dev/null; then
-            rsync -av fonts/ttf/ out/ttf/
-          else
-            echo "No TTF files found to copy into out/ttf."
-          fi
-          python scripts/generate-ttf-manifest.py || echo "Manifest generation failed"
-          cp scripts/index.html out/index.html || echo "No index.html to copy"
       - name: Archive complete package
         uses: actions/upload-artifact@v4
         with:
@@ -152,27 +142,27 @@ jobs:
         run: |
           TAG="pre-${GITHUB_SHA}"
           TITLE="Pre-release ${GITHUB_SHA::7}"
-          
+
           # Create three separate zip files
           GENERAL_ZIP="iosevka-charon.zip"
           GF_ZIP="iosevka-charon-google-fonts-version.zip"
           QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
-          
+
           # Package general use fonts
           if [ -d "release/general_use_fonts" ]; then
             cd release/general_use_fonts && zip -r "../../${GENERAL_ZIP}" . && cd ../..
           fi
-          
+
           # Package Google Fonts version
           if [ -d "release/fonts" ]; then
             cd release/fonts && zip -r "../../${GF_ZIP}" . && cd ../..
           fi
-          
+
           # Package QA report
           if [ -d "release/out/fontspector" ]; then
             cd release/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
           fi
-          
+
           printf -v NOTES "Automated prerelease for commit %s.\n\n**For general use, download \`iosevka-charon.zip\`**\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka)\n- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build" "${GITHUB_SHA}"
 
           gh release delete "$TAG" -y 2>/dev/null || true
@@ -182,7 +172,7 @@ jobs:
             --prerelease \
             --latest=false \
             --target "$GITHUB_SHA"
-          
+
           # Upload the three zip files
           [ -f "${GENERAL_ZIP}" ] && gh release upload "$TAG" "${GENERAL_ZIP}" --clobber
           [ -f "${GF_ZIP}" ] && gh release upload "$TAG" "${GF_ZIP}" --clobber
@@ -239,7 +229,7 @@ jobs:
           GENERAL_ZIP="iosevka-charon.zip"
           GF_ZIP="iosevka-charon-google-fonts-version.zip"
           QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
-          
+
           # Package 1: General use fonts
           if [ -d "${{ env.ZIP_NAME }}/general_use_fonts" ]; then
             mkdir -p temp_general
@@ -251,7 +241,7 @@ jobs:
             cd temp_general && zip -r "../${GENERAL_ZIP}" . && cd ..
             rm -rf temp_general
           fi
-          
+
           # Package 2: Google Fonts version
           if [ -d "${{ env.ZIP_NAME }}/fonts" ]; then
             mkdir -p temp_gf
@@ -263,7 +253,7 @@ jobs:
             cd temp_gf && zip -r "../${GF_ZIP}" . && cd ..
             rm -rf temp_gf
           fi
-          
+
           # Package 3: QA Report
           if [ -d "${{ env.ZIP_NAME }}/out/fontspector" ]; then
             cd ${{ env.ZIP_NAME }}/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
@@ -299,7 +289,7 @@ jobs:
           GENERAL_ZIP="iosevka-charon.zip"
           GF_ZIP="iosevka-charon-google-fonts-version.zip"
           QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
-          
+
           [ -f "${GENERAL_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GENERAL_ZIP}" --clobber
           [ -f "${GF_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GF_ZIP}" --clobber
           [ -f "${QA_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${QA_ZIP}" --clobber
