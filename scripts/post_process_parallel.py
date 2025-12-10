@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Parallel post-processing of font files.
-This script processes all TTF files in sources/output/, applies Google Fonts
+This script processes all TTF files in general_use_fonts/, applies Google Fonts
 compliance fixes, and outputs them to output/ with proper naming.
 """
 
@@ -20,14 +20,14 @@ def process_and_copy_font(font_path):
     Post-process a font and copy it to the final output directory.
 
     Args:
-        font_path: Path to the source font in sources/output/
+        font_path: Path to the source font in general_use_fonts/
 
     Returns:
         tuple: (success: bool, input_path: Path, output_path: Path)
     """
     try:
         # Determine the plan directory and output location
-        # font_path structure: sources/output/<plan_name>/ttf/<font>.ttf
+        # font_path structure: general_use_fonts/<plan_name>/ttf/<font>.ttf
         plan_dir = font_path.parent.parent.name
 
         # Convert directory name to lowercase and remove spaces for Google Fonts compliance

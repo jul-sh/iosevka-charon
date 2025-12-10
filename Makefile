@@ -1,17 +1,6 @@
-PLAN := sources/private-build-plans.toml
-
-# Targets that should be included in automated test runs
-TEST_TARGETS := build fonts postprocess images test proof diff-postprocess
-
-# Source dependencies for each stage
-BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
-POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null)
-
-# DrawBot image generation
-DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
-DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g')
-
-# Run all recipes through the nix environment
+#      (\_/)
+#      (o.o)
+#      / > [nix-shell]  <-- this provides all dependencies
 SHELL := ./scripts/run-in-nix.sh
 
 help:
@@ -21,8 +10,8 @@ help:
 	@echo
 	@echo "  make build:                          Builds the fonts (all stages, in Nix)"
 	@echo "  make build PLAN=<path-to-toml>:      Builds fonts using a custom build plan"
-	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → sources/output/)"
-	@echo "  make postprocess:                    Post-processes fonts (stage 2: sources/output/ → fonts/)"
+	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → general_use_fonts/)"
+	@echo "  make postprocess:                    Post-processes fonts (stage 2: general_use_fonts/ → fonts/)"
 	@echo "  make images:                         Generates specimen images via DrawBot (in Nix)"
 	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
@@ -30,6 +19,17 @@ help:
 	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
+
+# Make targets that should be included in automated test runs
+TEST_TARGETS := build fonts postprocess images test proof diff-postprocess
+
+# Source dependencies for each stage
+BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
+POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null)
+
+# DrawBot image generation
+DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
+DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g')
 
 # Full build pipeline
 build: postprocess.stamp

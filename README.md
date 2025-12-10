@@ -10,7 +10,7 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 
 The Make targets rely on the Nix flake dev shell, which not only bootstraps the Python venv but also supplies the native toolchain required to build the fonts (e.g., Node, ttfautohint, and Git). If Nix is installed, `make` automatically enters the flake dev shell; when Nix is absent but Docker is available, the same flow runs inside the official `nixos/nix` container. With either tool installed, you can rely solely on the standard GNU Make entry points:
 
-- `make build` – enter the Nix shell, build the fonts, and output TTFs to `fonts/`.
+- `make build` – enter the Nix shell, build the fonts.
 - `make test` – validate built fonts for Google Font compliance.
 - see the Makefile for more details.
 
@@ -22,9 +22,10 @@ The Make targets rely on the Nix flake dev shell, which not only bootstraps the 
 
 ## Repository layout
 
-- `sources/` – Iosevka subtree, build plans, and build scripts for raw fonts → `sources/output/`
-- `scripts/` – post-processing scripts that transform `sources/output/` → `fonts/`
-- `fonts/` – final TTFs created by `make build` (gitignored)
+- `sources/` – Iosevka subtree, build plans → `general_use_fonts/`
+- `scripts/` – build script and google fronts post-processing script that transform `general_use_fonts/` → `fonts/`
+- `fonts/` – General Use TTFs created by `make build` (gitignored)
+- `fonts/` – Google Fonts TTFs created by `make build` (gitignored)
 - `out/` – QA reports and proofs from `make test` / `make proof` (gitignored)
 - `documentation/` – specimen assets (from the Google Fonts template)
 - `flake.nix` – Nix development environment configuration

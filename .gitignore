@@ -10,7 +10,7 @@ general_use_fonts
 .venv
 .venv-drawbot
 out
-sources/output
+general_use_fonts/
 __pycache__/
 node_modules
 package-lock.json
