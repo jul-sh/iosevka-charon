@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Run a command inside the Nix + uv development environment with a Docker fallback.
+# Run a command inside the Nix development environment with a Docker fallback.
 
 set -euo pipefail
 

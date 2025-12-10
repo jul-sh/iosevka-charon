@@ -16,11 +16,9 @@ The Make targets rely on the Nix flake dev shell, which not only bootstraps the 
 
 ## Tooling
 
-- Nix flake in `flake.nix` (root) provisions Node, uv, native build tools (like ttfautohint), and other supporting dependencies.
-- uv syncs Python dependencies and activates `.venv` automatically via the flake `shellHook`.
-- `sources/iosevka` is a git subtree containing the upstream Iosevka sources.
-- `sources/scripts/` contains build scripts for raw font generation.
-- `scripts/` contains post-processing scripts for Google Fonts compliance.
+- Nix flake in `flake.nix` (root) provisions Node, Python with all font processing packages, native build tools (like ttfautohint), and other supporting dependencies.
+- `sources/iosevka` is a git subtree containing the upstream Iosevka sources and Iosveka Charon build plan.
+- `scripts/` contains scripts for building, and post processing to achieve Google Fonts compliance.
 
 ## Repository layout
 

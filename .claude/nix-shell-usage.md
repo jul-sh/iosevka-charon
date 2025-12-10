@@ -7,12 +7,11 @@ This project uses a Nix development environment that provides all necessary buil
 ## Why Use the Nix Shell?
 
 The Nix environment (`flake.nix`) provides:
-- Node.js (v22.21.1)
-- Python (3.13.9)
+- Node.js
+- Python with all font processing packages (fonttools, fontmake, fontbakery, gftools, etc.)
 - Rust/Cargo (for fontspector)
 - ttfautohint
-- fontspector (1.5.1)
-- uv (Python package manager)
+- fontspector
 - All other build dependencies
 
 ## How It Works

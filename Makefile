@@ -4,7 +4,7 @@ PLAN := sources/private-build-plans.toml
 TEST_TARGETS := build fonts postprocess images test proof diff-postprocess
 
 # Source dependencies for each stage
-BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) $(shell find sources/scripts -name "build_fonts.py" 2>/dev/null)
+BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
 POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null)
 
 # DrawBot image generation
@@ -40,7 +40,7 @@ fonts.stamp: $(BUILD_SOURCES)
 	@echo "Using build plan: $(PLAN)"
 	rm -rf general_use_fonts
 	rm -rf sources/iosevka/dist
-	python3 sources/scripts/build_fonts.py "$(PLAN)"
+	python3 scripts/iosevka_build.py "$(PLAN)"
 	@touch fonts.stamp
 	@echo "==> Raw fonts built successfully in general_use_fonts/"
 
