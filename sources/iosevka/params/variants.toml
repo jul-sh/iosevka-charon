@@ -4930,8 +4930,17 @@ selectorAffix.w = "curlyAlmostFlatTop"
 selectorAffix."w/sansSerif" = "curlyFlatTop"
 selectorAffix.wHookRight = "curlyAlmostFlatTop"
 
-[prime.w.variants-buildup.stages.body.curly-flat-top]
+[prime.w.variants-buildup.stages.body.curly-asymmetric]
 rank = 12
+groupRank = 3
+nonBreakingVariantAdditionPriority = 100
+descriptionAffix = "curly body with an asymmetric middle stem almost aligned to the top"
+selectorAffix.w = "curlyAsymmetric"
+selectorAffix."w/sansSerif" = "curlyAsymmetric"
+selectorAffix.wHookRight = "curlyAsymmetric"
+
+[prime.w.variants-buildup.stages.body.curly-flat-top]
+rank = 13
 groupRank = 3
 nonBreakingVariantAdditionPriority = 100
 descriptionAffix = "curly body with a middle stem aligned to the top"
@@ -4940,7 +4949,7 @@ selectorAffix."w/sansSerif" = "curlyFlatTop"
 selectorAffix.wHookRight = "curlyFlatTop"
 
 [prime.w.variants-buildup.stages.body.cursive]
-rank = 13
+rank = 14
 groupRank = 4
 descriptionAffix = "cursive shape"
 selectorAffix.w = "cursive"
