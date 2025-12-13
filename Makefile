@@ -13,17 +13,15 @@ help:
 	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → general_use_fonts/)"
 	@echo "  make postprocess:                    Post-processes fonts (stage 2: general_use_fonts/ → fonts/)"
 	@echo "  make images:                         Generates specimen images via DrawBot (in Nix)"
-	@echo "  make multilingual-test:              Generates multilingual character support test image"
-	@echo "  make font-comparison:                Generates side-by-side comparison of GF vs. general use fonts"
 	@echo "  make test:                           Runs fontspector checks on the built fonts (in Nix)"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2 (in Nix)"
-	@echo "  make diff-postprocess:               Compares raw vs post-processed fonts (in Nix)"
+	@echo "  make compare:                        Compares raw vs post-processed fonts (in Nix)"
 	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
 
 # Make targets that should be included in automated test runs
-TEST_TARGETS := build fonts postprocess images test proof diff-postprocess
+TEST_TARGETS := build fonts postprocess images test proof compare
 
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
@@ -64,15 +62,8 @@ images: postprocess.stamp $(DRAWBOT_OUTPUT)
 documentation/%.png: documentation/%.py postprocess.stamp
 	python3 $< --output $@
 
-# Multilingual character support test
-multilingual-test: postprocess.stamp
-	python3 documentation/multilingual-test.py --output documentation/multilingual-test.png
-	@echo "===> Multilingual test image generated at documentation/multilingual-test.png"
 
-# Font comparison (Google Fonts vs General Use)
-font-comparison: postprocess.stamp
-	python3 documentation/font-comparison.py --output documentation/font-comparison.png
-	@echo "===> Font comparison image generated at documentation/font-comparison.png"
+
 
 # Testing and proofing
 test: postprocess.stamp
@@ -88,15 +79,15 @@ proof: postprocess.stamp
 	mkdir -p out/proof
 	diffenator2 proof $$(find fonts -type f -name "*.ttf") -o out/proof
 
-diff-postprocess: postprocess.stamp
-	mkdir -p out/diff-postprocess
+compare: postprocess.stamp
+	mkdir -p out/compare
 	diffenator2 diff \
 		--fonts-before $$(find general_use_fonts -type f -name "*.ttf") \
 		--fonts-after $$(find fonts -type f -name "*.ttf") \
-		-o out/diff-postprocess --no-diffenator || true
+		-o out/compare --no-diffenator || true
 	@echo ""
 	@echo "==> Visual comparison complete!"
-	@echo "==> Open out/diff-postprocess/diffenator2-report.html to view results"
+	@echo "==> Open out/compare/diffenator2-report.html to view results"
 
 clean:
 	rm -f fonts.stamp postprocess.stamp
@@ -116,4 +107,4 @@ update-subtree:
 	git subtree pull --prefix=sources/iosevka iosevka-upstream $(TAG) -m "Update Iosevka subtree to $(TAG)"
 	@echo "==> Subtree updated successfully to $(TAG)"
 
-.PHONY: $(TEST_TARGETS) help clean update-subtree multilingual-test font-comparison
+.PHONY: $(TEST_TARGETS) help clean update-subtree
