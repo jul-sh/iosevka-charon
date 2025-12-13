@@ -436,6 +436,18 @@ def add_fallback_mark_anchors(font):
     cmap = font.getBestCmap()
     glyph_for_cp = {cp: name for cp, name in cmap.items()}
 
+    # Quick classifier for mark direction so we can generate sensible anchors.
+    below_classes = {202, 214, 218, 220, 222, 223, 224, 225, 226}
+    overlay_classes = {1, 200}
+
+    def classify_mark(cp: int) -> int:
+        cc = unicodedata.combining(chr(cp))
+        if cc in below_classes:
+            return 1  # below
+        if cc in overlay_classes:
+            return 2  # overlay
+        return 0  # above
+
     # Collect combining marks present in the font.
     mark_glyphs = []
     for cp, name in sorted(glyph_for_cp.items()):
@@ -464,8 +476,6 @@ def add_fallback_mark_anchors(font):
             if glyph_name in glyf_table:
                 base_glyphs.append(glyph_name)
 
-    # Use a single fallback mark class to keep the lookup compact.
-    mark_class_index = 0
     glyf = font['glyf']
     hmtx = font['hmtx']
 
@@ -488,11 +498,42 @@ def add_fallback_mark_anchors(font):
                 if subtable.MarkCoverage:
                     existing_mark_glyphs.update(subtable.MarkCoverage.glyphs)
 
-    missing_mark_glyphs = [(name, cp) for name, cp in mark_glyphs if name not in existing_mark_glyphs]
-    if not missing_mark_glyphs:
+    # Include marks that currently lack coverage OR have joining suffixes (their anchors are poor).
+    target_mark_glyphs = []
+    for name, cp in mark_glyphs:
+        if name not in existing_mark_glyphs or ".join-" in name:
+            target_mark_glyphs.append((name, cp))
+
+    if not target_mark_glyphs:
         return False
 
-    mark_anchors = {name: (mark_class_index, buildAnchor(0, 0)) for name, _ in missing_mark_glyphs}
+    glyf = font['glyf']
+    hmtx = font['hmtx']
+
+    mark_anchors = {}
+    mark_classes_present = set()
+    for name, cp in target_mark_glyphs:
+        if name not in glyf or name not in hmtx.metrics:
+            continue
+        glyph = glyf[name]
+        if not hasattr(glyph, "xMax") or glyph.xMax is None:
+            glyph.recalcBounds(glyf)
+
+        cls = classify_mark(cp)
+        mark_classes_present.add(cls)
+
+        mx = (glyph.xMin + glyph.xMax) // 2
+        if cls == 1:  # below mark
+            my = glyph.yMax
+        elif cls == 2:  # overlay mark
+            my = (glyph.yMin + glyph.yMax) // 2
+        else:  # above/default
+            my = glyph.yMin
+
+        mark_anchors[name] = (cls, buildAnchor(mx, my))
+
+    if not mark_anchors:
+        return False
 
     base_anchors = {}
     for base in base_glyphs:
@@ -503,9 +544,15 @@ def add_fallback_mark_anchors(font):
             glyph.recalcBounds(glyf)
         advance, _ = hmtx[base]
         x = advance // 2
-        y = glyph.yMax if hasattr(glyph, "yMax") and glyph.yMax is not None else font['hhea'].ascender
-        anchor = buildAnchor(x, y)
-        base_anchors[base] = {mark_class_index: anchor}
+        anchors_for_base = {}
+        if 0 in mark_classes_present:
+            anchors_for_base[0] = buildAnchor(x, glyph.yMax)
+        if 1 in mark_classes_present:
+            anchors_for_base[1] = buildAnchor(x, glyph.yMin)
+        if 2 in mark_classes_present:
+            anchors_for_base[2] = buildAnchor(x, (glyph.yMin + glyph.yMax) // 2)
+        if anchors_for_base:
+            base_anchors[base] = anchors_for_base
 
     if not base_anchors:
         return False
@@ -706,6 +753,23 @@ def fix_style_bits(font):
     return True
 
 
+def drop_glyph_names(font):
+    """Switch post table to format 3 to avoid invalid glyph names."""
+    if 'post' not in font:
+        return False
+
+    post = font['post']
+    if getattr(post, "formatType", None) == 3.0:
+        return False
+
+    post.formatType = 3.0
+    # Clear name-related data that isn't used in format 3.
+    post.extraNames = []
+    post.glyphNameIndex = []
+    post.mapping = {}
+    return True
+
+
 def fix_gdef_mark_classes(font):
     """Ensure combining marks are classified as marks in GDEF."""
     if 'GDEF' not in font:
@@ -781,6 +845,9 @@ def post_process_font(font_path, output_path=None):
 
         if fix_style_bits(font):
             fixes_applied.append("style_bits")
+
+        if drop_glyph_names(font):
+            fixes_applied.append("stripped_glyph_names")
 
         if add_fallback_mark_anchors(font):
             fixes_applied.append("fallback_mark_anchors")
