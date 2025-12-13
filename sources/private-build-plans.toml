@@ -23,7 +23,7 @@ capital-a = "curly-serifless"
 capital-v = "curly-serifless"
 capital-w = "curly-almost-flat-top-serifless"
 capital-y = "curly-serifless"
-w = "curly-almost-flat-top-serifless"
+w = "straight-serifless"
 d = "tailed-serifless"
 e = "rounded"
 i = "serifed-flat-tailed"
@@ -103,7 +103,7 @@ capital-a = "curly-serifless"
 capital-v = "curly-serifless"
 capital-w = "curly-almost-flat-top-serifless"
 capital-y = "curly-serifless"
-w = "curly-almost-flat-top-serifless"
+w = "straight-serifless"
 d = "tailed-serifless"
 e = "rounded"
 i = "serifed-flat-tailed"
@@ -116,11 +116,13 @@ ampersand = "closed"
 at = "fourfold"
 dollar = "through"
 
+# one width
 [buildPlans.IosevkaCharonMono.widths.Normal]
 shape = 500
 menu = 5
 css = "normal"
 
+# Light, Regular, Medium, Bold, Heavy weights
 [buildPlans.IosevkaCharonMono.weights.Light]
 shape = 300
 menu = 300
@@ -141,7 +143,7 @@ shape = 700
 menu = 700
 css  = 700
 
-
+# ONLY Upright and Italic slopes
 [buildPlans.IosevkaCharonMono.slopes.Upright]
 angle = 0
 shape = "upright"
