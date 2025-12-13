@@ -78,6 +78,13 @@ jobs:
           name: test-reports
           path: out/
           retention-days: 30
+      - name: Upload specimen image
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: specimen-image
+          path: documentation/iosevka-charon.png
+          retention-days: 7
 
   # Package everything together for releases
   package:
@@ -106,6 +113,12 @@ jobs:
           name: general-use-fonts
           path: general_use_fonts/
         continue-on-error: true
+      - name: Download specimen image
+        uses: actions/download-artifact@v4
+        with:
+          name: specimen-image
+          path: documentation
+        continue-on-error: true
       - name: Archive complete package
         uses: actions/upload-artifact@v4
         with:
@@ -114,6 +127,7 @@ jobs:
             fonts
             general_use_fonts
             out
+            documentation/iosevka-charon.png
           retention-days: 90
     outputs:
       zip_name: ${{ env.ZIP_NAME }}
@@ -177,6 +191,7 @@ jobs:
           [ -f "${GENERAL_ZIP}" ] && gh release upload "$TAG" "${GENERAL_ZIP}" --clobber
           [ -f "${GF_ZIP}" ] && gh release upload "$TAG" "${GF_ZIP}" --clobber
           [ -f "${QA_ZIP}" ] && gh release upload "$TAG" "${QA_ZIP}" --clobber
+          [ -f "release/documentation/iosevka-charon.png" ] && gh release upload "$TAG" "release/documentation/iosevka-charon.png" --clobber
 
   release:
     name: Release bundle
@@ -293,6 +308,7 @@ jobs:
           [ -f "${GENERAL_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GENERAL_ZIP}" --clobber
           [ -f "${GF_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GF_ZIP}" --clobber
           [ -f "${QA_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${QA_ZIP}" --clobber
+          [ -f "${{ env.ZIP_NAME }}/documentation/iosevka-charon.png" ] && gh release upload ${{ github.event.release.tag_name }} "${{ env.ZIP_NAME }}/documentation/iosevka-charon.png" --clobber
       - name: Upload fontspector HTML report
         if: ${{ steps.fontspector.outputs.has_html == 'true' }}
         run: gh release upload ${{ github.event.release.tag_name }} fontspector-report.html --clobber
