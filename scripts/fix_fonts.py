@@ -213,27 +213,45 @@ def fix_zero_width_glyphs(font):
         new_width = sum(widths) // len(widths) if widths else 500
 
     glyph_order = font.getGlyphOrder()
+    gdef = font.get('GDEF')
+    glyph_class_def = gdef.table.GlyphClassDef if gdef and gdef.table else None
 
     for glyph_name in glyph_order:
         if glyph_name not in glyf:
             continue
 
         width, lsb = hmtx[glyph_name]
-        if width == 0:
-            glyph = glyf[glyph_name]
+        if width != 0:
+            continue
 
-            # Check if this is a PUA glyph that needs fixing
-            is_pua_glyph = glyph_name in pua_glyphs_to_fix
+        # Skip true combining marks; they are intentionally zero-width.
+        is_combining = False
+        # Check cmap-derived codepoint combining class
+        for table in font['cmap'].tables:
+            cp = table.cmap.get(glyph_name)
+            if cp is not None and unicodedata.combining(chr(cp)):
+                is_combining = True
+                break
+        # Check GDEF class definition for marks
+        if glyph_class_def and glyph_class_def.classDefs.get(glyph_name) == 3:
+            is_combining = True
+        if is_combining:
+            continue
 
-            # Check if it has contours (not just a composite or empty)
-            has_contours = (hasattr(glyph, 'numberOfContours') and
-                          glyph.numberOfContours is not None and
-                          glyph.numberOfContours != 0)
+        glyph = glyf[glyph_name]
 
-            # Fix if it's a PUA glyph or has contours but no width
-            if is_pua_glyph or (has_contours and not glyph.isComposite()):
-                hmtx[glyph_name] = (new_width, lsb)
-                fixed.append(glyph_name)
+        # Check if this is a PUA glyph that needs fixing
+        is_pua_glyph = glyph_name in pua_glyphs_to_fix
+
+        # Check if it has contours (not just a composite or empty)
+        has_contours = (hasattr(glyph, 'numberOfContours') and
+                        glyph.numberOfContours is not None and
+                        glyph.numberOfContours != 0)
+
+        # Fix if it's a PUA glyph or has contours but no width
+        if is_pua_glyph or (has_contours and not glyph.isComposite()):
+            hmtx[glyph_name] = (new_width, lsb)
+            fixed.append(glyph_name)
 
     if fixed:
         print(f"  ✓ Fixed zero-width glyphs: {', '.join(fixed)}")
@@ -448,14 +466,13 @@ def add_fallback_mark_anchors(font):
 
     # Use a single fallback mark class to keep the lookup compact.
     mark_class_index = 0
-    mark_anchors = {name: (mark_class_index, buildAnchor(0, 0)) for name, _ in mark_glyphs}
-
     glyf = font['glyf']
     hmtx = font['hmtx']
-    # Avoid overriding existing mark-to-base anchors. Collect bases already covered
-    # by any mark-to-base lookup referenced by the 'mark' feature.
+
+    # Collect existing mark coverage so we only add anchors for marks that currently
+    # have no mark-to-base entries. This avoids overriding carefully tuned anchors.
     gpos_table = font['GPOS'].table
-    existing_mark_bases = set()
+    existing_mark_glyphs = set()
     if gpos_table.FeatureList and gpos_table.LookupList:
         mark_lookup_indices = set()
         for record in gpos_table.FeatureList.FeatureRecord:
@@ -468,14 +485,18 @@ def add_fallback_mark_anchors(font):
             if lookup.LookupType != 4:  # MarkToBase
                 continue
             for subtable in lookup.SubTable:
-                if hasattr(subtable, "BaseCoverage") and subtable.BaseCoverage:
-                    existing_mark_bases.update(subtable.BaseCoverage.glyphs)
+                if subtable.MarkCoverage:
+                    existing_mark_glyphs.update(subtable.MarkCoverage.glyphs)
+
+    missing_mark_glyphs = [(name, cp) for name, cp in mark_glyphs if name not in existing_mark_glyphs]
+    if not missing_mark_glyphs:
+        return False
+
+    mark_anchors = {name: (mark_class_index, buildAnchor(0, 0)) for name, _ in missing_mark_glyphs}
 
     base_anchors = {}
     for base in base_glyphs:
         if base not in glyf or base not in hmtx.metrics:
-            continue
-        if base in existing_mark_bases:
             continue
         glyph = glyf[base]
         if not hasattr(glyph, "xMax") or glyph.xMax is None:
@@ -515,6 +536,85 @@ def add_fallback_mark_anchors(font):
         feature.Feature.LookupListIndex = [new_index]
         gpos.FeatureList.FeatureRecord.append(feature)
         gpos.FeatureList.FeatureCount += 1
+
+    return True
+
+
+def add_dotted_circle_fallback(font):
+    """Ensure dotted circle can accept all combining marks."""
+    if 'GPOS' not in font or 'glyf' not in font:
+        return False
+
+    cmap = font.getBestCmap()
+    dotted = cmap.get(0x25CC) or 'dottedcircle'
+    if dotted not in font['glyf']:
+        return False
+
+    gpos = font['GPOS'].table
+    glyf = font['glyf']
+    hmtx = font['hmtx']
+
+    # Build quick access to existing dotted-circle attachments.
+    def has_anchor(mark_name):
+        for lookup in gpos.LookupList.Lookup:
+            ltype = lookup.LookupType
+            for st in lookup.SubTable:
+                real = st.ExtSubTable if ltype == 9 and hasattr(st, 'ExtSubTable') else st
+                if getattr(real, 'LookupType', None) != 4:
+                    continue
+                if not (real.MarkCoverage and real.BaseCoverage):
+                    continue
+                if mark_name not in real.MarkCoverage.glyphs or dotted not in real.BaseCoverage.glyphs:
+                    continue
+                m_idx = real.MarkCoverage.glyphs.index(mark_name)
+                m_rec = real.MarkArray.MarkRecord[m_idx]
+                b_idx = real.BaseCoverage.glyphs.index(dotted)
+                anchors = real.BaseArray.BaseRecord[b_idx].BaseAnchor
+                if m_rec.Class < len(anchors) and anchors[m_rec.Class] is not None:
+                    return True
+        return False
+
+    # Collect combining marks present in the font.
+    mark_glyphs = []
+    for cp, name in sorted(cmap.items()):
+        if unicodedata.combining(chr(cp)):
+            mark_glyphs.append((name, cp))
+
+    missing = []
+    for name, _ in mark_glyphs:
+        if not has_anchor(name):
+            missing.append(name)
+
+    if not missing:
+        return False
+
+    # Build mark anchors and a single base record for dotted circle.
+    mark_class_index = 0
+    mark_anchors = {name: (mark_class_index, buildAnchor(0, 0)) for name in missing}
+
+    # Anchor dotted circle at its visual center / top.
+    glyph = glyf[dotted]
+    if not hasattr(glyph, "xMax") or glyph.xMax is None:
+        glyph.recalcBounds(glyf)
+    advance, _ = hmtx[dotted]
+    x = advance // 2
+    y = glyph.yMax if hasattr(glyph, "yMax") and glyph.yMax is not None else font['hhea'].ascender
+    base_anchors = {dotted: {mark_class_index: buildAnchor(x, y)}}
+
+    subtables = buildMarkBasePos(mark_anchors, base_anchors, font.getReverseGlyphMap())
+    lookup = otTables.Lookup()
+    lookup.LookupFlag = 0
+    lookup.LookupType = 4
+    lookup.SubTable = subtables
+    lookup.SubTableCount = len(subtables)
+
+    gpos.LookupList.Lookup.append(lookup)
+    gpos.LookupList.LookupCount += 1
+
+    for record in gpos.FeatureList.FeatureRecord:
+        if record.FeatureTag == "mark":
+            record.Feature.LookupListIndex.append(len(gpos.LookupList.Lookup) - 1)
+            break
 
     return True
 
@@ -606,6 +706,27 @@ def fix_style_bits(font):
     return True
 
 
+def fix_gdef_mark_classes(font):
+    """Ensure combining marks are classified as marks in GDEF."""
+    if 'GDEF' not in font:
+        return False
+
+    cmap = font.getBestCmap()
+    glyph_class_def = font['GDEF'].table.GlyphClassDef
+    if glyph_class_def is None:
+        return False
+
+    updated = False
+    for cp, name in cmap.items():
+        if not unicodedata.combining(chr(cp)):
+            continue
+        current = glyph_class_def.classDefs.get(name)
+        if current != 3:
+            glyph_class_def.classDefs[name] = 3
+            updated = True
+    return updated
+
+
 def post_process_font(font_path, output_path=None):
     """Apply all post-processing fixes to a font"""
     if output_path is None:
@@ -663,6 +784,12 @@ def post_process_font(font_path, output_path=None):
 
         if add_fallback_mark_anchors(font):
             fixes_applied.append("fallback_mark_anchors")
+
+        if add_dotted_circle_fallback(font):
+            fixes_applied.append("dotted_circle_fallback")
+
+        if fix_gdef_mark_classes(font):
+            fixes_applied.append("gdef_mark_classes")
 
         # Remove unwanted tables
         unwanted_tables = ['DSIG', 'FFTM', 'prop']
