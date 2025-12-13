@@ -27,7 +27,7 @@ family = "Iosevka Charon"
 spacing = "normal"
 serifs = "sans"
 noCvSs = true
-exportGlyphNames = false
+exportGlyphNames = true
 
 [buildPlans.IosevkaCharon.weights.Regular]
 shape = 400

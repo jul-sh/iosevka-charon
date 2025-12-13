@@ -218,6 +218,8 @@ def main() -> None:
     args = parser.parse_args()
 
     build_plan_file = args.build_plan_file
+    if not build_plan_file:
+        build_plan_file = PRIVATE_TOML
 
     print(f"[main] Working directory: {os.getcwd()}")
     print(f"[main] Build plan file: {build_plan_file}")

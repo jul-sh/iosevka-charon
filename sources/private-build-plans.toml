@@ -3,7 +3,7 @@ family = "Iosevka Charon"
 spacing = "quasi-proportional"
 serifs = "sans"
 noCvSs = true
-exportGlyphNames = false
+exportGlyphNames = true
 buildTextureFeature = true
 noLigation = true
 
@@ -83,7 +83,7 @@ family = "Iosevka Charon Mono"
 spacing = "normal"
 serifs = "sans"
 noCvSs = true
-exportGlyphNames = false
+exportGlyphNames = true
 buildTextureFeature = true
 noLigation = true
 
