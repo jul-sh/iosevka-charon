@@ -26,7 +26,7 @@ The Make targets rely on the Nix flake dev shell, which not only bootstraps the 
 
 - `sources/` – Iosevka subtree, build plans → `general_use_fonts/`
 - `scripts/` – build script and google fronts post-processing script that transform `general_use_fonts/` → `fonts/`
-- `fonts/` – General Use TTFs created by `make build` (gitignored)
+- `general_use_fonts/` – General Use TTFs created by `make build` (gitignored)
 - `fonts/` – Google Fonts TTFs created by `make build` (gitignored)
 - `out/` – QA reports and proofs from `make test` / `make proof` (gitignored)
 - `documentation/` – specimen assets (from the Google Fonts template)
