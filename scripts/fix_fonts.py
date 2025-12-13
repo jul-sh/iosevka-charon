@@ -546,7 +546,7 @@ def add_fallback_mark_anchors(font):
         x = advance // 2
         anchors_for_base = {}
         if 0 in mark_classes_present:
-            anchors_for_base[0] = buildAnchor(x, glyph.yMax)
+            anchors_for_base[0] = buildAnchor(x, glyph.yMax + 100)
         if 1 in mark_classes_present:
             anchors_for_base[1] = buildAnchor(x, glyph.yMin)
         if 2 in mark_classes_present:
