@@ -8,6 +8,8 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 
 ## Building and testing
 
+Clone via `git clone --depth 10 --branch main https://github.com/jul-sh/iosevka-charon.git` to avoid downloading the entire upstream history.
+
 The Make targets rely on the Nix flake dev shell, which not only bootstraps the Python venv but also supplies the native toolchain required to build the fonts (e.g., Node, ttfautohint, and Git). If Nix is installed, `make` automatically enters the flake dev shell; when Nix is absent but Docker is available, the same flow runs inside the official `nixos/nix` container. With either tool installed, you can rely solely on the standard GNU Make entry points:
 
 - `make build` – enter the Nix shell, build the fonts.
