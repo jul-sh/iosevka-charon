@@ -493,16 +493,21 @@ def add_fallback_mark_anchors(font):
             if idx >= len(gpos_table.LookupList.Lookup):
                 continue
             lookup = gpos_table.LookupList.Lookup[idx]
-            if lookup.LookupType != 4:  # MarkToBase
-                continue
+            # Handle extension lookups (type 9) by extracting the actual lookup
             for subtable in lookup.SubTable:
-                if subtable.MarkCoverage:
-                    existing_mark_glyphs.update(subtable.MarkCoverage.glyphs)
+                real_st = subtable
+                if lookup.LookupType == 9 and hasattr(subtable, 'ExtSubTable'):
+                    real_st = subtable.ExtSubTable
+                if getattr(real_st, 'LookupType', lookup.LookupType) != 4:  # MarkToBase
+                    continue
+                if hasattr(real_st, 'MarkCoverage') and real_st.MarkCoverage:
+                    existing_mark_glyphs.update(real_st.MarkCoverage.glyphs)
 
-    # Include marks that currently lack coverage OR have joining suffixes (their anchors are poor).
+    # Include marks that currently lack coverage. We skip marks already in existing
+    # MarkToBase lookups since their anchors work correctly with the font's design.
     target_mark_glyphs = []
     for name, cp in mark_glyphs:
-        if name not in existing_mark_glyphs or ".join-" in name:
+        if name not in existing_mark_glyphs:
             target_mark_glyphs.append((name, cp))
 
     if not target_mark_glyphs:
@@ -654,34 +659,16 @@ def add_fallback_mark_anchors(font):
         gpos.FeatureList.FeatureRecord.append(feature)
         gpos.FeatureList.FeatureCount += 1
 
-    # Add a lightweight mark-to-mark fallback to improve stacked mark spacing.
-    build_markmark = getattr(ot_builder, "buildMarkMarkPos", None)
-    if not build_markmark:
-        return True
-
-    mkmk_subtables = build_markmark(mark1_for_mkmk, mark2_anchors, font.getReverseGlyphMap())
-    mkmk_lookup = otTables.Lookup()
-    mkmk_lookup.LookupFlag = 0
-    mkmk_lookup.LookupType = 6
-    mkmk_lookup.SubTable = mkmk_subtables
-    mkmk_lookup.SubTableCount = len(mkmk_subtables)
-
-    gpos.LookupList.Lookup.append(mkmk_lookup)
-    gpos.LookupList.LookupCount += 1
-    mkmk_index = len(gpos.LookupList.Lookup) - 1
-
-    for record in gpos.FeatureList.FeatureRecord:
-        if record.FeatureTag == "mkmk":
-            record.Feature.LookupListIndex.append(mkmk_index)
-            break
-    else:
-        feature = gpos.FeatureList.FeatureRecord[0].__class__()
-        feature.FeatureTag = "mkmk"
-        feature.Feature = gpos.FeatureList.FeatureRecord[0].Feature.__class__()
-        feature.Feature.LookupCount = 1
-        feature.Feature.LookupListIndex = [mkmk_index]
-        gpos.FeatureList.FeatureRecord.append(feature)
-        gpos.FeatureList.FeatureCount += 1
+    # NOTE: The mark-to-mark fallback was disabled because it was overriding the
+    # base font's correct cumulative mark-to-base stacking behavior with incorrect
+    # anchor positions. The ü̃́ character (u + diaeresis + tilde + acute) was showing
+    # overlapping marks because our calculated mkmk anchors positioned marks too
+    # close together. The upstream Iosevka font already handles stacked marks
+    # correctly through its mark-to-base positioning.
+    #
+    # See: HarfBuzz shaping showed base font positions marks at y=0, 205, 410
+    # (correct 205-unit spacing) while our fallback produced y=0, 236, 252
+    # (broken 16-unit spacing).
 
     return True
 
