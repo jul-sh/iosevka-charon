@@ -66,7 +66,7 @@ documentation/%.png: documentation/%.py postprocess.stamp
 
 
 # Testing and proofing
-test: postprocess.stamp
+test: postprocess.stamp test-harfbuzz
 	which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1)
 	mkdir -p out/fontspector
 	fontspector --profile googlefonts -l warn --full-lists --succinct \
@@ -74,6 +74,10 @@ test: postprocess.stamp
 		--ghmarkdown out/fontspector/fontspector-report.md \
 		--badges out/badges $$(find fonts -type f -name "*.ttf") || \
 		echo "::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report."
+
+test-harfbuzz: postprocess.stamp
+	@echo "===> Running HarfBuzz mark positioning tests..."
+	python3 tests/test_harfbuzz_marks.py
 
 proof: postprocess.stamp
 	mkdir -p out/proof
