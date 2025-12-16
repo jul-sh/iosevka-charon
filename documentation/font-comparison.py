@@ -7,7 +7,7 @@ parser.add_argument("--output", metavar="PNG", help="where to save the image")
 args = parser.parse_args()
 
 FONT_DIR_1 = "fonts/iosevkacharon"  # Google Fonts version
-FONT_DIR_2 = "general_use_fonts/iosevkacharon/ttf"  # General Use version
+FONT_DIR_2 = "general_use_fonts/IosevkaCharon/ttf"  # General Use version
 
 WIDTH, MARGIN = 1600, 50
 TITLE_SIZE = 36
@@ -35,19 +35,19 @@ test_samples = [
 def render_text_to_array(text, font_path, size):
     """Render text to a numpy array for pixel-level comparison"""
     font = ImageFont.truetype(font_path, size)
-    
+
     # Create temporary image to measure text
     temp_img = Image.new("L", (1, 1))
     temp_draw = ImageDraw.Draw(temp_img)
     bbox = temp_draw.textbbox((0, 0), text, font=font)
     text_width = bbox[2] - bbox[0] + 20
     text_height = bbox[3] - bbox[1] + 20
-    
+
     # Render text
     img = Image.new("L", (text_width, text_height), color=0)
     draw = ImageDraw.Draw(img)
     draw.text((10, 10), text, font=font, fill=255)
-    
+
     return np.array(img), text_width, text_height
 
 
@@ -56,23 +56,23 @@ def create_diff_image(arr1, arr2):
     # Normalize arrays to binary (threshold at 128)
     binary1 = (arr1 > 128).astype(np.uint8)
     binary2 = (arr2 > 128).astype(np.uint8)
-    
+
     # Create RGB output
     h, w = binary1.shape
     diff_img = np.zeros((h, w, 3), dtype=np.uint8)
-    
+
     # White where both have pixels (identical)
     both = binary1 & binary2
     diff_img[both == 1] = WHITE
-    
+
     # Red where only GF version has pixels
     only_gf = binary1 & ~binary2
     diff_img[only_gf == 1] = RED
-    
+
     # Green where only General Use version has pixels
     only_gu = ~binary1 & binary2
     diff_img[only_gu == 1] = GREEN
-    
+
     return diff_img
 
 
@@ -81,10 +81,10 @@ def calc_height():
     y = MARGIN
     y += TITLE_SIZE + 20  # main title
     y += SUBTITLE_SIZE + 30  # subtitle + gap
-    
+
     for _, size in test_samples:
         y += size + 30  # text + gap between samples
-    
+
     y += 40  # legend
     y += MARGIN
     return y
@@ -126,34 +126,34 @@ for text, size in test_samples:
         # Render both versions
         font1_path = f"{FONT_DIR_1}/IosevkaCharon-Regular.ttf"
         font2_path = f"{FONT_DIR_2}/IosevkaCharon-Regular.ttf"
-        
+
         arr1, w1, h1 = render_text_to_array(text, font1_path, size)
         arr2, w2, h2 = render_text_to_array(text, font2_path, size)
-        
+
         # Pad arrays to same size
         max_w = max(w1, w2)
         max_h = max(h1, h2)
-        
+
         padded1 = np.zeros((max_h, max_w), dtype=np.uint8)
         padded2 = np.zeros((max_h, max_w), dtype=np.uint8)
-        
+
         padded1[:h1, :w1] = arr1
         padded2[:h2, :w2] = arr2
-        
+
         # Create diff image
         diff_array = create_diff_image(padded1, padded2)
         diff_pil = Image.fromarray(diff_array, mode='RGB')
-        
+
         # Check if there are differences
         has_diff = np.any((padded1 > 128) != (padded2 > 128))
         if has_diff:
             differences_found.append(text)
-        
+
         # Paste onto main image
         main_img.paste(diff_pil, (MARGIN, y))
-        
+
         y += size + 30
-        
+
     except Exception as e:
         main_draw.text((MARGIN, y), f"Error rendering '{text}': {str(e)}", font=legend_font, fill=RED)
         y += 30
