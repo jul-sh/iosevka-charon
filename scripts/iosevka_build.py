@@ -29,7 +29,7 @@ WORKDIR: str = "sources/workdir"
 REPO_DIR: str = "sources/iosevka"  # Git subtree containing Iosevka sources
 
 # Build plan file (can be overridden via command-line argument)
-PRIVATE_TOML: str = "sources/private-build-plans.toml"
+PRIVATE_TOML: str = "sources/test-build-plans.toml"
 
 # Utility Functions
 # ----------------------------------------------------------------------------
