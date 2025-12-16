@@ -513,7 +513,7 @@ def add_fallback_mark_anchors(font):
 
     mark_anchors = {}
     mark_classes_present = set()
-    stack_gap = 40
+    stack_gap = 60
 
     # Collect average mark heights per class to scale gaps (use all combining marks).
     class_heights = {}
@@ -593,15 +593,15 @@ def add_fallback_mark_anchors(font):
         gap = class_gap(cls)
         # mark1 anchor (where next mark attaches)
         if cls == 1:  # below
-            m1y = glyph.yMax
-            m2y = glyph.yMin - gap
+            m1y = glyph.yMin - gap  # attach next below this mark
+            m2y = glyph.yMax + gap  # attach this mark to previous below
         elif cls == 2:  # overlay
             mid = (glyph.yMin + glyph.yMax) // 2
             m1y = mid
             m2y = mid
         else:  # above/default
-            m1y = glyph.yMin
-            m2y = glyph.yMax + gap
+            m1y = glyph.yMax + gap  # attach next above this mark
+            m2y = glyph.yMin - gap  # attach this mark to previous above
         mark1_for_mkmk[name] = (cls, buildAnchor(mx, m1y))
         mark2_anchors[name] = {cls: buildAnchor(mx, m2y)}
 
