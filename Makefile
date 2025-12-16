@@ -90,9 +90,11 @@ compare: postprocess.stamp
 	@echo "==> Open out/compare/diffenator2-report.html to view results"
 
 clean:
-	rm -f fonts.stamp postprocess.stamp
-	rm -rf fonts general_use_fonts
-	git stash && git clean -fdx && git stash pop
+	if ! git diff --quiet || ! git diff --cached --quiet; then \
+		git stash && git clean -fdx && git stash pop; \
+	else \
+		git clean -fdx; \
+	fi
 
 # Update Iosevka subtree to a new version
 # Usage: make update-subtree TAG=v34.0.0
