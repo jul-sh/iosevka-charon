@@ -21,6 +21,7 @@ from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.pens.recordingPen import RecordingPen, DecomposingRecordingPen
 from fontTools.otlLib.builder import buildAnchor, buildMarkBasePos
+import fontTools.otlLib.builder as ot_builder
 import argparse
 from gftools.fix import fix_font as gftools_fix_font
 import unicodedata
@@ -512,6 +513,27 @@ def add_fallback_mark_anchors(font):
 
     mark_anchors = {}
     mark_classes_present = set()
+    stack_gap = 40
+
+    # Collect average mark heights per class to scale gaps (use all combining marks).
+    class_heights = {}
+    for name, cp in mark_glyphs:
+        if name not in glyf:
+            continue
+        g = glyf[name]
+        if not hasattr(g, "xMax") or g.xMax is None:
+            g.recalcBounds(glyf)
+        cls = classify_mark(cp)
+        h = (g.yMax - g.yMin) if (hasattr(g, "yMax") and g.yMax is not None and g.yMin is not None) else 0
+        class_heights.setdefault(cls, []).append(max(h, 0))
+
+    def class_gap(cls: int) -> int:
+        heights = class_heights.get(cls)
+        if not heights:
+            return stack_gap
+        avg = sum(heights) // len(heights)
+        return max(stack_gap, avg // 2)
+
     for name, cp in target_mark_glyphs:
         if name not in glyf or name not in hmtx.metrics:
             continue
@@ -535,6 +557,54 @@ def add_fallback_mark_anchors(font):
     if not mark_anchors:
         return False
 
+    # Build mark-to-mark anchors for all combining marks (skip ones already covered).
+    gpos_table = font['GPOS'].table
+    existing_mkmk_marks = set()
+    if gpos_table.FeatureList and gpos_table.LookupList:
+        for lookup in gpos_table.LookupList.Lookup:
+            real_lookup = lookup
+            if lookup.LookupType == 9 and hasattr(lookup, "SubTable"):
+                # extension lookup
+                for st in lookup.SubTable:
+                    if hasattr(st, "ExtSubTable"):
+                        real_lookup = st.ExtSubTable
+                        break
+            if real_lookup.LookupType != 6:
+                continue
+            if not hasattr(real_lookup, "SubTable"):
+                continue
+            for st in real_lookup.SubTable:
+                real = st.ExtSubTable if hasattr(st, "ExtSubTable") else st
+                if hasattr(real, "Mark1Coverage") and real.Mark1Coverage:
+                    existing_mkmk_marks.update(real.Mark1Coverage.glyphs)
+
+    mark1_for_mkmk = {}
+    mark2_anchors = {}
+    for name, cp in mark_glyphs:
+        if name in existing_mkmk_marks:
+            continue
+        if name not in glyf:
+            continue
+        glyph = glyf[name]
+        if not hasattr(glyph, "xMax") or glyph.xMax is None:
+            glyph.recalcBounds(glyf)
+        cls = classify_mark(cp)
+        mx = (glyph.xMin + glyph.xMax) // 2
+        gap = class_gap(cls)
+        # mark1 anchor (where next mark attaches)
+        if cls == 1:  # below
+            m1y = glyph.yMax
+            m2y = glyph.yMin - gap
+        elif cls == 2:  # overlay
+            mid = (glyph.yMin + glyph.yMax) // 2
+            m1y = mid
+            m2y = mid
+        else:  # above/default
+            m1y = glyph.yMin
+            m2y = glyph.yMax + gap
+        mark1_for_mkmk[name] = (cls, buildAnchor(mx, m1y))
+        mark2_anchors[name] = {cls: buildAnchor(mx, m2y)}
+
     base_anchors = {}
     for base in base_glyphs:
         if base not in glyf or base not in hmtx.metrics:
@@ -546,9 +616,9 @@ def add_fallback_mark_anchors(font):
         x = advance // 2
         anchors_for_base = {}
         if 0 in mark_classes_present:
-            anchors_for_base[0] = buildAnchor(x, glyph.yMax + 100)
+            anchors_for_base[0] = buildAnchor(x, glyph.yMax + class_gap(0))
         if 1 in mark_classes_present:
-            anchors_for_base[1] = buildAnchor(x, glyph.yMin)
+            anchors_for_base[1] = buildAnchor(x, glyph.yMin - class_gap(1))
         if 2 in mark_classes_present:
             anchors_for_base[2] = buildAnchor(x, (glyph.yMin + glyph.yMax) // 2)
         if anchors_for_base:
@@ -581,6 +651,35 @@ def add_fallback_mark_anchors(font):
         feature.Feature = gpos.FeatureList.FeatureRecord[0].Feature.__class__()
         feature.Feature.LookupCount = 1
         feature.Feature.LookupListIndex = [new_index]
+        gpos.FeatureList.FeatureRecord.append(feature)
+        gpos.FeatureList.FeatureCount += 1
+
+    # Add a lightweight mark-to-mark fallback to improve stacked mark spacing.
+    build_markmark = getattr(ot_builder, "buildMarkMarkPos", None)
+    if not build_markmark:
+        return True
+
+    mkmk_subtables = build_markmark(mark1_for_mkmk, mark2_anchors, font.getReverseGlyphMap())
+    mkmk_lookup = otTables.Lookup()
+    mkmk_lookup.LookupFlag = 0
+    mkmk_lookup.LookupType = 6
+    mkmk_lookup.SubTable = mkmk_subtables
+    mkmk_lookup.SubTableCount = len(mkmk_subtables)
+
+    gpos.LookupList.Lookup.append(mkmk_lookup)
+    gpos.LookupList.LookupCount += 1
+    mkmk_index = len(gpos.LookupList.Lookup) - 1
+
+    for record in gpos.FeatureList.FeatureRecord:
+        if record.FeatureTag == "mkmk":
+            record.Feature.LookupListIndex.append(mkmk_index)
+            break
+    else:
+        feature = gpos.FeatureList.FeatureRecord[0].__class__()
+        feature.FeatureTag = "mkmk"
+        feature.Feature = gpos.FeatureList.FeatureRecord[0].Feature.__class__()
+        feature.Feature.LookupCount = 1
+        feature.Feature.LookupListIndex = [mkmk_index]
         gpos.FeatureList.FeatureRecord.append(feature)
         gpos.FeatureList.FeatureCount += 1
 
