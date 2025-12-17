@@ -85,6 +85,13 @@ jobs:
           name: specimen-image
           path: documentation/iosevka-charon.png
           retention-days: 7
+      - name: Upload webfonts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webfonts
+          path: webfonts/
+          retention-days: 7
 
   # Package everything together for releases
   package:
@@ -119,6 +126,12 @@ jobs:
           name: specimen-image
           path: documentation
         continue-on-error: true
+      - name: Download webfonts
+        uses: actions/download-artifact@v4
+        with:
+          name: webfonts
+          path: webfonts/
+        continue-on-error: true
       - name: Archive complete package
         uses: actions/upload-artifact@v4
         with:
@@ -126,6 +139,7 @@ jobs:
           path: |
             fonts
             general_use_fonts
+            webfonts
             out
             documentation/iosevka-charon.png
           retention-days: 90
@@ -157,9 +171,10 @@ jobs:
           TAG="pre-${GITHUB_SHA}"
           TITLE="Pre-release ${GITHUB_SHA::7}"
 
-          # Create three separate zip files
+          # Create four separate zip files
           GENERAL_ZIP="iosevka-charon.zip"
           GF_ZIP="iosevka-charon-google-fonts-version.zip"
+          WEBFONTS_ZIP="iosevka-charon-webfonts.zip"
           QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
 
           # Package general use fonts
@@ -177,7 +192,12 @@ jobs:
             cd release/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
           fi
 
-          printf -v NOTES "Automated prerelease for commit %s.\n\n**For general use, download \`iosevka-charon.zip\`**\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka)\n- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build" "${GITHUB_SHA}"
+          # Package webfonts
+          if [ -d "release/webfonts" ]; then
+            cd release/webfonts && zip -r "../../${WEBFONTS_ZIP}" . && cd ../..
+          fi
+
+          printf -v NOTES "Automated prerelease for commit %s.\n\n**For general use, download \`iosevka-charon.zip\`**\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka)\n- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts\n- **\`iosevka-charon-webfonts.zip\`**: WOFF2 webfonts with three subsets (full, latin-ext, latin)\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build" "${GITHUB_SHA}"
 
           gh release delete "$TAG" -y 2>/dev/null || true
           gh release create "$TAG" \
@@ -191,6 +211,7 @@ jobs:
           [ -f "${GENERAL_ZIP}" ] && gh release upload "$TAG" "${GENERAL_ZIP}" --clobber
           [ -f "${GF_ZIP}" ] && gh release upload "$TAG" "${GF_ZIP}" --clobber
           [ -f "${QA_ZIP}" ] && gh release upload "$TAG" "${QA_ZIP}" --clobber
+          [ -f "${WEBFONTS_ZIP}" ] && gh release upload "$TAG" "${WEBFONTS_ZIP}" --clobber
           [ -f "release/documentation/iosevka-charon.png" ] && gh release upload "$TAG" "release/documentation/iosevka-charon.png" --clobber
 
   release:
@@ -240,9 +261,10 @@ jobs:
         run: echo "RELEASE_ZIP_NAME=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')-${{ github.event.release.tag_name }}" >> $GITHUB_ENV
       - name: Create release bundles (three separate archives)
         run: |
-          # Create three separate zip files
+          # Create four separate zip files
           GENERAL_ZIP="iosevka-charon.zip"
           GF_ZIP="iosevka-charon-google-fonts-version.zip"
+          WEBFONTS_ZIP="iosevka-charon-webfonts.zip"
           QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
 
           # Package 1: General use fonts
@@ -273,6 +295,15 @@ jobs:
           if [ -d "${{ env.ZIP_NAME }}/out/fontspector" ]; then
             cd ${{ env.ZIP_NAME }}/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
           fi
+
+          # Package 4: Webfonts
+          if [ -d "${{ env.ZIP_NAME }}/webfonts" ]; then
+            mkdir -p temp_webfonts
+            cp -r ${{ env.ZIP_NAME }}/webfonts/* temp_webfonts/
+            cp ${{ env.ZIP_NAME }}/OFL.txt temp_webfonts/
+            cd temp_webfonts && zip -r "../${WEBFONTS_ZIP}" . && cd ..
+            rm -rf temp_webfonts
+          fi
       - name: Build release notes
         run: |
           STATUS="Passed"
@@ -287,6 +318,7 @@ jobs:
             echo "This release includes three archives:"
             echo "- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka, suitable for general use)"
             echo "- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts"
+            echo "- **\`iosevka-charon-webfonts.zip\`**: WOFF2 webfonts with three subsets (full, latin-ext, latin)"
             echo "- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build"
             echo ""
             echo "---"
@@ -308,6 +340,7 @@ jobs:
           [ -f "${GENERAL_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GENERAL_ZIP}" --clobber
           [ -f "${GF_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${GF_ZIP}" --clobber
           [ -f "${QA_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${QA_ZIP}" --clobber
+          [ -f "${WEBFONTS_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${WEBFONTS_ZIP}" --clobber
           [ -f "${{ env.ZIP_NAME }}/documentation/iosevka-charon.png" ] && gh release upload ${{ github.event.release.tag_name }} "${{ env.ZIP_NAME }}/documentation/iosevka-charon.png" --clobber
       - name: Upload fontspector HTML report
         if: ${{ steps.fontspector.outputs.has_html == 'true' }}

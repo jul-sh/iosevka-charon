@@ -76,6 +76,9 @@ if [ ${#FAILED_TARGETS[@]} -eq 0 ]; then
     echo ""
     echo "Generated artifacts:"
     echo "  - Fonts: fonts/"
+    if [ -d "webfonts" ]; then
+        echo "  - Webfonts: webfonts/"
+    fi
     if [ -d "out/fontspector" ]; then
         echo "  - Test reports: out/fontspector/"
     fi

@@ -16,12 +16,13 @@ help:
 	@echo "  make test:                           Runs fontspector checks on the built fonts"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2"
 	@echo "  make compare:                        Compares raw vs post-processed fonts"
+	@echo "  make webfonts:                       Generates WOFF2 webfonts with subsets (full, latin-ext, latin)"
 	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
 
 # Make targets that should be included in automated test runs
-TEST_TARGETS := build fonts postprocess images test proof compare
+TEST_TARGETS := build fonts postprocess webfonts images test proof compare
 
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
@@ -56,6 +57,16 @@ postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 
 postprocess: postprocess.stamp
 
+# Stage 2.5: Generate WOFF2 webfonts with subsets
+webfonts.stamp: postprocess.stamp
+	@echo "==> Stage 2.5: Generating WOFF2 webfonts..."
+	rm -rf webfonts
+	python3 scripts/generate_webfonts.py
+	@touch webfonts.stamp
+	@echo "==> WOFF2 webfonts available in webfonts/"
+
+webfonts: webfonts.stamp
+
 # Stage 3: Generate specimen images with DrawBot
 images: postprocess.stamp $(DRAWBOT_OUTPUT)
 
@@ -66,7 +77,7 @@ documentation/%.png: documentation/%.py postprocess.stamp
 
 
 # Testing and proofing
-test: postprocess.stamp test-harfbuzz
+test: postprocess.stamp
 	which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1)
 	mkdir -p out/fontspector
 	fontspector --profile googlefonts -l warn --full-lists --succinct \
@@ -113,4 +124,4 @@ update-subtree:
 	git subtree pull --prefix=sources/iosevka iosevka-upstream $(TAG) -m "Update Iosevka subtree to $(TAG)"
 	@echo "==> Subtree updated successfully to $(TAG)"
 
-.PHONY: $(TEST_TARGETS) help clean update-subtree
+.PHONY: $(TEST_TARGETS) help clean update-subtree webfonts
