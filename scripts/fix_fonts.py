@@ -877,7 +877,213 @@ def fix_gdef_mark_classes(font):
     return updated
 
 
+def add_kerning_feature(font):
+    """Add GPOS kern feature for quasi-proportional fonts.
+
+    This adds class-based kerning pairs to improve spacing between
+    problematic letter combinations like AV, To, Ty, etc.
+    Only applies to quasi-proportional fonts (isFixedPitch == 0).
+    """
+    # Only apply to quasi-proportional fonts
+    # Use post.isFixedPitch (0 = proportional) rather than PANOSE
+    # because fix_panose_monospace() forces bProportion to 9 for all fonts
+    if 'post' in font and font['post'].isFixedPitch:
+        return False  # Skip monospaced/fixed-pitch fonts
+
+    if 'GPOS' not in font:
+        return False
+
+    glyf = font.get('glyf')
+    cmap = font.getBestCmap()
+    if not glyf or not cmap:
+        return False
+
+    glyph_order = font.getGlyphOrder()
+
+    # Helper to find glyph names for a set of characters
+    def names_for_chars(chars):
+        names = []
+        for ch in chars:
+            cp = ord(ch)
+            if cp in cmap:
+                names.append(cmap[cp])
+        return names
+
+    # Helper to expand base glyph to include accented variants
+    def expand_with_accents(base_names):
+        expanded = set(base_names)
+        for name in base_names:
+            for gn in glyph_order:
+                if gn.startswith(name) and gn != name:
+                    expanded.add(gn)
+        return list(expanded)
+
+    # Define kerning classes
+    # Left-side classes (the first glyph in the pair)
+    left_classes = {
+        '@L_T': expand_with_accents(names_for_chars('TŦȚŢƬƮȾṪṬṮṰТτ')),
+        '@L_V': expand_with_accents(names_for_chars('VṼṾ')),
+        '@L_W': expand_with_accents(names_for_chars('WẀẂẄẆẈŴω')),
+        '@L_Y': expand_with_accents(names_for_chars('YỲỴỶỸŶŸÝУу')),
+        '@L_A': expand_with_accents(names_for_chars('AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶÆ')),
+        '@L_F': expand_with_accents(names_for_chars('FḞƑ')),
+        '@L_P': expand_with_accents(names_for_chars('PÞṔṖƤР')),
+        '@L_r': expand_with_accents(names_for_chars('rŕřŗṙṛṝṟɍɾ')),
+        '@L_f': expand_with_accents(names_for_chars('fḟƒﬁﬂ')),
+        '@L_L': expand_with_accents(names_for_chars('LĹĻĽĿŁḶḸḺḼȽ')),
+    }
+
+    # Right-side classes (the second glyph in the pair)
+    right_classes = {
+        '@R_o': expand_with_accents(names_for_chars('oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœ')),
+        '@R_a': expand_with_accents(names_for_chars('aàáâãäåāăąǎạảấầẩẫậắằẳẵặæ')),
+        '@R_e': expand_with_accents(names_for_chars('eèéêëēĕėęěẹẻẽếềểễệ')),
+        '@R_c': expand_with_accents(names_for_chars('cçćĉċčƈ')),
+        '@R_d': expand_with_accents(names_for_chars('dďđḋḍḏḑḓ')),
+        '@R_g': expand_with_accents(names_for_chars('gĝğġģǧǵḡ')),
+        '@R_q': expand_with_accents(names_for_chars('q')),
+        '@R_u': expand_with_accents(names_for_chars('uùúûüũūŭůűųưǔǖǘǚǜụủứừửữự')),
+        '@R_s': expand_with_accents(names_for_chars('sśŝşšșṡṣ')),
+        '@R_y': expand_with_accents(names_for_chars('yýÿŷỳỵỷỹ')),
+        '@R_v': expand_with_accents(names_for_chars('v')),
+        '@R_w': expand_with_accents(names_for_chars('wẁẃẅẇẉŵ')),
+        '@R_A': expand_with_accents(names_for_chars('AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶ')),
+        '@R_V': expand_with_accents(names_for_chars('VṼṾ')),
+        '@R_punct': names_for_chars('.,;:'),
+    }
+
+    # Filter to only include glyphs that exist in the font
+    for class_name, class_glyphs in list(left_classes.items()):
+        left_classes[class_name] = [g for g in class_glyphs if g in glyph_order]
+    for class_name, class_glyphs in list(right_classes.items()):
+        right_classes[class_name] = [g for g in class_glyphs if g in glyph_order]
+
+    # Remove empty classes
+    left_classes = {k: v for k, v in left_classes.items() if v}
+    right_classes = {k: v for k, v in right_classes.items() if v}
+
+    if not left_classes or not right_classes:
+        return False
+
+    # Define kerning values (negative = tighten, positive = loosen)
+    kern_pairs = {
+        ('@L_T', '@R_o'): -50, ('@L_T', '@R_a'): -45, ('@L_T', '@R_e'): -45,
+        ('@L_T', '@R_c'): -40, ('@L_T', '@R_u'): -35, ('@L_T', '@R_s'): -35,
+        ('@L_T', '@R_y'): -25, ('@L_T', '@R_punct'): -60,
+        ('@L_V', '@R_o'): -40, ('@L_V', '@R_a'): -35, ('@L_V', '@R_e'): -35,
+        ('@L_V', '@R_u'): -25, ('@L_V', '@R_A'): -50, ('@L_V', '@R_punct'): -50,
+        ('@L_W', '@R_o'): -30, ('@L_W', '@R_a'): -25, ('@L_W', '@R_e'): -25,
+        ('@L_W', '@R_A'): -35, ('@L_W', '@R_punct'): -40,
+        ('@L_Y', '@R_o'): -50, ('@L_Y', '@R_a'): -45, ('@L_Y', '@R_e'): -45,
+        ('@L_Y', '@R_u'): -35, ('@L_Y', '@R_punct'): -60,
+        ('@L_A', '@R_V'): -50, ('@L_A', '@R_v'): -35, ('@L_A', '@R_w'): -25,
+        ('@L_A', '@R_y'): -30,
+        ('@L_F', '@R_o'): -35, ('@L_F', '@R_a'): -30, ('@L_F', '@R_e'): -30,
+        ('@L_F', '@R_punct'): -50,
+        ('@L_P', '@R_o'): -25, ('@L_P', '@R_a'): -20, ('@L_P', '@R_e'): -20,
+        ('@L_P', '@R_punct'): -45,
+        ('@L_r', '@R_o'): -20, ('@L_r', '@R_a'): -15, ('@L_r', '@R_e'): -15,
+        ('@L_r', '@R_punct'): -30,
+        ('@L_f', '@R_o'): -15, ('@L_f', '@R_a'): -10, ('@L_f', '@R_e'): -10,
+        ('@L_L', '@R_V'): -35, ('@L_L', '@R_y'): -25,
+    }
+
+    # Build flat pair list
+    flat_pairs = []
+    for (left_class, right_class), value in kern_pairs.items():
+        left_glyphs = left_classes.get(left_class, [])
+        right_glyphs = right_classes.get(right_class, [])
+        for lg in left_glyphs:
+            for rg in right_glyphs:
+                flat_pairs.append((lg, rg, value))
+
+    if not flat_pairs:
+        return False
+
+    # Build the GPOS kern lookup
+    gpos = font['GPOS'].table
+
+    lookup = otTables.Lookup()
+    lookup.LookupType = 2  # Pair Adjustment
+    lookup.LookupFlag = 0
+    lookup.SubTableCount = 1
+
+    subtable = otTables.PairPos()
+    subtable.Format = 1
+    subtable.ValueFormat1 = 4  # XAdvance only
+    subtable.ValueFormat2 = 0
+
+    # Group pairs by first glyph
+    pairs_by_first = {}
+    for g1, g2, value in flat_pairs:
+        if g1 not in pairs_by_first:
+            pairs_by_first[g1] = []
+        pairs_by_first[g1].append((g2, value))
+
+    glyph_order_map = {g: i for i, g in enumerate(glyph_order)}
+    sorted_first_glyphs = sorted(pairs_by_first.keys(),
+                                  key=lambda x: glyph_order_map.get(x, 999999))
+
+    coverage = otTables.Coverage()
+    coverage.glyphs = sorted_first_glyphs
+
+    pair_sets = []
+    for g1 in sorted_first_glyphs:
+        pset = otTables.PairSet()
+        pset.PairValueRecord = []
+        sorted_pairs = sorted(pairs_by_first[g1],
+                               key=lambda x: glyph_order_map.get(x[0], 999999))
+        for g2, value in sorted_pairs:
+            pvr = otTables.PairValueRecord()
+            pvr.SecondGlyph = g2
+            pvr.Value1 = otTables.ValueRecord()
+            pvr.Value1.XAdvance = value
+            pset.PairValueRecord.append(pvr)
+        pset.PairValueCount = len(pset.PairValueRecord)
+        pair_sets.append(pset)
+
+    subtable.Coverage = coverage
+    subtable.PairSet = pair_sets
+    subtable.PairSetCount = len(pair_sets)
+    lookup.SubTable = [subtable]
+
+    gpos.LookupList.Lookup.append(lookup)
+    gpos.LookupList.LookupCount += 1
+    new_lookup_index = len(gpos.LookupList.Lookup) - 1
+
+    # Find or create 'kern' feature
+    kern_feature = None
+    for record in gpos.FeatureList.FeatureRecord:
+        if record.FeatureTag == 'kern':
+            kern_feature = record.Feature
+            break
+
+    if kern_feature is None:
+        new_record = otTables.FeatureRecord()
+        new_record.FeatureTag = 'kern'
+        new_record.Feature = otTables.Feature()
+        new_record.Feature.FeatureParams = None
+        new_record.Feature.LookupListIndex = [new_lookup_index]
+        new_record.Feature.LookupCount = 1
+        gpos.FeatureList.FeatureRecord.append(new_record)
+        gpos.FeatureList.FeatureCount += 1
+
+        for script_record in gpos.ScriptList.ScriptRecord:
+            script = script_record.Script
+            if script.DefaultLangSys:
+                feature_index = len(gpos.FeatureList.FeatureRecord) - 1
+                script.DefaultLangSys.FeatureIndex.append(feature_index)
+                script.DefaultLangSys.FeatureCount += 1
+    else:
+        kern_feature.LookupListIndex.append(new_lookup_index)
+        kern_feature.LookupCount += 1
+
+    print(f"  ✓ Added kerning: {len(flat_pairs)} pairs across {len(sorted_first_glyphs)} first glyphs")
+    return True
+
+
 def post_process_font(font_path, output_path=None):
+
     """Apply all post-processing fixes to a font"""
     if output_path is None:
         output_path = font_path
@@ -943,6 +1149,9 @@ def post_process_font(font_path, output_path=None):
 
         if fix_gdef_mark_classes(font):
             fixes_applied.append("gdef_mark_classes")
+
+        if add_kerning_feature(font):
+            fixes_applied.append("kerning")
 
         # Remove unwanted tables
         unwanted_tables = ['DSIG', 'FFTM', 'prop']
