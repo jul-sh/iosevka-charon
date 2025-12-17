@@ -429,6 +429,168 @@ def fix_dotted_circle(font):
     return False
 
 
+def fix_broken_mark_anchors(font):
+    """Fix Mark2Base anchors to use correct Y positions based on glyph geometry.
+
+    The upstream Iosevka font often has incorrect anchor Y positions:
+    - Both mark and base anchors at the same Y (causing 0 offset)
+    - Both anchors at Y=0 (causing no vertical movement)
+
+    This function recomputes all mark and base anchor Y positions based on
+    the actual glyph geometry:
+    - For above marks: mark anchor at yMin (bottom of mark), base anchor at yMax+gap
+    - For below marks: mark anchor at yMax (top of mark), base anchor at yMin-gap
+    """
+    if 'GPOS' not in font or 'glyf' not in font:
+        return False
+
+    cmap = font.getBestCmap()
+    glyf = font['glyf']
+    gpos = font['GPOS'].table
+
+    # Build reverse cmap: glyph name -> codepoint
+    name_to_cp = {}
+    for cp, name in cmap.items():
+        if name not in name_to_cp:
+            name_to_cp[name] = cp
+
+    # Combining class ranges for below marks
+    below_classes = {202, 214, 218, 220, 222, 223, 224, 225, 226}
+    overlay_classes = {1, 200}
+
+    def classify_mark_cp(cp: int) -> int:
+        cc = unicodedata.combining(chr(cp))
+        if cc in below_classes:
+            return 1  # below
+        if cc in overlay_classes:
+            return 2  # overlay
+        return 0  # above
+
+    def get_glyph_bounds(name):
+        """Get glyph yMin/yMax, computing if needed."""
+        if name not in glyf:
+            return None, None
+        g = glyf[name]
+        if not hasattr(g, 'yMax') or g.yMax is None:
+            g.recalcBounds(glyf)
+        ymin = getattr(g, 'yMin', None)
+        ymax = getattr(g, 'yMax', None)
+        if ymin is None or ymax is None:
+            return None, None
+        return ymin, ymax
+
+    fixed_marks = 0
+    fixed_bases = 0
+    stack_gap = 60  # Gap between base and mark
+
+    # Iterate through all lookups (not just mark feature) to catch all Mark2Base
+    if not gpos.LookupList:
+        return False
+
+    for idx, lookup in enumerate(gpos.LookupList.Lookup):
+        for subtable in lookup.SubTable:
+            real_st = subtable
+            if lookup.LookupType == 9 and hasattr(subtable, 'ExtSubTable'):
+                real_st = subtable.ExtSubTable
+
+            lt = getattr(real_st, 'LookupType', lookup.LookupType)
+            if lt != 4:  # Only process MarkToBase
+                continue
+
+            if not (hasattr(real_st, 'MarkCoverage') and real_st.MarkCoverage):
+                continue
+            if not (hasattr(real_st, 'BaseCoverage') and real_st.BaseCoverage):
+                continue
+            if not (hasattr(real_st, 'MarkArray') and real_st.MarkArray):
+                continue
+            if not (hasattr(real_st, 'BaseArray') and real_st.BaseArray):
+                continue
+
+            # First pass: fix all mark anchors and collect which classes need base fixes
+            # Also track the min/max mark anchor Y per class for proper base positioning
+            classes_to_fix = {}  # mark_class -> (mark_type, min_or_max_mark_y)
+
+            for m_idx, mark_name in enumerate(real_st.MarkCoverage.glyphs):
+                cp = name_to_cp.get(mark_name)
+                if cp is None:
+                    continue
+
+                mark_type = classify_mark_cp(cp)
+                if mark_type == 2:  # overlay - skip
+                    continue
+
+                mark_ymin, mark_ymax = get_glyph_bounds(mark_name)
+                if mark_ymin is None:
+                    continue
+
+                m_rec = real_st.MarkArray.MarkRecord[m_idx]
+                mark_anchor = m_rec.MarkAnchor
+                mark_class = m_rec.Class
+
+                # Compute correct mark anchor Y
+                if mark_type == 1:  # below mark
+                    correct_mark_y = mark_ymax  # attach at top of mark
+                else:  # above mark
+                    correct_mark_y = mark_ymin  # attach at bottom of mark
+
+                # Fix if different from current
+                if mark_anchor.YCoordinate != correct_mark_y:
+                    mark_anchor.YCoordinate = correct_mark_y
+                    fixed_marks += 1
+
+                # Track this class for base anchor fixes
+                # For above marks: track the MAXIMUM mark_y (highest bottom among marks)
+                # For below marks: track the MINIMUM mark_y (lowest top among marks)
+                if mark_class not in classes_to_fix:
+                    classes_to_fix[mark_class] = (mark_type, correct_mark_y)
+                else:
+                    _, prev_y = classes_to_fix[mark_class]
+                    if mark_type == 0:  # above mark - track MAXIMUM (need base_y > all mark bottoms)
+                        classes_to_fix[mark_class] = (mark_type, max(prev_y, correct_mark_y))
+                    else:  # below mark - track MINIMUM (need base_y < all mark tops)
+                        classes_to_fix[mark_class] = (mark_type, min(prev_y, correct_mark_y))
+
+            # Second pass: fix base anchors for the mark classes we identified
+            for b_idx, base_name in enumerate(real_st.BaseCoverage.glyphs):
+                base_ymin, base_ymax = get_glyph_bounds(base_name)
+                if base_ymin is None:
+                    continue
+
+                b_rec = real_st.BaseArray.BaseRecord[b_idx]
+
+                for mark_class, (mark_type, mark_y_threshold) in classes_to_fix.items():
+                    if mark_class >= len(b_rec.BaseAnchor):
+                        continue
+                    base_anchor = b_rec.BaseAnchor[mark_class]
+                    if base_anchor is None:
+                        continue
+
+                    # Compute correct base anchor Y
+                    # For above marks: base_anchor must be > mark_y_threshold
+                    # For below marks: base_anchor must be < mark_y_threshold
+                    if mark_type == 1:  # below mark
+                        correct_base_y = base_ymin - stack_gap
+                        # Ensure base_y < mark_y_threshold for negative offset
+                        if correct_base_y >= mark_y_threshold:
+                            correct_base_y = mark_y_threshold - 1
+                    else:  # above mark
+                        correct_base_y = base_ymax + stack_gap
+                        # Ensure base_y > mark_y_threshold for positive offset
+                        if correct_base_y <= mark_y_threshold:
+                            correct_base_y = mark_y_threshold + 1
+
+                    # Fix if different from current
+                    if base_anchor.YCoordinate != correct_base_y:
+                        base_anchor.YCoordinate = correct_base_y
+                        fixed_bases += 1
+
+    if fixed_marks > 0 or fixed_bases > 0:
+        print(f"  ✓ Fixed mark anchor positions: {fixed_marks} marks, {fixed_bases} bases")
+        return True
+
+    return False
+
+
 def add_fallback_mark_anchors(font):
     """Add broad mark-to-base coverage so combining marks attach instead of floating."""
     if 'GPOS' not in font or 'glyf' not in font:
@@ -1384,6 +1546,9 @@ def post_process_font(font_path, output_path=None):
 
         if drop_glyph_names(font):
             fixes_applied.append("stripped_glyph_names")
+
+        if fix_broken_mark_anchors(font):
+            fixes_applied.append("fixed_broken_mark_anchors")
 
         if add_fallback_mark_anchors(font):
             fixes_applied.append("fallback_mark_anchors")
