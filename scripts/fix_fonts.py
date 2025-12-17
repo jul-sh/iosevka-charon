@@ -1072,12 +1072,41 @@ def add_kerning_feature(font):
         return names
 
     # Helper to expand base glyph to include accented variants
+    # Only include glyphs that are truly accented forms of the base letter
+    # (e.g. 'a' -> 'aacute', 'agrave' but NOT 'at', 'asterisk', 'ampersand')
     def expand_with_accents(base_names):
+        import re
+        # Common accent suffixes in glyph names
+        accent_patterns = [
+            r'acute', r'grave', r'circumflex', r'dieresis', r'tilde',
+            r'macron', r'breve', r'dotaccent', r'ring', r'cedilla',
+            r'ogonek', r'caron', r'hook', r'horn', r'comma',
+            r'turkic', r'belowdot', r'tonos', r'dialytika',
+        ]
+        accent_regex = '|'.join(accent_patterns)
+
         expanded = set(base_names)
         for name in base_names:
-            for gn in glyph_order:
-                if gn.startswith(name) and gn != name:
-                    expanded.add(gn)
+            if len(name) == 1:
+                # Single-letter base: only match specific patterns
+                # e.g., 'a' should match 'aacute', 'agrave', 'uni0101' but not 'at', 'asterisk'
+                for gn in glyph_order:
+                    if gn == name:
+                        continue
+                    # Match: base + accent suffix
+                    if re.match(rf'^{re.escape(name)}({accent_regex})$', gn, re.IGNORECASE):
+                        expanded.add(gn)
+                    # Match: base + 'uni' variations (like uni0101 from 'a')
+                    # Skip this - too broad
+            else:
+                # Multi-letter base: more lenient but still careful
+                # e.g., 'ae' should match 'aeacute', 'aeligature'
+                for gn in glyph_order:
+                    if gn.startswith(name) and gn != name:
+                        # Only add if the suffix is an accent pattern
+                        suffix = gn[len(name):]
+                        if re.match(rf'^({accent_regex})', suffix, re.IGNORECASE):
+                            expanded.add(gn)
         return list(expanded)
 
     # Define kerning classes
@@ -1138,10 +1167,7 @@ def add_kerning_feature(font):
             'LĹĻĽĿŁḶḸḺḼȽ'  # Latin
             'ГгҐґ'  # Cyrillic Ghe (similar L shape)
         )),
-        # Step 2: Number classes
-        '@L_1': names_for_chars('1¹①⑴₁'),
-        '@L_7': names_for_chars('7⑦⑺'),
-        '@L_4': names_for_chars('4⁴④⑷₄'),
+        # Step 2: Number classes (REMOVED - causes tabular kerning failures)
         # Step 3: Quote classes (left side - closing quotes)
         '@L_quote': names_for_chars("\"'\u2019\u00bb\u203a"),
         # Step 4: Bracket classes
@@ -1291,10 +1317,7 @@ def add_kerning_feature(font):
         # L combinations
         ('@L_L', '@R_V'): -35, ('@L_L', '@R_y'): -25, ('@L_L', '@R_T'): -35,
         ('@L_L', '@R_Y'): -30, ('@L_L', '@R_quote'): -30,
-        # Step 2: Number kerning
-        ('@L_1', '@R_punct'): -30, ('@L_7', '@R_punct'): -40,
-        ('@L_4', '@R_punct'): -20,
-        ('@L_1', '@R_paren'): -20, ('@L_7', '@R_paren'): -25,
+        # Step 2: Number kerning (REMOVED - causes tabular kerning failures)
         # Step 3: Quote kerning
         ('@L_quote', '@R_o'): -25, ('@L_quote', '@R_a'): -20,
         ('@L_quote', '@R_e'): -20, ('@L_quote', '@R_c'): -20,
