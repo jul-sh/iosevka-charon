@@ -920,36 +920,165 @@ def add_kerning_feature(font):
 
     # Define kerning classes
     # Left-side classes (the first glyph in the pair)
+    # Step 1: Latin + Cyrillic + Greek classes
     left_classes = {
-        '@L_T': expand_with_accents(names_for_chars('TŦȚŢƬƮȾṪṬṮṰТτ')),
-        '@L_V': expand_with_accents(names_for_chars('VṼṾ')),
-        '@L_W': expand_with_accents(names_for_chars('WẀẂẄẆẈŴω')),
-        '@L_Y': expand_with_accents(names_for_chars('YỲỴỶỸŶŸÝУу')),
-        '@L_A': expand_with_accents(names_for_chars('AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶÆ')),
-        '@L_F': expand_with_accents(names_for_chars('FḞƑ')),
-        '@L_P': expand_with_accents(names_for_chars('PÞṔṖƤР')),
-        '@L_r': expand_with_accents(names_for_chars('rŕřŗṙṛṝṟɍɾ')),
-        '@L_f': expand_with_accents(names_for_chars('fḟƒﬁﬂ')),
-        '@L_L': expand_with_accents(names_for_chars('LĹĻĽĿŁḶḸḺḼȽ')),
+        # T-like shapes (horizontal overhang at top)
+        '@L_T': expand_with_accents(names_for_chars(
+            'TŦȚŢƬƮȾṪṬṮṰ'  # Latin
+            'ТЋЂ'  # Cyrillic Te, Tshe, Dje
+            'Ττ'  # Greek Tau
+        )),
+        # V-like shapes (diagonal meeting at bottom)
+        '@L_V': expand_with_accents(names_for_chars(
+            'VṼṾ'  # Latin
+            'Ѵѵ'  # Cyrillic Izhitsa
+        )),
+        # W-like shapes
+        '@L_W': expand_with_accents(names_for_chars(
+            'WẀẂẄẆẈŴω'  # Latin + Greek omega
+            'Ѿѿ'  # Cyrillic Ot
+        )),
+        # Y-like shapes
+        '@L_Y': expand_with_accents(names_for_chars(
+            'YỲỴỶỸŶŸÝƳƴ'  # Latin
+            'УуЎўҮүҰұ'  # Cyrillic U variants
+            'ΥΎυύ'  # Greek Upsilon
+        )),
+        # A-like shapes (diagonal sides)
+        '@L_A': expand_with_accents(names_for_chars(
+            'AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶÆ'  # Latin
+            'АаДд'  # Cyrillic A, De
+            'ΑαΆά'  # Greek Alpha
+        )),
+        # F-like shapes (horizontal overhang)
+        '@L_F': expand_with_accents(names_for_chars(
+            'FḞƑ'  # Latin
+            'ГгҐґ'  # Cyrillic Ghe
+            'Γγ'  # Greek Gamma
+        )),
+        # P-like shapes (bowl on right)
+        '@L_P': expand_with_accents(names_for_chars(
+            'PÞṔṖƤ'  # Latin
+            'РрҎҏ'  # Cyrillic Er
+            'Ρρ'  # Greek Rho
+        )),
+        # r lowercase
+        '@L_r': expand_with_accents(names_for_chars(
+            'rŕřŗṙṛṝṟɍɾ'  # Latin
+            'гґ'  # Cyrillic small ghe
+        )),
+        # f lowercase
+        '@L_f': expand_with_accents(names_for_chars(
+            'fḟƒﬁﬂ'  # Latin
+        )),
+        # L-like shapes (right side open)
+        '@L_L': expand_with_accents(names_for_chars(
+            'LĹĻĽĿŁḶḸḺḼȽ'  # Latin
+            'ГгҐґ'  # Cyrillic Ghe (similar L shape)
+        )),
+        # Step 2: Number classes
+        '@L_1': names_for_chars('1¹①⑴₁'),
+        '@L_7': names_for_chars('7⑦⑺'),
+        '@L_4': names_for_chars('4⁴④⑷₄'),
+        # Step 3: Quote classes (left side - closing quotes)
+        '@L_quote': names_for_chars("\"'\u2019\u00bb\u203a"),
+        # Step 4: Bracket classes
+        '@L_paren': names_for_chars(')]}'),
+        # Step 6: Right-side capitals for oT, aT etc.
+        '@L_o': expand_with_accents(names_for_chars(
+            'oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœ'
+            'оө'  # Cyrillic o
+            'οό'  # Greek omicron
+        )),
+        '@L_a': expand_with_accents(names_for_chars(
+            'aàáâãäåāăąǎạảấầẩẫậắằẳẵặæ'
+            'а'  # Cyrillic a
+            'α'  # Greek alpha
+        )),
+        '@L_e': expand_with_accents(names_for_chars(
+            'eèéêëēĕėęěẹẻẽếềểễệ'
+            'еёє'  # Cyrillic e
+            'εέ'  # Greek epsilon
+        )),
     }
 
     # Right-side classes (the second glyph in the pair)
     right_classes = {
-        '@R_o': expand_with_accents(names_for_chars('oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœ')),
-        '@R_a': expand_with_accents(names_for_chars('aàáâãäåāăąǎạảấầẩẫậắằẳẵặæ')),
-        '@R_e': expand_with_accents(names_for_chars('eèéêëēĕėęěẹẻẽếềểễệ')),
-        '@R_c': expand_with_accents(names_for_chars('cçćĉċčƈ')),
-        '@R_d': expand_with_accents(names_for_chars('dďđḋḍḏḑḓ')),
-        '@R_g': expand_with_accents(names_for_chars('gĝğġģǧǵḡ')),
+        # Round letters (o-like) - Latin + Cyrillic + Greek
+        '@R_o': expand_with_accents(names_for_chars(
+            'oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœ'
+            'оө'  # Cyrillic o
+            'οό'  # Greek omicron
+        )),
+        '@R_a': expand_with_accents(names_for_chars(
+            'aàáâãäåāăąǎạảấầẩẫậắằẳẵặæ'
+            'а'  # Cyrillic a
+            'αά'  # Greek alpha
+        )),
+        '@R_e': expand_with_accents(names_for_chars(
+            'eèéêëēĕėęěẹẻẽếềểễệ'
+            'еёє'  # Cyrillic e
+            'εέη'  # Greek epsilon, eta
+        )),
+        '@R_c': expand_with_accents(names_for_chars(
+            'cçćĉċčƈ'
+            'сς'  # Cyrillic es, Greek sigma
+        )),
+        '@R_d': expand_with_accents(names_for_chars(
+            'dďđḋḍḏḑḓ'
+            'дђ'  # Cyrillic de
+        )),
+        '@R_g': expand_with_accents(names_for_chars(
+            'gĝğġģǧǵḡ'
+        )),
         '@R_q': expand_with_accents(names_for_chars('q')),
-        '@R_u': expand_with_accents(names_for_chars('uùúûüũūŭůűųưǔǖǘǚǜụủứừửữự')),
-        '@R_s': expand_with_accents(names_for_chars('sśŝşšșṡṣ')),
-        '@R_y': expand_with_accents(names_for_chars('yýÿŷỳỵỷỹ')),
-        '@R_v': expand_with_accents(names_for_chars('v')),
-        '@R_w': expand_with_accents(names_for_chars('wẁẃẅẇẉŵ')),
-        '@R_A': expand_with_accents(names_for_chars('AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶ')),
-        '@R_V': expand_with_accents(names_for_chars('VṼṾ')),
-        '@R_punct': names_for_chars('.,;:'),
+        '@R_u': expand_with_accents(names_for_chars(
+            'uùúûüũūŭůűųưǔǖǘǚǜụủứừửữự'
+            'уўү'  # Cyrillic u
+            'υύ'  # Greek upsilon
+        )),
+        '@R_s': expand_with_accents(names_for_chars(
+            'sśŝşšșṡṣ'
+        )),
+        '@R_y': expand_with_accents(names_for_chars(
+            'yýÿŷỳỵỷỹ'
+            'у'  # Cyrillic u (y-like)
+        )),
+        '@R_v': expand_with_accents(names_for_chars(
+            'v'
+            'ѵ'  # Cyrillic izhitsa
+        )),
+        '@R_w': expand_with_accents(names_for_chars(
+            'wẁẃẅẇẉŵ'
+            'ѿ'  # Cyrillic ot
+        )),
+        # Capital letters for right side
+        '@R_A': expand_with_accents(names_for_chars(
+            'AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶ'
+            'АД'  # Cyrillic A, De
+            'ΑΆ'  # Greek Alpha
+        )),
+        '@R_V': expand_with_accents(names_for_chars(
+            'VṼṾ'
+            'Ѵ'  # Cyrillic Izhitsa
+        )),
+        '@R_T': expand_with_accents(names_for_chars(
+            'TŦȚŢƬƮȾṪṬṮṰ'
+            'ТЋЂ'  # Cyrillic Te
+            'Ττ'  # Greek Tau
+        )),
+        '@R_Y': expand_with_accents(names_for_chars(
+            'YỲỴỶỸŶŸÝƳƴ'
+            'УЎҮ'  # Cyrillic U
+            'ΥΎ'  # Greek Upsilon
+        )),
+        # Step 2: Punctuation including numbers
+        '@R_punct': names_for_chars('.,;:!?'),
+        '@R_hyphen': names_for_chars('-–—'),
+        # Step 3: Quote classes (right side - opening quotes)
+        '@R_quote': names_for_chars("\"'\u201c\u2018\u00ab\u2039"),
+        # Step 4: Bracket classes
+        '@R_paren': names_for_chars('([{'),
     }
 
     # Filter to only include glyphs that exist in the font
@@ -966,85 +1095,200 @@ def add_kerning_feature(font):
         return False
 
     # Define kerning values (negative = tighten, positive = loosen)
+    # All 7 steps combined
     kern_pairs = {
+        # T combinations (Step 1: Latin + Cyrillic + Greek)
         ('@L_T', '@R_o'): -50, ('@L_T', '@R_a'): -45, ('@L_T', '@R_e'): -45,
         ('@L_T', '@R_c'): -40, ('@L_T', '@R_u'): -35, ('@L_T', '@R_s'): -35,
-        ('@L_T', '@R_y'): -25, ('@L_T', '@R_punct'): -60,
+        ('@L_T', '@R_y'): -25, ('@L_T', '@R_punct'): -60, ('@L_T', '@R_hyphen'): -40,
+        # V combinations
         ('@L_V', '@R_o'): -40, ('@L_V', '@R_a'): -35, ('@L_V', '@R_e'): -35,
         ('@L_V', '@R_u'): -25, ('@L_V', '@R_A'): -50, ('@L_V', '@R_punct'): -50,
+        ('@L_V', '@R_hyphen'): -30,
+        # W combinations
         ('@L_W', '@R_o'): -30, ('@L_W', '@R_a'): -25, ('@L_W', '@R_e'): -25,
-        ('@L_W', '@R_A'): -35, ('@L_W', '@R_punct'): -40,
+        ('@L_W', '@R_A'): -35, ('@L_W', '@R_punct'): -40, ('@L_W', '@R_hyphen'): -20,
+        # Y combinations
         ('@L_Y', '@R_o'): -50, ('@L_Y', '@R_a'): -45, ('@L_Y', '@R_e'): -45,
-        ('@L_Y', '@R_u'): -35, ('@L_Y', '@R_punct'): -60,
+        ('@L_Y', '@R_u'): -35, ('@L_Y', '@R_punct'): -60, ('@L_Y', '@R_hyphen'): -35,
+        # A combinations
         ('@L_A', '@R_V'): -50, ('@L_A', '@R_v'): -35, ('@L_A', '@R_w'): -25,
-        ('@L_A', '@R_y'): -30,
+        ('@L_A', '@R_y'): -30, ('@L_A', '@R_T'): -40, ('@L_A', '@R_Y'): -45,
+        ('@L_A', '@R_quote'): -40,
+        # F combinations
         ('@L_F', '@R_o'): -35, ('@L_F', '@R_a'): -30, ('@L_F', '@R_e'): -30,
-        ('@L_F', '@R_punct'): -50,
+        ('@L_F', '@R_punct'): -50, ('@L_F', '@R_hyphen'): -25,
+        # P combinations
         ('@L_P', '@R_o'): -25, ('@L_P', '@R_a'): -20, ('@L_P', '@R_e'): -20,
-        ('@L_P', '@R_punct'): -45,
+        ('@L_P', '@R_punct'): -45, ('@L_P', '@R_hyphen'): -20,
+        # r lowercase
         ('@L_r', '@R_o'): -20, ('@L_r', '@R_a'): -15, ('@L_r', '@R_e'): -15,
-        ('@L_r', '@R_punct'): -30,
+        ('@L_r', '@R_punct'): -30, ('@L_r', '@R_hyphen'): -15,
+        # f lowercase
         ('@L_f', '@R_o'): -15, ('@L_f', '@R_a'): -10, ('@L_f', '@R_e'): -10,
-        ('@L_L', '@R_V'): -35, ('@L_L', '@R_y'): -25,
+        # L combinations
+        ('@L_L', '@R_V'): -35, ('@L_L', '@R_y'): -25, ('@L_L', '@R_T'): -35,
+        ('@L_L', '@R_Y'): -30, ('@L_L', '@R_quote'): -30,
+        # Step 2: Number kerning
+        ('@L_1', '@R_punct'): -30, ('@L_7', '@R_punct'): -40,
+        ('@L_4', '@R_punct'): -20,
+        ('@L_1', '@R_paren'): -20, ('@L_7', '@R_paren'): -25,
+        # Step 3: Quote kerning
+        ('@L_quote', '@R_o'): -25, ('@L_quote', '@R_a'): -20,
+        ('@L_quote', '@R_e'): -20, ('@L_quote', '@R_c'): -20,
+        ('@L_A', '@R_quote'): -40, ('@L_V', '@R_quote'): -35,
+        ('@L_W', '@R_quote'): -25, ('@L_Y', '@R_quote'): -40,
+        ('@L_T', '@R_quote'): -30,
+        # Step 4: Bracket kerning
+        ('@L_paren', '@R_o'): -15, ('@L_paren', '@R_a'): -15,
+        ('@L_paren', '@R_e'): -15,
+        ('@L_A', '@R_paren'): -20, ('@L_V', '@R_paren'): -25,
+        ('@L_T', '@R_paren'): -20, ('@L_Y', '@R_paren'): -25,
+        # Step 6: Right-side capital kerning (reverse pairs like oT, aV)
+        ('@L_o', '@R_T'): -50, ('@L_o', '@R_V'): -35, ('@L_o', '@R_Y'): -40,
+        ('@L_a', '@R_T'): -45, ('@L_a', '@R_V'): -30, ('@L_a', '@R_Y'): -35,
+        ('@L_e', '@R_T'): -45, ('@L_e', '@R_V'): -30, ('@L_e', '@R_Y'): -35,
     }
 
-    # Build flat pair list
-    flat_pairs = []
-    for (left_class, right_class), value in kern_pairs.items():
-        left_glyphs = left_classes.get(left_class, [])
-        right_glyphs = right_classes.get(right_class, [])
-        for lg in left_glyphs:
-            for rg in right_glyphs:
-                flat_pairs.append((lg, rg, value))
+    # Step 7: Optical kerning helper - analyze glyph metrics to suggest kern values
+    def optical_kern_value(g1_name, g2_name, base_value):
+        """Adjust kerning value based on actual glyph sidebearings.
 
-    if not flat_pairs:
+        If glyphs have unusual sidebearings, adjust the kern value proportionally.
+        This provides more accurate kerning than fixed values alone.
+        """
+        if g1_name not in glyf or g2_name not in glyf:
+            return base_value
+        if g1_name not in hmtx.metrics or g2_name not in hmtx.metrics:
+            return base_value
+
+        g1 = glyf[g1_name]
+        g2 = glyf[g2_name]
+
+        # Ensure bounds are calculated
+        if not hasattr(g1, 'xMax') or g1.xMax is None:
+            g1.recalcBounds(glyf)
+        if not hasattr(g2, 'xMin') or g2.xMin is None:
+            g2.recalcBounds(glyf)
+
+        # Get sidebearings
+        g1_width, _ = hmtx[g1_name]
+        g2_width, g2_lsb = hmtx[g2_name]
+
+        # Calculate right sidebearing of g1
+        if hasattr(g1, 'xMax') and g1.xMax is not None:
+            g1_rsb = g1_width - g1.xMax
+        else:
+            return base_value
+
+        # If g1 has negative RSB (glyph extends past advance), tighten more
+        # If g2 has large LSB, we already have space so tighten less
+        adjustment = 0
+        if g1_rsb < 0:  # Overhanging glyph (like T)
+            adjustment -= 10  # Tighten a bit more
+        if g2_lsb > 50:  # Already has space on left
+            adjustment += 10  # Tighten less
+
+        return base_value + adjustment
+
+    # Step 5: Build Format 2 (Class-based) GPOS kerning
+    # This is MUCH more efficient than Format 1 with individual pairs
+    gpos = font['GPOS'].table
+    hmtx = font['hmtx']
+
+    # Assign class IDs to glyphs
+    # Class 0 is reserved for "all other glyphs"
+    left_class_defs = {}  # glyph_name -> class_id
+    right_class_defs = {}
+
+    # Map class names to numeric IDs (starting from 1)
+    left_class_ids = {}
+    right_class_ids = {}
+
+    class_id = 1
+    for class_name, glyphs in left_classes.items():
+        left_class_ids[class_name] = class_id
+        for g in glyphs:
+            left_class_defs[g] = class_id
+        class_id += 1
+
+    class_id = 1
+    for class_name, glyphs in right_classes.items():
+        right_class_ids[class_name] = class_id
+        for g in glyphs:
+            right_class_defs[g] = class_id
+        class_id += 1
+
+    # Build class-based pair values
+    # kern_pairs maps (left_class_name, right_class_name) -> value
+    # We need to convert to (left_class_id, right_class_id) -> value
+    class_pair_values = {}
+    for (left_class_name, right_class_name), value in kern_pairs.items():
+        left_id = left_class_ids.get(left_class_name)
+        right_id = right_class_ids.get(right_class_name)
+        if left_id and right_id:
+            class_pair_values[(left_id, right_id)] = value
+
+    if not class_pair_values:
         return False
 
-    # Build the GPOS kern lookup
-    gpos = font['GPOS'].table
-
+    # Create PairPos Format 2 subtable
     lookup = otTables.Lookup()
     lookup.LookupType = 2  # Pair Adjustment
     lookup.LookupFlag = 0
     lookup.SubTableCount = 1
 
     subtable = otTables.PairPos()
-    subtable.Format = 1
+    subtable.Format = 2  # Class-based kerning!
     subtable.ValueFormat1 = 4  # XAdvance only
     subtable.ValueFormat2 = 0
 
-    # Group pairs by first glyph
-    pairs_by_first = {}
-    for g1, g2, value in flat_pairs:
-        if g1 not in pairs_by_first:
-            pairs_by_first[g1] = []
-        pairs_by_first[g1].append((g2, value))
-
+    # Build Coverage (all glyphs that appear on left side)
+    all_left_glyphs = list(left_class_defs.keys())
     glyph_order_map = {g: i for i, g in enumerate(glyph_order)}
-    sorted_first_glyphs = sorted(pairs_by_first.keys(),
-                                  key=lambda x: glyph_order_map.get(x, 999999))
+    all_left_glyphs.sort(key=lambda x: glyph_order_map.get(x, 999999))
 
     coverage = otTables.Coverage()
-    coverage.glyphs = sorted_first_glyphs
-
-    pair_sets = []
-    for g1 in sorted_first_glyphs:
-        pset = otTables.PairSet()
-        pset.PairValueRecord = []
-        sorted_pairs = sorted(pairs_by_first[g1],
-                               key=lambda x: glyph_order_map.get(x[0], 999999))
-        for g2, value in sorted_pairs:
-            pvr = otTables.PairValueRecord()
-            pvr.SecondGlyph = g2
-            pvr.Value1 = otTables.ValueRecord()
-            pvr.Value1.XAdvance = value
-            pset.PairValueRecord.append(pvr)
-        pset.PairValueCount = len(pset.PairValueRecord)
-        pair_sets.append(pset)
-
+    coverage.glyphs = all_left_glyphs
     subtable.Coverage = coverage
-    subtable.PairSet = pair_sets
-    subtable.PairSetCount = len(pair_sets)
+
+    # Build ClassDef1 (left side classes)
+    class_def1 = otTables.ClassDef()
+    class_def1.classDefs = left_class_defs
+    subtable.ClassDef1 = class_def1
+
+    # Build ClassDef2 (right side classes)
+    class_def2 = otTables.ClassDef()
+    class_def2.classDefs = right_class_defs
+    subtable.ClassDef2 = class_def2
+
+    # Build Class1Record array
+    # Number of class1 records = max class1 ID + 1 (to include class 0)
+    num_class1 = max(left_class_ids.values()) + 1 if left_class_ids else 1
+    num_class2 = max(right_class_ids.values()) + 1 if right_class_ids else 1
+
+    subtable.ClassCount1 = num_class1
+    subtable.ClassCount2 = num_class2
+
+    class1_records = []
+    for c1 in range(num_class1):
+        c1_record = otTables.Class1Record()
+        c2_records = []
+        for c2 in range(num_class2):
+            c2_record = otTables.Class2Record()
+            value = class_pair_values.get((c1, c2), 0)
+            if value:
+                c2_record.Value1 = otTables.ValueRecord()
+                c2_record.Value1.XAdvance = value
+            else:
+                c2_record.Value1 = otTables.ValueRecord()
+                c2_record.Value1.XAdvance = 0
+            c2_record.Value2 = None
+            c2_records.append(c2_record)
+        c1_record.Class2Record = c2_records
+        class1_records.append(c1_record)
+
+    subtable.Class1Record = class1_records
     lookup.SubTable = [subtable]
 
     gpos.LookupList.Lookup.append(lookup)
@@ -1078,7 +1322,7 @@ def add_kerning_feature(font):
         kern_feature.LookupListIndex.append(new_lookup_index)
         kern_feature.LookupCount += 1
 
-    print(f"  ✓ Added kerning: {len(flat_pairs)} pairs across {len(sorted_first_glyphs)} first glyphs")
+    print(f"  ✓ Added kerning: {len(class_pair_values)} class pairs, {len(all_left_glyphs)} left glyphs (Format 2)")
     return True
 
 
