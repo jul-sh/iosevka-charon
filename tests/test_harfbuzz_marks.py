@@ -19,7 +19,7 @@ from fontTools.ttLib import TTFont
 
 # Paths
 GF_FONT = "fonts/iosevkacharon/IosevkaCharon-Regular.ttf"
-BASE_FONT = "general_use_fonts/IosevkaCharon/ttf/IosevkaCharon-Regular.ttf"
+BASE_FONT = "unprocessed_fonts/IosevkaCharon/ttf/IosevkaCharon-Regular.ttf"
 
 
 def load_font_data(font_path: str) -> bytes:

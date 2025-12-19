@@ -10,8 +10,8 @@ help:
 	@echo
 	@echo "  make build:                          Builds the fonts"
 	@echo "  make build PLAN=<path-to-toml>:      Builds fonts using a custom build plan"
-	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → general_use_fonts/)"
-	@echo "  make postprocess:                    Post-processes fonts (stage 2: general_use_fonts/ → fonts/)"
+	@echo "  make fonts:                          Builds raw fonts only (stage 1: sources → unprocessed_fonts/)"
+	@echo "  make postprocess:                    Post-processes fonts (stage 2: unprocessed_fonts/ → fonts/)"
 	@echo "  make images:                         Generates specimen images via DrawBot"
 	@echo "  make test:                           Runs fontspector checks on the built fonts"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2"
@@ -35,15 +35,15 @@ DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g')
 # Full build pipeline
 build: postprocess.stamp
 
-# Stage 1: Build raw fonts from Iosevka, into general_use_fonts/
+# Stage 1: Build raw fonts from Iosevka, into unprocessed_fonts/
 fonts.stamp: $(BUILD_SOURCES)
 	@echo "==> Stage 1: Building raw fonts from Iosevka sources..."
 	@echo "Using build plan: $(PLAN)"
-	rm -rf general_use_fonts
+	rm -rf unprocessed_fonts
 	rm -rf sources/iosevka/dist
 	python3 scripts/iosevka_build.py "$(PLAN)"
 	@touch fonts.stamp
-	@echo "==> Raw fonts built successfully in general_use_fonts/"
+	@echo "==> Raw fonts built successfully in unprocessed_fonts/"
 
 fonts: fonts.stamp
 
@@ -53,7 +53,7 @@ postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 	rm -rf fonts
 	python3 scripts/post_process_parallel.py
 	@touch postprocess.stamp
-	@echo "==> Final fonts available in fonts/ (Google Fonts version) and general_use_fonts/ (general use)"
+	@echo "==> Final fonts available in fonts/"
 
 postprocess: postprocess.stamp
 
@@ -97,7 +97,7 @@ proof: postprocess.stamp
 compare: postprocess.stamp
 	mkdir -p out/compare
 	diffenator2 diff \
-		--fonts-before $$(find general_use_fonts -type f -name "*.ttf") \
+		--fonts-before $$(find unprocessed_fonts -type f -name "*.ttf") \
 		--fonts-after $$(find fonts -type f -name "*.ttf") \
 		-o out/compare --no-diffenator || true
 	@echo ""

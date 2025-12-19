@@ -7,7 +7,7 @@ parser.add_argument("--output", metavar="PNG", help="where to save the image")
 args = parser.parse_args()
 
 FONT_DIR_1 = "fonts/iosevkacharon"  # Google Fonts version
-FONT_DIR_2 = "general_use_fonts/IosevkaCharon/ttf"  # General Use version
+FONT_DIR_2 = "unprocessed_fonts/IosevkaCharon/ttf"  # Unprocessed version
 
 WIDTH, MARGIN = 1600, 50
 TITLE_SIZE = 36
@@ -18,7 +18,7 @@ BG_COLOR = (15, 15, 20)
 WHITE = (255, 255, 255)
 GRAY = (140, 140, 140)
 RED = (255, 80, 80)    # Pixels only in GF version
-GREEN = (80, 255, 120)  # Pixels only in General Use version
+GREEN = (80, 255, 120)  # Pixels only in Unprocessed version
 YELLOW = (255, 255, 100)  # Differences
 
 test_samples = [
@@ -69,7 +69,7 @@ def create_diff_image(arr1, arr2):
     only_gf = binary1 & ~binary2
     diff_img[only_gf == 1] = RED
 
-    # Green where only General Use version has pixels
+    # Green where only Unprocessed version has pixels
     only_gu = ~binary1 & binary2
     diff_img[only_gu == 1] = GREEN
 

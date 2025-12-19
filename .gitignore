@@ -6,11 +6,11 @@ fonts.stamp
 postprocess.stamp
 proof
 fonts
-general_use_fonts
+unprocessed_fonts
 .venv
 .venv-drawbot
 out
-general_use_fonts/
+unprocessed_fonts/
 __pycache__/
 node_modules
 package-lock.json

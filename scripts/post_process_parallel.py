@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Parallel post-processing of font files.
-This script processes all TTF files in general_use_fonts/, applies Google Fonts
+This script processes all TTF files in unprocessed_fonts/, applies Google Fonts
 compliance fixes, and outputs them to output/ with proper naming.
 """
 
@@ -20,14 +20,14 @@ def process_and_copy_font(font_path):
     Post-process a font and copy it to the final output directory.
 
     Args:
-        font_path: Path to the source font in general_use_fonts/
+        font_path: Path to the source font in unprocessed_fonts/
 
     Returns:
         tuple: (success: bool, input_path: Path, output_path: Path)
     """
     try:
         # Determine the plan directory and output location
-        # font_path structure: general_use_fonts/<plan_name>/ttf/<font>.ttf
+        # font_path structure: unprocessed_fonts/<plan_name>/ttf/<font>.ttf
         plan_dir = font_path.parent.parent.name
 
         # Convert directory name to lowercase and remove spaces for Google Fonts compliance
@@ -58,12 +58,12 @@ def process_and_copy_font(font_path):
 
 
 def main():
-    root = pathlib.Path("general_use_fonts")
+    root = pathlib.Path("unprocessed_fonts")
     fonts = sorted(root.glob("**/*.ttf"))
 
     if not fonts:
         print(
-            "ERROR: No TTF files found in general_use_fonts/ to post-process.",
+            "ERROR: No TTF files found in unprocessed_fonts/ to post-process.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -78,7 +78,7 @@ def main():
     # Parallelize post-processing using all available CPU cores
     num_workers = cpu_count()
     print(f"Post-processing {len(fonts)} fonts using {num_workers} parallel workers...")
-    print(f"Input:  general_use_fonts/")
+    print(f"Input:  unprocessed_fonts/")
     print(f"Output: fonts/")
     print()
 
