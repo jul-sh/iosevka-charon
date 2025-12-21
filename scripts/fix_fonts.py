@@ -12,19 +12,25 @@ Fixes:
 - Copyright notice format (googlefonts/font_copyright)
 """
 
+import argparse
+import logging
+import shutil
 import sys
+import unicodedata
+from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from fontTools.ttLib import TTFont
-from fontTools.ttLib.tables import otTables
-from fontTools.ttLib.tables import ttProgram
+from typing import List, Optional, Tuple
+
+from fontTools.otlLib.builder import buildAnchor, buildMarkBasePos
+from fontTools.pens.recordingPen import DecomposingRecordingPen, RecordingPen
 from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
-from fontTools.pens.recordingPen import RecordingPen, DecomposingRecordingPen
-from fontTools.otlLib.builder import buildAnchor, buildMarkBasePos
-import fontTools.otlLib.builder as ot_builder
-import argparse
+from fontTools.ttLib import TTFont
+from fontTools.ttLib.tables import otTables, ttProgram
 from gftools.fix import fix_font as gftools_fix_font
-import unicodedata
+
+# Constants
+# ----------------------------------------------------------------------------
 
 # Keep family-wide vertical metrics consistent to satisfy FontBakery family checks.
 # Win metrics must cover glyph bounds (for clipping prevention)
@@ -35,82 +41,90 @@ TARGET_HHEA_ASCENDER = 1015  # Mildly increase total height for looser leading
 TARGET_HHEA_DESCENDER = -265  # Mildly increase total height for looser leading
 TARGET_HHEA_LINE_GAP = 0  # Keep gap at zero for GF compliance
 
-def fix_font_revision(font):
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
+
+
+# Core Fix Functions
+# ----------------------------------------------------------------------------
+
+
+def fix_font_revision(font: TTFont) -> bool:
     """Fix font revision and nameID5 to exact value (Version 32.5.0)."""
     target_version = "Version 32.5.0"
-    font['head'].fontRevision = 32.5
-    name_table = font['name']
+    font["head"].fontRevision = 32.5
+    name_table = font["name"]
     name_table.setName(target_version, 5, 3, 1, 0x409)
     name_table.setName(target_version, 5, 1, 0, 0)
-    print("  ✓ Fixed font revision: 32.5")
+    logger.info("  ✓ Fixed font revision: 32.5")
     return True
 
 
-def fix_copyright_notice(font):
-    """Fix copyright notice to match Google Fonts canonical format.
-
-    Google Fonts requires copyright notices to match the pattern:
-    "Copyright YEAR The Familyname Project Authors (git url)"
-    """
-    name_table = font['name']
-    # Format: Copyright 2015-2025 The Iosevka Project Authors (https://github.com/be5invis/Iosevka)
+def fix_copyright_notice(font: TTFont) -> bool:
+    """Fix copyright notice to match Google Fonts canonical format."""
+    name_table = font["name"]
     copyright_notice = "Copyright 2015-2025 The Iosevka Project Authors (https://github.com/be5invis/Iosevka)"
 
     name_table.setName(copyright_notice, 0, 3, 1, 0x409)
     name_table.setName(copyright_notice, 0, 1, 0, 0)
 
-    print(f"  ✓ Fixed copyright notice: {copyright_notice}")
+    logger.info(f"  ✓ Fixed copyright notice: {copyright_notice}")
     return True
 
 
-def fix_windows_metrics(font):
+def fix_windows_metrics(font: TTFont) -> bool:
     """Fix Windows ascent/descent to proper values for Google Fonts"""
-    font['OS/2'].usWinAscent = TARGET_WIN_ASCENT
-    font['OS/2'].usWinDescent = TARGET_WIN_DESCENT
+    font["OS/2"].usWinAscent = TARGET_WIN_ASCENT
+    font["OS/2"].usWinDescent = TARGET_WIN_DESCENT
 
-    print(f"  ✓ Fixed Windows metrics: usWinAscent={TARGET_WIN_ASCENT}, usWinDescent={TARGET_WIN_DESCENT}")
+    logger.info(f"  ✓ Fixed Windows metrics: usWinAscent={TARGET_WIN_ASCENT}, usWinDescent={TARGET_WIN_DESCENT}")
     return True
 
 
-def fix_vertical_metrics(font):
+def fix_vertical_metrics(font: TTFont) -> bool:
     """Fix hhea vertical metrics for Google Fonts"""
-    # Strategy: Win metrics cover glyph bounds (clipping prevention)
-    # but hhea/Typo metrics control line spacing (keep tighter)
-    font['hhea'].ascender = TARGET_HHEA_ASCENDER
-    font['hhea'].descender = TARGET_HHEA_DESCENDER
-    font['hhea'].lineGap = TARGET_HHEA_LINE_GAP
+    font["hhea"].ascender = TARGET_HHEA_ASCENDER
+    font["hhea"].descender = TARGET_HHEA_DESCENDER
+    font["hhea"].lineGap = TARGET_HHEA_LINE_GAP
 
     # Typo metrics should match hhea for consistency
-    font['OS/2'].sTypoAscender = TARGET_HHEA_ASCENDER
-    font['OS/2'].sTypoDescender = TARGET_HHEA_DESCENDER
-    font['OS/2'].sTypoLineGap = TARGET_HHEA_LINE_GAP
+    font["OS/2"].sTypoAscender = TARGET_HHEA_ASCENDER
+    font["OS/2"].sTypoDescender = TARGET_HHEA_DESCENDER
+    font["OS/2"].sTypoLineGap = TARGET_HHEA_LINE_GAP
 
-    # Enable USE_TYPO_METRICS flag (bit 7) so apps use Typo instead of Win for line spacing
-    font['OS/2'].fsSelection |= (1 << 7)
+    # Enable USE_TYPO_METRICS flag (bit 7)
+    font["OS/2"].fsSelection |= 1 << 7
 
-    total_height = font['hhea'].ascender - font['hhea'].descender + font['hhea'].lineGap
-    print(f"  ✓ Fixed hhea metrics: ascender={font['hhea'].ascender}, "
-          f"descender={font['hhea'].descender}, lineGap={font['hhea'].lineGap}, total={total_height}")
-    print(f"  ✓ Fixed Typo metrics to match hhea (USE_TYPO_METRICS enabled)")
+    total_height = font["hhea"].ascender - font["hhea"].descender + font["hhea"].lineGap
+    logger.info(
+        f"  ✓ Fixed hhea metrics: ascender={font['hhea'].ascender}, "
+        f"descender={font['hhea'].descender}, lineGap={font['hhea'].lineGap}, total={total_height}"
+    )
+    logger.info("  ✓ Fixed Typo metrics to match hhea (USE_TYPO_METRICS enabled)")
     return True
 
 
-def flatten_nested_components(font):
+def flatten_nested_components(font: TTFont) -> bool:
     """Flatten nested composites by inlining their components."""
-    if 'glyf' not in font:
+    if "glyf" not in font:
         return False
 
     from fontTools.ttLib.tables._g_l_y_f import (
-        GlyphComponent,
+        NON_OVERLAPPING,
+        OVERLAP_COMPOUND,
         ROUND_XY_TO_GRID,
-        USE_MY_METRICS,
         SCALED_COMPONENT_OFFSET,
         UNSCALED_COMPONENT_OFFSET,
-        OVERLAP_COMPOUND,
-        NON_OVERLAPPING,
+        USE_MY_METRICS,
+        GlyphComponent,
     )
 
-    glyf = font['glyf']
+    glyf = font["glyf"]
     flattened = []
 
     flag_mask = (
@@ -169,52 +183,52 @@ def flatten_nested_components(font):
     return bool(flattened)
 
 
-def fix_fontbakery_version(font):
-    """Update or remove fontbakery version metadata"""
-    # Remove any fontbakery version references from name table
-    # Google Fonts doesn't want old fontbakery version metadata
-    name_table = font['name']
+def fix_fontbakery_version(font: TTFont) -> bool:
+    """Update or remove fontbakery version metadata."""
+    name_table = font["name"]
 
     # Check manufacturer/description fields that might have fontbakery refs
     for name_id in [8, 9, 10]:  # Manufacturer, Designer, Description
         for record in list(name_table.names):
             if record.nameID == name_id:
                 value = record.toUnicode()
-                if 'fontbakery' in value.lower():
-                    # This shouldn't normally happen, but remove if found
+                if "fontbakery" in value.lower():
                     name_table.names.remove(record)
-                    print(f"  ✓ Removed fontbakery reference from nameID {name_id}")
+                    logger.info(f"  ✓ Removed fontbakery reference from nameID {name_id}")
 
     return True
 
 
-def fix_zero_width_glyphs(font):
-    """Fix zero-width base characters by setting advance width"""
-    if 'hmtx' not in font or 'glyf' not in font:
+def fix_zero_width_glyphs(font: TTFont) -> bool:
+    """Fix zero-width base characters by setting advance width."""
+    if "hmtx" not in font or "glyf" not in font:
         return False
 
-    hmtx = font['hmtx']
-    glyf = font['glyf']
-    cmap = font.getBestCmap()
+    hmtx = font["hmtx"]
+    glyf = font["glyf"]
     fixed = []
 
     # Specific glyphs in Private Use Area that need width
-    # These are codepoints 0xEF06-0xEF0C (61190-61196)
-    pua_glyphs_to_fix = [
-        'uniEF06', 'uniEF07', 'uniEF08', 'uniEF09',
-        'uniEF0A', 'uniEF0B', 'uniEF0C'
-    ]
+    pua_glyphs_to_fix = {
+        "uniEF06",
+        "uniEF07",
+        "uniEF08",
+        "uniEF09",
+        "uniEF0A",
+        "uniEF0B",
+        "uniEF0C",
+    }
 
     # Get the standard width for this font (monospaced)
-    if 'space' in hmtx.metrics:
-        new_width = hmtx['space'][0]
+    if "space" in hmtx.metrics:
+        new_width = hmtx["space"][0]
     else:
         # Fallback to average width
         widths = [w for w, _ in hmtx.metrics.values() if w > 0]
         new_width = sum(widths) // len(widths) if widths else 500
 
     glyph_order = font.getGlyphOrder()
-    gdef = font.get('GDEF')
+    gdef = font.get("GDEF")
     glyph_class_def = gdef.table.GlyphClassDef if gdef and gdef.table else None
 
     for glyph_name in glyph_order:
@@ -228,7 +242,7 @@ def fix_zero_width_glyphs(font):
         # Skip true combining marks; they are intentionally zero-width.
         is_combining = False
         # Check cmap-derived codepoint combining class
-        for table in font['cmap'].tables:
+        for table in font["cmap"].tables:
             cp = table.cmap.get(glyph_name)
             if cp is not None and unicodedata.combining(chr(cp)):
                 is_combining = True
@@ -245,9 +259,11 @@ def fix_zero_width_glyphs(font):
         is_pua_glyph = glyph_name in pua_glyphs_to_fix
 
         # Check if it has contours (not just a composite or empty)
-        has_contours = (hasattr(glyph, 'numberOfContours') and
-                        glyph.numberOfContours is not None and
-                        glyph.numberOfContours != 0)
+        has_contours = (
+            hasattr(glyph, "numberOfContours")
+            and glyph.numberOfContours is not None
+            and glyph.numberOfContours != 0
+        )
 
         # Fix if it's a PUA glyph or has contours but no width
         if is_pua_glyph or (has_contours and not glyph.isComposite()):
@@ -255,31 +271,35 @@ def fix_zero_width_glyphs(font):
             fixed.append(glyph_name)
 
     if fixed:
-        print(f"  ✓ Fixed zero-width glyphs: {', '.join(fixed)}")
+        logger.info(f"  ✓ Fixed zero-width glyphs: {', '.join(fixed)}")
         # Update hhea.advanceWidthMax if needed
         max_width = max((w for w, _ in hmtx.metrics.values()), default=0)
-        if max_width > font['hhea'].advanceWidthMax:
-            font['hhea'].advanceWidthMax = max_width
-            print(f"  ✓ Updated hhea.advanceWidthMax to {max_width}")
+        if max_width > font["hhea"].advanceWidthMax:
+            font["hhea"].advanceWidthMax = max_width
+            logger.info(f"  ✓ Updated hhea.advanceWidthMax to {max_width}")
         return True
     return False
 
 
-def fix_font_names(font):
-    """Fix font names to match Google Fonts requirements"""
-    name_table = font['name']
-    is_italic = bool(font['head'].macStyle & 2) or (font['OS/2'].fsSelection & 1)
+def fix_font_names(font: TTFont) -> bool:
+    """Fix font names to match Google Fonts requirements."""
+    name_table = font["name"]
+    is_italic = bool(font["head"].macStyle & 2) or (font["OS/2"].fsSelection & 1)
 
     existing_family = name_table.getName(1, 3, 1, 0x409)
     family_hint = existing_family.toUnicode() if existing_family else ""
-    is_mono = "Mono" in family_hint or "Mono" in font.reader.file.name
+
+    # Get file name safely from the reader
+    file_path = Path(font.reader.file.name)
+    is_mono = "Mono" in family_hint or "Mono" in file_path.name
     base_family = "Iosevka Charon Mono" if is_mono else "Iosevka Charon"
 
     # Detect weight from file name (more reliable than current OS/2 weight class)
-    file_name = Path(font.reader.file.name).stem
+    file_stem = file_path.stem
     weight_from_name = None
-    for w in ["Heavy", "Light", "Medium", "Bold", "Thin", "ExtraLight", "SemiBold", "ExtraBold", "Black"]:
-        if w in file_name:
+    weights = ["Heavy", "Light", "Medium", "Bold", "Thin", "ExtraLight", "SemiBold", "ExtraBold", "Black"]
+    for w in weights:
+        if w in file_stem:
             weight_from_name = w
             break
 
@@ -300,11 +320,7 @@ def fix_font_names(font):
     if weight_from_name:
         weight_class = weight_name_to_class.get(weight_from_name, 400)
     else:
-        weight_class = font['OS/2'].usWeightClass
-
-    # Google Fonts naming rules:
-    # - Regular/Bold/Italic/BoldItalic: Standard RIBBI naming
-    # - Other weights: Include weight in family name, subfamily is "Regular" or "Italic"
+        weight_class = font["OS/2"].usWeightClass
 
     weight_map = {
         100: ("Thin", "thin"),
@@ -315,92 +331,60 @@ def fix_font_names(font):
         600: ("Semibold", "semibold"),
         700: ("Bold", "bold"),
         800: ("Extrabold", "extrabold"),
-        900: ("Heavy", "heavy"),  # Use Heavy, not Black
+        900: ("Heavy", "heavy"),
     }
-    weight_display, weight_lower = weight_map.get(weight_class, ("Regular", "regular"))
+    weight_display, _ = weight_map.get(weight_class, ("Regular", "regular"))
 
-    # Determine naming based on Google Fonts rules
-    # RIBBI fonts should NOT have nameID 16/17 (googlefonts/font_names check)
-    # But uniqueness_first_31_characters checks NID 16+17 combination
-    # Solution: For RIBBI fonts, remove nameID 16/17 entirely
+    # RIBBI logic
+    is_ribbi = (weight_class in (400, 700)) and (weight_class == 400 or is_italic or weight_class == 700)
+
+    # Simplified naming logic based on Google Fonts rules
     if weight_class == 400 and not is_italic:
-        # Regular
-        family_name = base_family
-        subfamily_name = "Regular"
-        full_name = f"{base_family} Regular"
-        ps_name = f"{base_family.replace(' ', '')}-Regular"
-        typographic_family = None
-        typographic_subfamily = None
+        family_name, subfamily_name = base_family, "Regular"
+        ps_suffix = "Regular"
+        typographic_family, typographic_subfamily = None, None
     elif weight_class == 700 and not is_italic:
-        # Bold
-        family_name = base_family
-        subfamily_name = "Bold"
-        full_name = f"{base_family} Bold"
-        ps_name = f"{base_family.replace(' ', '')}-Bold"
-        typographic_family = None
-        typographic_subfamily = None
+        family_name, subfamily_name = base_family, "Bold"
+        ps_suffix = "Bold"
+        typographic_family, typographic_subfamily = None, None
     elif weight_class == 400 and is_italic:
-        # Italic
-        family_name = base_family
-        subfamily_name = "Italic"
-        full_name = f"{base_family} Italic"
-        ps_name = f"{base_family.replace(' ', '')}-Italic"
-        typographic_family = None
-        typographic_subfamily = None
+        family_name, subfamily_name = base_family, "Italic"
+        ps_suffix = "Italic"
+        typographic_family, typographic_subfamily = None, None
     elif weight_class == 700 and is_italic:
-        # Bold Italic
-        family_name = base_family
-        subfamily_name = "Bold Italic"
-        full_name = f"{base_family} Bold Italic"
-        ps_name = f"{base_family.replace(' ', '')}-BoldItalic"
-        typographic_family = None
-        typographic_subfamily = None
+        family_name, subfamily_name = base_family, "Bold Italic"
+        ps_suffix = "BoldItalic"
+        typographic_family, typographic_subfamily = None, None
     else:
-        # Other weights: Include weight in family name
         family_name = f"{base_family} {weight_display}"
         subfamily_name = "Italic" if is_italic else "Regular"
-
-        # Google Fonts expects for non-RIBBI fonts:
-        # - Family Name (ID 1): "Iosevka Charon Light" (includes weight)
-        # - Subfamily Name (ID 2): "Regular" or "Italic"
-        # - Full Name (ID 4): "Iosevka Charon Light" or "Iosevka Charon Light Italic" (no "Regular" for upright)
-        # - Postscript Name (ID 6): "IosevkaCharon-Light" or "IosevkaCharon-LightItalic" (weight after hyphen)
-        # - Typographic Family (ID 16): "Iosevka Charon"
-        # - Typographic Subfamily (ID 17): "Light" or "Light Italic"
-        if is_italic:
-            full_name = f"{base_family} {weight_display} Italic"
-            ps_name = f"{base_family.replace(' ', '')}-{weight_display}Italic"
-            typographic_subfamily = f"{weight_display} Italic"
-        else:
-            full_name = f"{base_family} {weight_display}"
-            ps_name = f"{base_family.replace(' ', '')}-{weight_display}"
-            typographic_subfamily = weight_display
-
+        ps_suffix = f"{weight_display}Italic" if is_italic else weight_display
         typographic_family = base_family
+        typographic_subfamily = f"{weight_display} Italic" if is_italic else weight_display
 
-        # Keep actual weight class (don't set to 400)
-        # weight_class is already set from weight_from_name above
+    full_name = f"{family_name} {subfamily_name}"
+    # ID4 Exception: For non-RIBBI weights, Full Name should not include "Regular" if it's upright
+    if typographic_family and not is_italic:
+        full_name = family_name
+
+    ps_name = f"{base_family.replace(' ', '')}-{ps_suffix}"
 
     # Set correct OS/2 usWeightClass
-    font['OS/2'].usWeightClass = weight_class
+    font["OS/2"].usWeightClass = weight_class
 
-    # Set name IDs
+    # Set name IDs (3.1.1033 is Windows/English)
     name_table.setName(family_name, 1, 3, 1, 0x409)
     name_table.setName(subfamily_name, 2, 3, 1, 0x409)
     name_table.setName(full_name, 4, 3, 1, 0x409)
     name_table.setName(ps_name, 6, 3, 1, 0x409)
 
-    # Handle typographic names (nameID 16 and 17)
-    # For RIBBI fonts: remove them entirely (Google Fonts requirement)
-    # For non-RIBBI fonts: set them
     if typographic_family is None:
-        # Remove nameID 16 and 17 for RIBBI fonts
         name_table.names = [n for n in name_table.names if n.nameID not in (16, 17)]
     else:
         name_table.setName(typographic_family, 16, 3, 1, 0x409)
         name_table.setName(typographic_subfamily, 17, 3, 1, 0x409)
 
-    # Mirror to Mac platform
+    # Mirror to Mac platform (1.0.0 is Mac/English)
     name_table.setName(family_name, 1, 1, 0, 0)
     name_table.setName(subfamily_name, 2, 1, 0, 0)
     name_table.setName(full_name, 4, 1, 0, 0)
@@ -409,50 +393,37 @@ def fix_font_names(font):
         name_table.setName(typographic_family, 16, 1, 0, 0)
         name_table.setName(typographic_subfamily, 17, 1, 0, 0)
 
-    print(f"  ✓ Fixed font names: {full_name} (ps: {ps_name})")
+    logger.info(f"  ✓ Fixed font names: {full_name} (ps: {ps_name})")
     return True
 
 
-def fix_dotted_circle(font):
-    """Ensure dotted circle glyph exists and has proper marks"""
+def fix_dotted_circle(font: TTFont) -> bool:
+    """Ensure dotted circle glyph exists and has proper marks."""
     cmap = font.getBestCmap()
     if 0x25CC not in cmap:
         # Try to find space or period to use as placeholder
-        for placeholder in ['space', 'period', 'uni00A0']:
-            if placeholder in font['glyf']:
-                for table in font['cmap'].tables:
+        for placeholder in ["space", "period", "uni00A0"]:
+            if placeholder in font["glyf"]:
+                for table in font["cmap"].tables:
                     table.cmap[0x25CC] = placeholder
-                print(f"  ✓ Added Dotted Circle (U+25CC) pointing to {placeholder} glyph")
+                logger.info(f"  ✓ Added Dotted Circle (U+25CC) pointing to {placeholder} glyph")
                 return True
-        print("  ! Could not find placeholder for Dotted Circle")
+        logger.warning("  ! Could not find placeholder for Dotted Circle")
         return False
     return False
 
 
-def fix_broken_mark_anchors(font):
-    """Fix Mark2Base anchors to use correct Y positions based on glyph geometry.
-
-    The upstream Iosevka font often has incorrect anchor Y positions:
-    - Both mark and base anchors at the same Y (causing 0 offset)
-    - Both anchors at Y=0 (causing no vertical movement)
-
-    This function recomputes all mark and base anchor Y positions based on
-    the actual glyph geometry:
-    - For above marks: mark anchor at yMin (bottom of mark), base anchor at yMax+gap
-    - For below marks: mark anchor at yMax (top of mark), base anchor at yMin-gap
-    """
-    if 'GPOS' not in font or 'glyf' not in font:
+def fix_broken_mark_anchors(font: TTFont) -> bool:
+    """Fix Mark2Base anchors to use correct Y positions based on glyph geometry."""
+    if "GPOS" not in font or "glyf" not in font:
         return False
 
     cmap = font.getBestCmap()
-    glyf = font['glyf']
-    gpos = font['GPOS'].table
+    glyf = font["glyf"]
+    gpos_table = font["GPOS"].table
 
     # Build reverse cmap: glyph name -> codepoint
-    name_to_cp = {}
-    for cp, name in cmap.items():
-        if name not in name_to_cp:
-            name_to_cp[name] = cp
+    name_to_cp = {name: cp for cp, name in cmap.items()}
 
     # Combining class ranges for below marks
     below_classes = {202, 214, 218, 220, 222, 223, 224, 225, 226}
@@ -471,10 +442,13 @@ def fix_broken_mark_anchors(font):
         if name not in glyf:
             return None, None
         g = glyf[name]
-        if not hasattr(g, 'yMax') or g.yMax is None:
-            g.recalcBounds(glyf)
-        ymin = getattr(g, 'yMin', None)
-        ymax = getattr(g, 'yMax', None)
+        try:
+            if not hasattr(g, "yMax") or g.yMax is None:
+                g.recalcBounds(glyf)
+        except Exception:
+            return None, None
+        ymin = getattr(g, "yMin", None)
+        ymax = getattr(g, "yMax", None)
         if ymin is None or ymax is None:
             return None, None
         return ymin, ymax
@@ -483,31 +457,29 @@ def fix_broken_mark_anchors(font):
     fixed_bases = 0
     stack_gap = 60  # Gap between base and mark
 
-    # Iterate through all lookups (not just mark feature) to catch all Mark2Base
-    if not gpos.LookupList:
+    if not gpos_table.LookupList:
         return False
 
-    for idx, lookup in enumerate(gpos.LookupList.Lookup):
+    for lookup in gpos_table.LookupList.Lookup:
         for subtable in lookup.SubTable:
             real_st = subtable
-            if lookup.LookupType == 9 and hasattr(subtable, 'ExtSubTable'):
+            if lookup.LookupType == 9 and hasattr(subtable, "ExtSubTable"):
                 real_st = subtable.ExtSubTable
 
-            lt = getattr(real_st, 'LookupType', lookup.LookupType)
+            lt = getattr(real_st, "LookupType", lookup.LookupType)
             if lt != 4:  # Only process MarkToBase
                 continue
 
-            if not (hasattr(real_st, 'MarkCoverage') and real_st.MarkCoverage):
+            if not (hasattr(real_st, "MarkCoverage") and real_st.MarkCoverage):
                 continue
-            if not (hasattr(real_st, 'BaseCoverage') and real_st.BaseCoverage):
+            if not (hasattr(real_st, "BaseCoverage") and real_st.BaseCoverage):
                 continue
-            if not (hasattr(real_st, 'MarkArray') and real_st.MarkArray):
+            if not (hasattr(real_st, "MarkArray") and real_st.MarkArray):
                 continue
-            if not (hasattr(real_st, 'BaseArray') and real_st.BaseArray):
+            if not (hasattr(real_st, "BaseArray") and real_st.BaseArray):
                 continue
 
             # First pass: fix all mark anchors and collect which classes need base fixes
-            # Also track the min/max mark anchor Y per class for proper base positioning
             classes_to_fix = {}  # mark_class -> (mark_type, min_or_max_mark_y)
 
             for m_idx, mark_name in enumerate(real_st.MarkCoverage.glyphs):
@@ -528,10 +500,7 @@ def fix_broken_mark_anchors(font):
                 mark_class = m_rec.Class
 
                 # Compute correct mark anchor Y
-                if mark_type == 1:  # below mark
-                    correct_mark_y = mark_ymax  # attach at top of mark
-                else:  # above mark
-                    correct_mark_y = mark_ymin  # attach at bottom of mark
+                correct_mark_y = mark_ymax if mark_type == 1 else mark_ymin
 
                 # Fix if different from current
                 if mark_anchor.YCoordinate != correct_mark_y:
@@ -539,15 +508,13 @@ def fix_broken_mark_anchors(font):
                     fixed_marks += 1
 
                 # Track this class for base anchor fixes
-                # For above marks: track the MAXIMUM mark_y (highest bottom among marks)
-                # For below marks: track the MINIMUM mark_y (lowest top among marks)
                 if mark_class not in classes_to_fix:
                     classes_to_fix[mark_class] = (mark_type, correct_mark_y)
                 else:
                     _, prev_y = classes_to_fix[mark_class]
-                    if mark_type == 0:  # above mark - track MAXIMUM (need base_y > all mark bottoms)
+                    if mark_type == 0:  # above mark - track MAXIMUM
                         classes_to_fix[mark_class] = (mark_type, max(prev_y, correct_mark_y))
-                    else:  # below mark - track MINIMUM (need base_y < all mark tops)
+                    else:  # below mark - track MINIMUM
                         classes_to_fix[mark_class] = (mark_type, min(prev_y, correct_mark_y))
 
             # Second pass: fix base anchors for the mark classes we identified
@@ -565,17 +532,12 @@ def fix_broken_mark_anchors(font):
                     if base_anchor is None:
                         continue
 
-                    # Compute correct base anchor Y
-                    # For above marks: base_anchor must be > mark_y_threshold
-                    # For below marks: base_anchor must be < mark_y_threshold
                     if mark_type == 1:  # below mark
                         correct_base_y = base_ymin - stack_gap
-                        # Ensure base_y < mark_y_threshold for negative offset
                         if correct_base_y >= mark_y_threshold:
                             correct_base_y = mark_y_threshold - 1
                     else:  # above mark
                         correct_base_y = base_ymax + stack_gap
-                        # Ensure base_y > mark_y_threshold for positive offset
                         if correct_base_y <= mark_y_threshold:
                             correct_base_y = mark_y_threshold + 1
 
@@ -585,21 +547,21 @@ def fix_broken_mark_anchors(font):
                         fixed_bases += 1
 
     if fixed_marks > 0 or fixed_bases > 0:
-        print(f"  ✓ Fixed mark anchor positions: {fixed_marks} marks, {fixed_bases} bases")
+        logger.info(f"  ✓ Fixed mark anchor positions: {fixed_marks} marks, {fixed_bases} bases")
         return True
 
     return False
 
 
-def add_fallback_mark_anchors(font):
+def add_fallback_mark_anchors(font: TTFont) -> bool:
     """Add broad mark-to-base coverage so combining marks attach instead of floating."""
-    if 'GPOS' not in font or 'glyf' not in font:
+    if "GPOS" not in font or "glyf" not in font:
         return False
 
     cmap = font.getBestCmap()
     glyph_for_cp = {cp: name for cp, name in cmap.items()}
 
-    # Quick classifier for mark direction so we can generate sensible anchors.
+    # Quick classifier for mark direction
     below_classes = {202, 214, 218, 220, 222, 223, 224, 225, 226}
     overlay_classes = {1, 200}
 
@@ -621,30 +583,23 @@ def add_fallback_mark_anchors(font):
         return False
 
     # Collect base glyphs (non-marks) present in the font.
-    # Include both glyphs in cmap AND all other glyphs (like glyph05405, etc.)
     base_glyphs = []
     mark_glyph_names = {name for name, _ in mark_glyphs}
 
-    # First, add all glyphs from cmap that aren't marks
     for cp, name in sorted(glyph_for_cp.items()):
         if not unicodedata.combining(chr(cp)) and name not in mark_glyph_names:
             base_glyphs.append(name)
 
-    # Also add ALL other glyphs from glyph order that aren't in cmap and aren't marks
-    # This includes component glyphs like glyph05405, glyph06144, etc.
-    glyf_table = font['glyf']
+    glyf_table = font["glyf"]
     for glyph_name in font.getGlyphOrder():
         if glyph_name not in glyph_for_cp.values() and glyph_name not in mark_glyph_names:
-            # Check if this glyph actually has contours (not just a component or empty)
             if glyph_name in glyf_table:
                 base_glyphs.append(glyph_name)
 
-    glyf = font['glyf']
-    hmtx = font['hmtx']
+    glyf = font["glyf"]
+    hmtx = font["hmtx"]
 
-    # Collect existing mark coverage so we only add anchors for marks that currently
-    # have no mark-to-base entries. This avoids overriding carefully tuned anchors.
-    gpos_table = font['GPOS'].table
+    gpos_table = font["GPOS"].table
     existing_mark_glyphs = set()
     if gpos_table.FeatureList and gpos_table.LookupList:
         mark_lookup_indices = set()
@@ -655,34 +610,25 @@ def add_fallback_mark_anchors(font):
             if idx >= len(gpos_table.LookupList.Lookup):
                 continue
             lookup = gpos_table.LookupList.Lookup[idx]
-            # Handle extension lookups (type 9) by extracting the actual lookup
             for subtable in lookup.SubTable:
                 real_st = subtable
-                if lookup.LookupType == 9 and hasattr(subtable, 'ExtSubTable'):
+                if lookup.LookupType == 9 and hasattr(subtable, "ExtSubTable"):
                     real_st = subtable.ExtSubTable
-                if getattr(real_st, 'LookupType', lookup.LookupType) != 4:  # MarkToBase
+                if getattr(real_st, "LookupType", lookup.LookupType) != 4:
                     continue
-                if hasattr(real_st, 'MarkCoverage') and real_st.MarkCoverage:
+                if hasattr(real_st, "MarkCoverage") and real_st.MarkCoverage:
                     existing_mark_glyphs.update(real_st.MarkCoverage.glyphs)
 
-    # Include marks that currently lack coverage. We skip marks already in existing
-    # MarkToBase lookups since their anchors work correctly with the font's design.
-    target_mark_glyphs = []
-    for name, cp in mark_glyphs:
-        if name not in existing_mark_glyphs:
-            target_mark_glyphs.append((name, cp))
+    target_mark_glyphs = [(name, cp) for name, cp in mark_glyphs if name not in existing_mark_glyphs]
 
     if not target_mark_glyphs:
         return False
-
-    glyf = font['glyf']
-    hmtx = font['hmtx']
 
     mark_anchors = {}
     mark_classes_present = set()
     stack_gap = 60
 
-    # Collect average mark heights per class to scale gaps (use all combining marks).
+    # Collect average mark heights per class
     class_heights = {}
     for name, cp in mark_glyphs:
         if name not in glyf:
@@ -712,65 +658,11 @@ def add_fallback_mark_anchors(font):
         mark_classes_present.add(cls)
 
         mx = (glyph.xMin + glyph.xMax) // 2
-        if cls == 1:  # below mark
-            my = glyph.yMax
-        elif cls == 2:  # overlay mark
-            my = (glyph.yMin + glyph.yMax) // 2
-        else:  # above/default
-            my = glyph.yMin
-
+        my = glyph.yMax if cls == 1 else ((glyph.yMin + glyph.yMax) // 2 if cls == 2 else glyph.yMin)
         mark_anchors[name] = (cls, buildAnchor(mx, my))
 
     if not mark_anchors:
         return False
-
-    # Build mark-to-mark anchors for all combining marks (skip ones already covered).
-    gpos_table = font['GPOS'].table
-    existing_mkmk_marks = set()
-    if gpos_table.FeatureList and gpos_table.LookupList:
-        for lookup in gpos_table.LookupList.Lookup:
-            real_lookup = lookup
-            if lookup.LookupType == 9 and hasattr(lookup, "SubTable"):
-                # extension lookup
-                for st in lookup.SubTable:
-                    if hasattr(st, "ExtSubTable"):
-                        real_lookup = st.ExtSubTable
-                        break
-            if real_lookup.LookupType != 6:
-                continue
-            if not hasattr(real_lookup, "SubTable"):
-                continue
-            for st in real_lookup.SubTable:
-                real = st.ExtSubTable if hasattr(st, "ExtSubTable") else st
-                if hasattr(real, "Mark1Coverage") and real.Mark1Coverage:
-                    existing_mkmk_marks.update(real.Mark1Coverage.glyphs)
-
-    mark1_for_mkmk = {}
-    mark2_anchors = {}
-    for name, cp in mark_glyphs:
-        if name in existing_mkmk_marks:
-            continue
-        if name not in glyf:
-            continue
-        glyph = glyf[name]
-        if not hasattr(glyph, "xMax") or glyph.xMax is None:
-            glyph.recalcBounds(glyf)
-        cls = classify_mark(cp)
-        mx = (glyph.xMin + glyph.xMax) // 2
-        gap = class_gap(cls)
-        # mark1 anchor (where next mark attaches)
-        if cls == 1:  # below
-            m1y = glyph.yMin - gap  # attach next below this mark
-            m2y = glyph.yMax + gap  # attach this mark to previous below
-        elif cls == 2:  # overlay
-            mid = (glyph.yMin + glyph.yMax) // 2
-            m1y = mid
-            m2y = mid
-        else:  # above/default
-            m1y = glyph.yMax + gap  # attach next above this mark
-            m2y = glyph.yMin - gap  # attach this mark to previous above
-        mark1_for_mkmk[name] = (cls, buildAnchor(mx, m1y))
-        mark2_anchors[name] = {cls: buildAnchor(mx, m2y)}
 
     base_anchors = {}
     for base in base_glyphs:
@@ -800,62 +692,47 @@ def add_fallback_mark_anchors(font):
     lookup.LookupType = 4
     lookup.SubTable = subtables
     lookup.SubTableCount = len(subtables)
-    gpos = font['GPOS'].table
 
-    # Append lookup and hook it into the mark feature.
-    gpos.LookupList.Lookup.append(lookup)
-    gpos.LookupList.LookupCount += 1
-    new_index = len(gpos.LookupList.Lookup) - 1
+    gpos_table.LookupList.Lookup.append(lookup)
+    gpos_table.LookupList.LookupCount += 1
+    new_index = len(gpos_table.LookupList.Lookup) - 1
 
-    for record in gpos.FeatureList.FeatureRecord:
+    for record in gpos_table.FeatureList.FeatureRecord:
         if record.FeatureTag == "mark":
             record.Feature.LookupListIndex.append(new_index)
             break
     else:
-        # If mark feature is missing, create a minimal one.
-        feature = gpos.FeatureList.FeatureRecord[0].__class__()
+        feature = otTables.FeatureRecord()
         feature.FeatureTag = "mark"
-        feature.Feature = gpos.FeatureList.FeatureRecord[0].Feature.__class__()
+        feature.Feature = otTables.Feature()
         feature.Feature.LookupCount = 1
         feature.Feature.LookupListIndex = [new_index]
-        gpos.FeatureList.FeatureRecord.append(feature)
-        gpos.FeatureList.FeatureCount += 1
-
-    # NOTE: The mark-to-mark fallback was disabled because it was overriding the
-    # base font's correct cumulative mark-to-base stacking behavior with incorrect
-    # anchor positions. The ü̃́ character (u + diaeresis + tilde + acute) was showing
-    # overlapping marks because our calculated mkmk anchors positioned marks too
-    # close together. The upstream Iosevka font already handles stacked marks
-    # correctly through its mark-to-base positioning.
-    #
-    # See: HarfBuzz shaping showed base font positions marks at y=0, 205, 410
-    # (correct 205-unit spacing) while our fallback produced y=0, 236, 252
-    # (broken 16-unit spacing).
+        gpos_table.FeatureList.FeatureRecord.append(feature)
+        gpos_table.FeatureList.FeatureCount += 1
 
     return True
 
 
-def add_dotted_circle_fallback(font):
+def add_dotted_circle_fallback(font: TTFont) -> bool:
     """Ensure dotted circle can accept all combining marks."""
-    if 'GPOS' not in font or 'glyf' not in font:
+    if "GPOS" not in font or "glyf" not in font:
         return False
 
     cmap = font.getBestCmap()
-    dotted = cmap.get(0x25CC) or 'dottedcircle'
-    if dotted not in font['glyf']:
+    dotted = cmap.get(0x25CC) or "dottedcircle"
+    if dotted not in font["glyf"]:
         return False
 
-    gpos = font['GPOS'].table
-    glyf = font['glyf']
-    hmtx = font['hmtx']
+    gpos_table = font["GPOS"].table
+    glyf = font["glyf"]
+    hmtx = font["hmtx"]
 
-    # Build quick access to existing dotted-circle attachments.
     def has_anchor(mark_name):
-        for lookup in gpos.LookupList.Lookup:
+        for lookup in gpos_table.LookupList.Lookup:
             ltype = lookup.LookupType
             for st in lookup.SubTable:
-                real = st.ExtSubTable if ltype == 9 and hasattr(st, 'ExtSubTable') else st
-                if getattr(real, 'LookupType', None) != 4:
+                real = st.ExtSubTable if ltype == 9 and hasattr(st, "ExtSubTable") else st
+                if getattr(real, "LookupType", None) != 4:
                     continue
                 if not (real.MarkCoverage and real.BaseCoverage):
                     continue
@@ -869,31 +746,21 @@ def add_dotted_circle_fallback(font):
                     return True
         return False
 
-    # Collect combining marks present in the font.
-    mark_glyphs = []
-    for cp, name in sorted(cmap.items()):
-        if unicodedata.combining(chr(cp)):
-            mark_glyphs.append((name, cp))
-
-    missing = []
-    for name, _ in mark_glyphs:
-        if not has_anchor(name):
-            missing.append(name)
+    mark_glyphs = [(name, cp) for cp, name in sorted(cmap.items()) if unicodedata.combining(chr(cp))]
+    missing = [name for name, _ in mark_glyphs if not has_anchor(name)]
 
     if not missing:
         return False
 
-    # Build mark anchors and a single base record for dotted circle.
     mark_class_index = 0
     mark_anchors = {name: (mark_class_index, buildAnchor(0, 0)) for name in missing}
 
-    # Anchor dotted circle at its visual center / top.
     glyph = glyf[dotted]
     if not hasattr(glyph, "xMax") or glyph.xMax is None:
         glyph.recalcBounds(glyf)
     advance, _ = hmtx[dotted]
     x = advance // 2
-    y = glyph.yMax if hasattr(glyph, "yMax") and glyph.yMax is not None else font['hhea'].ascender
+    y = glyph.yMax if hasattr(glyph, "yMax") and glyph.yMax is not None else font["hhea"].ascender
     base_anchors = {dotted: {mark_class_index: buildAnchor(x, y)}}
 
     subtables = buildMarkBasePos(mark_anchors, base_anchors, font.getReverseGlyphMap())
@@ -903,23 +770,24 @@ def add_dotted_circle_fallback(font):
     lookup.SubTable = subtables
     lookup.SubTableCount = len(subtables)
 
-    gpos.LookupList.Lookup.append(lookup)
-    gpos.LookupList.LookupCount += 1
+    gpos_table.LookupList.Lookup.append(lookup)
+    gpos_table.LookupList.LookupCount += 1
+    new_index = len(gpos_table.LookupList.Lookup) - 1
 
-    for record in gpos.FeatureList.FeatureRecord:
+    for record in gpos_table.FeatureList.FeatureRecord:
         if record.FeatureTag == "mark":
-            record.Feature.LookupListIndex.append(len(gpos.LookupList.Lookup) - 1)
+            record.Feature.LookupListIndex.append(new_index)
             break
 
     return True
 
 
-def normalize_simple_glyphs(font):
+def normalize_simple_glyphs(font: TTFont) -> bool:
     """Rebuild simple glyphs to clear bad flag bits that trigger OTS errors."""
-    if 'glyf' not in font:
+    if "glyf" not in font:
         return False
 
-    glyf = font['glyf']
+    glyf = font["glyf"]
     changed = False
 
     for name in font.getGlyphOrder():
@@ -939,20 +807,20 @@ def normalize_simple_glyphs(font):
     return changed
 
 
-def fix_panose_monospace(font):
+def fix_panose_monospace(font: TTFont) -> bool:
     """Ensure PANOSE proportion is set to monospaced."""
-    if 'OS/2' not in font:
+    if "OS/2" not in font:
         return False
-    panose = font['OS/2'].panose
+    panose = font["OS/2"].panose
     if panose.bProportion != 9:
         panose.bProportion = 9
         return True
     return False
 
 
-def fix_license_entries(font):
+def fix_license_entries(font: TTFont) -> bool:
     """Force OFL license description and URL to the exact expected strings."""
-    name_table = font['name']
+    name_table = font["name"]
     ofl_desc = "This Font Software is licensed under the SIL Open Font License, Version 1.1. This license is available with a FAQ at: https://openfontlicense.org"
     ofl_url = "https://openfontlicense.org"
 
@@ -961,7 +829,6 @@ def fix_license_entries(font):
         name_table.setName(value, name_id, 1, 0, 0)
 
     changed = False
-    # Update description (ID 13) and URL (ID 14)
     for nid, target in ((13, ofl_desc), (14, ofl_url)):
         existing = name_table.getName(nid, 3, 1, 0x409)
         if existing is None or existing.toUnicode() != target:
@@ -970,11 +837,11 @@ def fix_license_entries(font):
     return changed
 
 
-def fix_style_bits(font):
+def fix_style_bits(font: TTFont) -> bool:
     """Ensure fsSelection and macStyle reflect bold/italic status correctly."""
-    os2 = font['OS/2']
-    head = font['head']
-    name_table = font['name']
+    os2 = font["OS/2"]
+    head = font["head"]
+    name_table = font["name"]
     style_entry = name_table.getName(2, 3, 1, 0x409)
     style_str = style_entry.toUnicode() if style_entry else ""
     base_style = style_str.replace(" Italic", "").strip()
@@ -989,42 +856,40 @@ def fix_style_bits(font):
     fs_sel &= ~(1 << 6)  # REGULAR
 
     if is_italic:
-        fs_sel |= (1 << 0)
+        fs_sel |= 1 << 0
     if is_bold:
-        fs_sel |= (1 << 5)
+        fs_sel |= 1 << 5
     if is_regular:
-        fs_sel |= (1 << 6)
+        fs_sel |= 1 << 6
 
     os2.fsSelection = fs_sel
-
     head.macStyle = (1 if is_bold else 0) | (2 if is_italic else 0)
     return True
 
 
-def drop_glyph_names(font):
+def drop_glyph_names(font: TTFont) -> bool:
     """Switch post table to format 3 to avoid invalid glyph names."""
-    if 'post' not in font:
+    if "post" not in font:
         return False
 
-    post = font['post']
+    post = font["post"]
     if getattr(post, "formatType", None) == 3.0:
         return False
 
     post.formatType = 3.0
-    # Clear name-related data that isn't used in format 3.
     post.extraNames = []
     post.glyphNameIndex = []
     post.mapping = {}
     return True
 
 
-def fix_gdef_mark_classes(font):
+def fix_gdef_mark_classes(font: TTFont) -> bool:
     """Ensure combining marks are classified as marks in GDEF."""
-    if 'GDEF' not in font:
+    if "GDEF" not in font:
         return False
 
     cmap = font.getBestCmap()
-    glyph_class_def = font['GDEF'].table.GlyphClassDef
+    glyph_class_def = font["GDEF"].table.GlyphClassDef
     if glyph_class_def is None:
         return False
 
@@ -1039,241 +904,98 @@ def fix_gdef_mark_classes(font):
     return updated
 
 
-def add_kerning_feature(font):
-    """Add GPOS kern feature for quasi-proportional fonts.
-
-    This adds class-based kerning pairs to improve spacing between
-    problematic letter combinations like AV, To, Ty, etc.
-    Only applies to quasi-proportional fonts (isFixedPitch == 0).
-    """
+def add_kerning_feature(font: TTFont) -> bool:
+    """Add GPOS kern feature for quasi-proportional fonts."""
     # Only apply to quasi-proportional fonts
-    # Use post.isFixedPitch (0 = proportional) rather than PANOSE
-    # because fix_panose_monospace() forces bProportion to 9 for all fonts
-    if 'post' in font and font['post'].isFixedPitch:
-        return False  # Skip monospaced/fixed-pitch fonts
-
-    if 'GPOS' not in font:
+    if "post" in font and font["post"].isFixedPitch:
         return False
 
-    glyf = font.get('glyf')
+    if "GPOS" not in font:
+        return False
+
+    glyf = font.get("glyf")
     cmap = font.getBestCmap()
     if not glyf or not cmap:
         return False
 
     glyph_order = font.getGlyphOrder()
 
-    # Helper to find glyph names for a set of characters
-    def names_for_chars(chars):
-        names = []
-        for ch in chars:
-            cp = ord(ch)
-            if cp in cmap:
-                names.append(cmap[cp])
-        return names
+    def names_for_chars(chars: str) -> List[str]:
+        return [cmap[ord(ch)] for ch in chars if ord(ch) in cmap]
 
-    # Helper to expand base glyph to include accented variants
-    # Only include glyphs that are truly accented forms of the base letter
-    # (e.g. 'a' -> 'aacute', 'agrave' but NOT 'at', 'asterisk', 'ampersand')
-    def expand_with_accents(base_names):
+    def expand_with_accents(base_names: List[str]) -> List[str]:
         import re
-        # Common accent suffixes in glyph names
+
         accent_patterns = [
-            r'acute', r'grave', r'circumflex', r'dieresis', r'tilde',
-            r'macron', r'breve', r'dotaccent', r'ring', r'cedilla',
-            r'ogonek', r'caron', r'hook', r'horn', r'comma',
-            r'turkic', r'belowdot', r'tonos', r'dialytika',
+            r"acute", r"grave", r"circumflex", r"dieresis", r"tilde",
+            r"macron", r"breve", r"dotaccent", r"ring", r"cedilla",
+            r"ogonek", r"caron", r"hook", r"horn", r"comma",
+            r"turkic", r"belowdot", r"tonos", r"dialytika",
         ]
-        accent_regex = '|'.join(accent_patterns)
+        accent_regex = "|".join(accent_patterns)
 
         expanded = set(base_names)
         for name in base_names:
             if len(name) == 1:
-                # Single-letter base: only match specific patterns
-                # e.g., 'a' should match 'aacute', 'agrave', 'uni0101' but not 'at', 'asterisk'
+                # Single-letter base
+                pattern = re.compile(rf"^{re.escape(name)}({accent_regex})$", re.IGNORECASE)
                 for gn in glyph_order:
-                    if gn == name:
-                        continue
-                    # Match: base + accent suffix
-                    if re.match(rf'^{re.escape(name)}({accent_regex})$', gn, re.IGNORECASE):
+                    if gn != name and pattern.match(gn):
                         expanded.add(gn)
-                    # Match: base + 'uni' variations (like uni0101 from 'a')
-                    # Skip this - too broad
             else:
-                # Multi-letter base: more lenient but still careful
-                # e.g., 'ae' should match 'aeacute', 'aeligature'
+                # Multi-letter base
+                pattern = re.compile(rf"^({accent_regex})", re.IGNORECASE)
                 for gn in glyph_order:
                     if gn.startswith(name) and gn != name:
-                        # Only add if the suffix is an accent pattern
-                        suffix = gn[len(name):]
-                        if re.match(rf'^({accent_regex})', suffix, re.IGNORECASE):
+                        if pattern.match(gn[len(name):]):
                             expanded.add(gn)
         return list(expanded)
 
     # Define kerning classes
-    # Left-side classes (the first glyph in the pair)
-    # Step 1: Latin + Cyrillic + Greek classes
     left_classes = {
-        # T-like shapes (horizontal overhang at top)
-        '@L_T': expand_with_accents(names_for_chars(
-            'TŦȚŢƬƮȾṪṬṮṰ'  # Latin
-            'ТЋЂ'  # Cyrillic Te, Tshe, Dje
-            'Ττ'  # Greek Tau
-        )),
-        # V-like shapes (diagonal meeting at bottom)
-        '@L_V': expand_with_accents(names_for_chars(
-            'VṼṾ'  # Latin
-            'Ѵѵ'  # Cyrillic Izhitsa
-        )),
-        # W-like shapes
-        '@L_W': expand_with_accents(names_for_chars(
-            'WẀẂẄẆẈŴω'  # Latin + Greek omega
-            'Ѿѿ'  # Cyrillic Ot
-        )),
-        # Y-like shapes
-        '@L_Y': expand_with_accents(names_for_chars(
-            'YỲỴỶỸŶŸÝƳƴ'  # Latin
-            'УуЎўҮүҰұ'  # Cyrillic U variants
-            'ΥΎυύ'  # Greek Upsilon
-        )),
-        # A-like shapes (diagonal sides)
-        '@L_A': expand_with_accents(names_for_chars(
-            'AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶÆ'  # Latin
-            'АаДд'  # Cyrillic A, De
-            'ΑαΆά'  # Greek Alpha
-        )),
-        # F-like shapes (horizontal overhang)
-        '@L_F': expand_with_accents(names_for_chars(
-            'FḞƑ'  # Latin
-            'ГгҐґ'  # Cyrillic Ghe
-            'Γγ'  # Greek Gamma
-        )),
-        # P-like shapes (bowl on right)
-        '@L_P': expand_with_accents(names_for_chars(
-            'PÞṔṖƤ'  # Latin
-            'РрҎҏ'  # Cyrillic Er
-            'Ρρ'  # Greek Rho
-        )),
-        # r lowercase
-        '@L_r': expand_with_accents(names_for_chars(
-            'rŕřŗṙṛṝṟɍɾ'  # Latin
-            'гґ'  # Cyrillic small ghe
-        )),
-        # f lowercase
-        '@L_f': expand_with_accents(names_for_chars(
-            'fḟƒﬁﬂ'  # Latin
-        )),
-        # L-like shapes (right side open)
-        '@L_L': expand_with_accents(names_for_chars(
-            'LĹĻĽĿŁḶḸḺḼȽ'  # Latin
-            'ГгҐґ'  # Cyrillic Ghe (similar L shape)
-        )),
-        # Step 2: Number classes (REMOVED - causes tabular kerning failures)
-        # Step 3: Quote classes (left side - closing quotes)
-        '@L_quote': names_for_chars("\"'\u2019\u00bb\u203a"),
-        # Step 4: Bracket classes
-        '@L_paren': names_for_chars(')]}'),
-        # Step 6: Right-side capitals for oT, aT etc.
-        '@L_o': expand_with_accents(names_for_chars(
-            'oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœ'
-            'оө'  # Cyrillic o
-            'οό'  # Greek omicron
-        )),
-        '@L_a': expand_with_accents(names_for_chars(
-            'aàáâãäåāăąǎạảấầẩẫậắằẳẵặæ'
-            'а'  # Cyrillic a
-            'α'  # Greek alpha
-        )),
-        '@L_e': expand_with_accents(names_for_chars(
-            'eèéêëēĕėęěẹẻẽếềểễệ'
-            'еёє'  # Cyrillic e
-            'εέ'  # Greek epsilon
-        )),
+        "@L_T": expand_with_accents(names_for_chars("TŦȚŢƬƮȾṪṬṮṰТЋЂΤτ")),
+        "@L_V": expand_with_accents(names_for_chars("VṼṾѴѵ")),
+        "@L_W": expand_with_accents(names_for_chars("WẀẂẄẆẈŴωѾѿ")),
+        "@L_Y": expand_with_accents(names_for_chars("YỲỴỶỸŶŸÝƳƴУуЎўҮүҰұΥΎυύ")),
+        "@L_A": expand_with_accents(names_for_chars("AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶÆАаДдΑαΆά")),
+        "@L_F": expand_with_accents(names_for_chars("FḞƑГгҐґΓγ")),
+        "@L_P": expand_with_accents(names_for_chars("PÞṔṖƤРрҎҏΡρ")),
+        "@L_r": expand_with_accents(names_for_chars("rŕřŗṙṛṝṟɍɾгґ")),
+        "@L_f": expand_with_accents(names_for_chars("fḟƒﬁﬂ")),
+        "@L_L": expand_with_accents(names_for_chars("LĹĻĽĿŁḶḸḺḼȽГгҐґ")),
+        "@L_quote": names_for_chars("\"'\u2019\u00bb\u203a"),
+        "@L_paren": names_for_chars(")]}"),
+        "@L_o": expand_with_accents(names_for_chars("oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœоөοό")),
+        "@L_a": expand_with_accents(names_for_chars("aàáâãäåāăąǎạảấầẩẫậắằẳẵặæаα")),
+        "@L_e": expand_with_accents(names_for_chars("eèéêëēĕėęěẹẻẽếềểễệеёєεέ")),
     }
 
-    # Right-side classes (the second glyph in the pair)
     right_classes = {
-        # Round letters (o-like) - Latin + Cyrillic + Greek
-        '@R_o': expand_with_accents(names_for_chars(
-            'oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœ'
-            'оө'  # Cyrillic o
-            'οό'  # Greek omicron
-        )),
-        '@R_a': expand_with_accents(names_for_chars(
-            'aàáâãäåāăąǎạảấầẩẫậắằẳẵặæ'
-            'а'  # Cyrillic a
-            'αά'  # Greek alpha
-        )),
-        '@R_e': expand_with_accents(names_for_chars(
-            'eèéêëēĕėęěẹẻẽếềểễệ'
-            'еёє'  # Cyrillic e
-            'εέη'  # Greek epsilon, eta
-        )),
-        '@R_c': expand_with_accents(names_for_chars(
-            'cçćĉċčƈ'
-            'сς'  # Cyrillic es, Greek sigma
-        )),
-        '@R_d': expand_with_accents(names_for_chars(
-            'dďđḋḍḏḑḓ'
-            'дђ'  # Cyrillic de
-        )),
-        '@R_g': expand_with_accents(names_for_chars(
-            'gĝğġģǧǵḡ'
-        )),
-        '@R_q': expand_with_accents(names_for_chars('q')),
-        '@R_u': expand_with_accents(names_for_chars(
-            'uùúûüũūŭůűųưǔǖǘǚǜụủứừửữự'
-            'уўү'  # Cyrillic u
-            'υύ'  # Greek upsilon
-        )),
-        '@R_s': expand_with_accents(names_for_chars(
-            'sśŝşšșṡṣ'
-        )),
-        '@R_y': expand_with_accents(names_for_chars(
-            'yýÿŷỳỵỷỹ'
-            'у'  # Cyrillic u (y-like)
-        )),
-        '@R_v': expand_with_accents(names_for_chars(
-            'v'
-            'ѵ'  # Cyrillic izhitsa
-        )),
-        '@R_w': expand_with_accents(names_for_chars(
-            'wẁẃẅẇẉŵ'
-            'ѿ'  # Cyrillic ot
-        )),
-        # Capital letters for right side
-        '@R_A': expand_with_accents(names_for_chars(
-            'AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶ'
-            'АД'  # Cyrillic A, De
-            'ΑΆ'  # Greek Alpha
-        )),
-        '@R_V': expand_with_accents(names_for_chars(
-            'VṼṾ'
-            'Ѵ'  # Cyrillic Izhitsa
-        )),
-        '@R_T': expand_with_accents(names_for_chars(
-            'TŦȚŢƬƮȾṪṬṮṰ'
-            'ТЋЂ'  # Cyrillic Te
-            'Ττ'  # Greek Tau
-        )),
-        '@R_Y': expand_with_accents(names_for_chars(
-            'YỲỴỶỸŶŸÝƳƴ'
-            'УЎҮ'  # Cyrillic U
-            'ΥΎ'  # Greek Upsilon
-        )),
-        # Step 2: Punctuation including numbers
-        '@R_punct': names_for_chars('.,;:!?'),
-        '@R_hyphen': names_for_chars('-–—'),
-        # Step 3: Quote classes (right side - opening quotes)
-        '@R_quote': names_for_chars("\"'\u201c\u2018\u00ab\u2039"),
-        # Step 4: Bracket classes
-        '@R_paren': names_for_chars('([{'),
+        "@R_o": expand_with_accents(names_for_chars("oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœоөοό")),
+        "@R_a": expand_with_accents(names_for_chars("aàáâãäåāăąǎạảấầẩẫậắằẳẵặæаαά")),
+        "@R_e": expand_with_accents(names_for_chars("eèéêëēĕėęěẹẻẽếềểễệеёєεέη")),
+        "@R_c": expand_with_accents(names_for_chars("cçćĉċčƈсς")),
+        "@R_d": expand_with_accents(names_for_chars("dďđḋḍḏḑḓдђ")),
+        "@R_g": expand_with_accents(names_for_chars("gĝğġģǧǵḡ")),
+        "@R_q": expand_with_accents(names_for_chars("q")),
+        "@R_u": expand_with_accents(names_for_chars("uùúûüũūŭůűųưǔǖǘǚǜụủứừửữựуўүυύ")),
+        "@R_s": expand_with_accents(names_for_chars("sśŝşšșṡṣ")),
+        "@R_y": expand_with_accents(names_for_chars("yýÿŷỳỵỷỹу")),
+        "@R_v": expand_with_accents(names_for_chars("vѵ")),
+        "@R_w": expand_with_accents(names_for_chars("wẁẃẅẇẉŵѿ")),
+        "@R_A": expand_with_accents(names_for_chars("AÀÁÂÃÄÅĀĂĄǍẠẢẤẦẨẪẬẮẰẲẴẶАДΑΆ")),
+        "@R_V": expand_with_accents(names_for_chars("VṼṾѴ")),
+        "@R_T": expand_with_accents(names_for_chars("TŦȚŢƬƮȾṪṬṮṰТЋЂΤτ")),
+        "@R_Y": expand_with_accents(names_for_chars("YỲỴỶỸŶŸÝƳƴУЎҮΥΎ")),
+        "@R_punct": names_for_chars(".,;:!?"),
+        "@R_hyphen": names_for_chars("-–—"),
+        "@R_quote": names_for_chars("\"'\u201c\u2018\u00ab\u2039"),
+        "@R_paren": names_for_chars("([{"),
     }
 
     # Filter to only include glyphs that exist in the font
-    for class_name, class_glyphs in list(left_classes.items()):
-        left_classes[class_name] = [g for g in class_glyphs if g in glyph_order]
-    for class_name, class_glyphs in list(right_classes.items()):
-        right_classes[class_name] = [g for g in class_glyphs if g in glyph_order]
+    left_classes = {k: [g for g in v if g in glyph_order] for k, v in left_classes.items()}
+    right_classes = {k: [g for g in v if g in glyph_order] for k, v in right_classes.items()}
 
     # Remove empty classes
     left_classes = {k: v for k, v in left_classes.items() if v}
@@ -1282,176 +1004,89 @@ def add_kerning_feature(font):
     if not left_classes or not right_classes:
         return False
 
-    # Define kerning values (negative = tighten, positive = loosen)
-    # All 7 steps combined
     kern_pairs = {
-        # T combinations (Step 1: Latin + Cyrillic + Greek)
-        ('@L_T', '@R_o'): -50, ('@L_T', '@R_a'): -45, ('@L_T', '@R_e'): -45,
-        ('@L_T', '@R_c'): -40, ('@L_T', '@R_u'): -35, ('@L_T', '@R_s'): -35,
-        ('@L_T', '@R_y'): -25, ('@L_T', '@R_punct'): -60, ('@L_T', '@R_hyphen'): -40,
-        # V combinations
-        ('@L_V', '@R_o'): -40, ('@L_V', '@R_a'): -35, ('@L_V', '@R_e'): -35,
-        ('@L_V', '@R_u'): -25, ('@L_V', '@R_A'): -50, ('@L_V', '@R_punct'): -50,
-        ('@L_V', '@R_hyphen'): -30,
-        # W combinations
-        ('@L_W', '@R_o'): -30, ('@L_W', '@R_a'): -25, ('@L_W', '@R_e'): -25,
-        ('@L_W', '@R_A'): -35, ('@L_W', '@R_punct'): -40, ('@L_W', '@R_hyphen'): -20,
-        # Y combinations
-        ('@L_Y', '@R_o'): -50, ('@L_Y', '@R_a'): -45, ('@L_Y', '@R_e'): -45,
-        ('@L_Y', '@R_u'): -35, ('@L_Y', '@R_punct'): -60, ('@L_Y', '@R_hyphen'): -35,
-        # A combinations
-        ('@L_A', '@R_V'): -50, ('@L_A', '@R_v'): -35, ('@L_A', '@R_w'): -25,
-        ('@L_A', '@R_y'): -30, ('@L_A', '@R_T'): -40, ('@L_A', '@R_Y'): -45,
-        ('@L_A', '@R_quote'): -40,
-        # F combinations
-        ('@L_F', '@R_o'): -35, ('@L_F', '@R_a'): -30, ('@L_F', '@R_e'): -30,
-        ('@L_F', '@R_punct'): -50, ('@L_F', '@R_hyphen'): -25,
-        # P combinations
-        ('@L_P', '@R_o'): -25, ('@L_P', '@R_a'): -20, ('@L_P', '@R_e'): -20,
-        ('@L_P', '@R_punct'): -45, ('@L_P', '@R_hyphen'): -20,
-        # r lowercase
-        ('@L_r', '@R_o'): -20, ('@L_r', '@R_a'): -15, ('@L_r', '@R_e'): -15,
-        ('@L_r', '@R_punct'): -30, ('@L_r', '@R_hyphen'): -15,
-        # f lowercase
-        ('@L_f', '@R_o'): -15, ('@L_f', '@R_a'): -10, ('@L_f', '@R_e'): -10,
-        # L combinations
-        ('@L_L', '@R_V'): -35, ('@L_L', '@R_y'): -25, ('@L_L', '@R_T'): -35,
-        ('@L_L', '@R_Y'): -30, ('@L_L', '@R_quote'): -30,
-        # Step 2: Number kerning (REMOVED - causes tabular kerning failures)
-        # Step 3: Quote kerning
-        ('@L_quote', '@R_o'): -25, ('@L_quote', '@R_a'): -20,
-        ('@L_quote', '@R_e'): -20, ('@L_quote', '@R_c'): -20,
-        ('@L_A', '@R_quote'): -40, ('@L_V', '@R_quote'): -35,
-        ('@L_W', '@R_quote'): -25, ('@L_Y', '@R_quote'): -40,
-        ('@L_T', '@R_quote'): -30,
-        # Step 4: Bracket kerning
-        ('@L_paren', '@R_o'): -15, ('@L_paren', '@R_a'): -15,
-        ('@L_paren', '@R_e'): -15,
-        ('@L_A', '@R_paren'): -20, ('@L_V', '@R_paren'): -25,
-        ('@L_T', '@R_paren'): -20, ('@L_Y', '@R_paren'): -25,
-        # Step 6: Right-side capital kerning (reverse pairs like oT, aV)
-        ('@L_o', '@R_T'): -50, ('@L_o', '@R_V'): -35, ('@L_o', '@R_Y'): -40,
-        ('@L_a', '@R_T'): -45, ('@L_a', '@R_V'): -30, ('@L_a', '@R_Y'): -35,
-        ('@L_e', '@R_T'): -45, ('@L_e', '@R_V'): -30, ('@L_e', '@R_Y'): -35,
+        ("@L_T", "@R_o"): -50, ("@L_T", "@R_a"): -45, ("@L_T", "@R_e"): -45,
+        ("@L_T", "@R_c"): -40, ("@L_T", "@R_u"): -35, ("@L_T", "@R_s"): -35,
+        ("@L_T", "@R_y"): -25, ("@L_T", "@R_punct"): -60, ("@L_T", "@R_hyphen"): -40,
+        ("@L_V", "@R_o"): -40, ("@L_V", "@R_a"): -35, ("@L_V", "@R_e"): -35,
+        ("@L_V", "@R_u"): -25, ("@L_V", "@R_A"): -50, ("@L_V", "@R_punct"): -50,
+        ("@L_V", "@R_hyphen"): -30,
+        ("@L_W", "@R_o"): -30, ("@L_W", "@R_a"): -25, ("@L_W", "@R_e"): -25,
+        ("@L_W", "@R_A"): -35, ("@L_W", "@R_punct"): -40, ("@L_W", "@R_hyphen"): -20,
+        ("@L_Y", "@R_o"): -50, ("@L_Y", "@R_a"): -45, ("@L_Y", "@R_e"): -45,
+        ("@L_Y", "@R_u"): -35, ("@L_Y", "@R_punct"): -60, ("@L_Y", "@R_hyphen"): -35,
+        ("@L_A", "@R_V"): -50, ("@L_A", "@R_v"): -35, ("@L_A", "@R_w"): -25,
+        ("@L_A", "@R_y"): -30, ("@L_A", "@R_T"): -40, ("@L_A", "@R_Y"): -45,
+        ("@L_A", "@R_quote"): -40,
+        ("@L_F", "@R_o"): -35, ("@L_F", "@R_a"): -30, ("@L_F", "@R_e"): -30,
+        ("@L_F", "@R_punct"): -50, ("@L_F", "@R_hyphen"): -25,
+        ("@L_P", "@R_o"): -25, ("@L_P", "@R_a"): -20, ("@L_P", "@R_e"): -20,
+        ("@L_P", "@R_punct"): -45, ("@L_P", "@R_hyphen"): -20,
+        ("@L_r", "@R_o"): -20, ("@L_r", "@R_a"): -15, ("@L_r", "@R_e"): -15,
+        ("@L_r", "@R_punct"): -30, ("@L_r", "@R_hyphen"): -15,
+        ("@L_f", "@R_o"): -15, ("@L_f", "@R_a"): -10, ("@L_f", "@R_e"): -10,
+        ("@L_L", "@R_V"): -35, ("@L_L", "@R_y"): -25, ("@L_L", "@R_T"): -35,
+        ("@L_L", "@R_Y"): -30, ("@L_L", "@R_quote"): -30,
+        ("@L_quote", "@R_o"): -25, ("@L_quote", "@R_a"): -20,
+        ("@L_quote", "@R_e"): -20, ("@L_quote", "@R_c"): -20,
+        ("@L_A", "@R_quote"): -40, ("@L_V", "@R_quote"): -35,
+        ("@L_W", "@R_quote"): -25, ("@L_Y", "@R_quote"): -40,
+        ("@L_T", "@R_quote"): -30,
+        ("@L_paren", "@R_o"): -15, ("@L_paren", "@R_a"): -15,
+        ("@L_paren", "@R_e"): -15,
+        ("@L_A", "@R_paren"): -20, ("@L_V", "@R_paren"): -25,
+        ("@L_T", "@R_paren"): -20, ("@L_Y", "@R_paren"): -25,
+        ("@L_o", "@R_T"): -50, ("@L_o", "@R_V"): -35, ("@L_o", "@R_Y"): -40,
+        ("@L_a", "@R_T"): -45, ("@L_a", "@R_V"): -30, ("@L_a", "@R_Y"): -35,
+        ("@L_e", "@R_T"): -45, ("@L_e", "@R_V"): -30, ("@L_e", "@R_Y"): -35,
     }
 
-    # Step 7: Optical kerning helper - analyze glyph metrics to suggest kern values
-    def optical_kern_value(g1_name, g2_name, base_value):
-        """Adjust kerning value based on actual glyph sidebearings.
-
-        If glyphs have unusual sidebearings, adjust the kern value proportionally.
-        This provides more accurate kerning than fixed values alone.
-        """
-        if g1_name not in glyf or g2_name not in glyf:
-            return base_value
-        if g1_name not in hmtx.metrics or g2_name not in hmtx.metrics:
-            return base_value
-
-        g1 = glyf[g1_name]
-        g2 = glyf[g2_name]
-
-        # Ensure bounds are calculated
-        if not hasattr(g1, 'xMax') or g1.xMax is None:
-            g1.recalcBounds(glyf)
-        if not hasattr(g2, 'xMin') or g2.xMin is None:
-            g2.recalcBounds(glyf)
-
-        # Get sidebearings
-        g1_width, _ = hmtx[g1_name]
-        g2_width, g2_lsb = hmtx[g2_name]
-
-        # Calculate right sidebearing of g1
-        if hasattr(g1, 'xMax') and g1.xMax is not None:
-            g1_rsb = g1_width - g1.xMax
-        else:
-            return base_value
-
-        # If g1 has negative RSB (glyph extends past advance), tighten more
-        # If g2 has large LSB, we already have space so tighten less
-        adjustment = 0
-        if g1_rsb < 0:  # Overhanging glyph (like T)
-            adjustment -= 10  # Tighten a bit more
-        if g2_lsb > 50:  # Already has space on left
-            adjustment += 10  # Tighten less
-
-        return base_value + adjustment
-
-    # Step 5: Build Format 2 (Class-based) GPOS kerning
-    # This is MUCH more efficient than Format 1 with individual pairs
-    gpos = font['GPOS'].table
-    hmtx = font['hmtx']
-
-    # Assign class IDs to glyphs
-    # Class 0 is reserved for "all other glyphs"
-    left_class_defs = {}  # glyph_name -> class_id
+    gpos_table = font["GPOS"].table
+    left_class_defs = {}
     right_class_defs = {}
-
-    # Map class names to numeric IDs (starting from 1)
     left_class_ids = {}
     right_class_ids = {}
 
-    class_id = 1
-    for class_name, glyphs in left_classes.items():
-        left_class_ids[class_name] = class_id
+    for i, (name, glyphs) in enumerate(left_classes.items(), 1):
+        left_class_ids[name] = i
         for g in glyphs:
-            left_class_defs[g] = class_id
-        class_id += 1
+            left_class_defs[g] = i
 
-    class_id = 1
-    for class_name, glyphs in right_classes.items():
-        right_class_ids[class_name] = class_id
+    for i, (name, glyphs) in enumerate(right_classes.items(), 1):
+        right_class_ids[name] = i
         for g in glyphs:
-            right_class_defs[g] = class_id
-        class_id += 1
+            right_class_defs[g] = i
 
-    # Build class-based pair values
-    # kern_pairs maps (left_class_name, right_class_name) -> value
-    # We need to convert to (left_class_id, right_class_id) -> value
     class_pair_values = {}
-    for (left_class_name, right_class_name), value in kern_pairs.items():
-        left_id = left_class_ids.get(left_class_name)
-        right_id = right_class_ids.get(right_class_name)
-        if left_id and right_id:
-            class_pair_values[(left_id, right_id)] = value
+    for (l_name, r_name), val in kern_pairs.items():
+        l_id = left_class_ids.get(l_name)
+        r_id = right_class_ids.get(r_name)
+        if l_id and r_id:
+            class_pair_values[(l_id, r_id)] = val
 
     if not class_pair_values:
         return False
 
-    # Create PairPos Format 2 subtable
-    lookup = otTables.Lookup()
-    lookup.LookupType = 2  # Pair Adjustment
-    lookup.LookupFlag = 0
-    lookup.SubTableCount = 1
-
     subtable = otTables.PairPos()
-    subtable.Format = 2  # Class-based kerning!
-    subtable.ValueFormat1 = 4  # XAdvance only
+    subtable.Format = 2
+    subtable.ValueFormat1 = 4
     subtable.ValueFormat2 = 0
 
-    # Build Coverage (all glyphs that appear on left side)
-    all_left_glyphs = list(left_class_defs.keys())
-    glyph_order_map = {g: i for i, g in enumerate(glyph_order)}
-    all_left_glyphs.sort(key=lambda x: glyph_order_map.get(x, 999999))
-
+    all_left_glyphs = sorted(left_class_defs.keys(), key=lambda x: glyph_order.index(x))
     coverage = otTables.Coverage()
     coverage.glyphs = all_left_glyphs
     subtable.Coverage = coverage
 
-    # Build ClassDef1 (left side classes)
     class_def1 = otTables.ClassDef()
     class_def1.classDefs = left_class_defs
     subtable.ClassDef1 = class_def1
 
-    # Build ClassDef2 (right side classes)
     class_def2 = otTables.ClassDef()
     class_def2.classDefs = right_class_defs
     subtable.ClassDef2 = class_def2
 
-    # Build Class1Record array
-    # Number of class1 records = max class1 ID + 1 (to include class 0)
     num_class1 = max(left_class_ids.values()) + 1 if left_class_ids else 1
     num_class2 = max(right_class_ids.values()) + 1 if right_class_ids else 1
-
     subtable.ClassCount1 = num_class1
     subtable.ClassCount2 = num_class2
 
@@ -1461,199 +1096,213 @@ def add_kerning_feature(font):
         c2_records = []
         for c2 in range(num_class2):
             c2_record = otTables.Class2Record()
-            value = class_pair_values.get((c1, c2), 0)
-            if value:
-                c2_record.Value1 = otTables.ValueRecord()
-                c2_record.Value1.XAdvance = value
-            else:
-                c2_record.Value1 = otTables.ValueRecord()
-                c2_record.Value1.XAdvance = 0
+            val = class_pair_values.get((c1, c2), 0)
+            c2_record.Value1 = otTables.ValueRecord()
+            c2_record.Value1.XAdvance = val
             c2_record.Value2 = None
             c2_records.append(c2_record)
         c1_record.Class2Record = c2_records
         class1_records.append(c1_record)
-
     subtable.Class1Record = class1_records
+
+    lookup = otTables.Lookup()
+    lookup.LookupType = 2
+    lookup.LookupFlag = 0
     lookup.SubTable = [subtable]
+    lookup.SubTableCount = 1
 
-    gpos.LookupList.Lookup.append(lookup)
-    gpos.LookupList.LookupCount += 1
-    new_lookup_index = len(gpos.LookupList.Lookup) - 1
+    gpos_table.LookupList.Lookup.append(lookup)
+    gpos_table.LookupList.LookupCount += 1
+    new_lookup_index = len(gpos_table.LookupList.Lookup) - 1
 
-    # Find or create 'kern' feature
-    kern_feature = None
-    for record in gpos.FeatureList.FeatureRecord:
-        if record.FeatureTag == 'kern':
-            kern_feature = record.Feature
-            break
-
+    kern_feature = next((r.Feature for r in gpos_table.FeatureList.FeatureRecord if r.FeatureTag == "kern"), None)
     if kern_feature is None:
         new_record = otTables.FeatureRecord()
-        new_record.FeatureTag = 'kern'
+        new_record.FeatureTag = "kern"
         new_record.Feature = otTables.Feature()
-        new_record.Feature.FeatureParams = None
         new_record.Feature.LookupListIndex = [new_lookup_index]
         new_record.Feature.LookupCount = 1
-        gpos.FeatureList.FeatureRecord.append(new_record)
-        gpos.FeatureList.FeatureCount += 1
-
-        for script_record in gpos.ScriptList.ScriptRecord:
-            script = script_record.Script
-            if script.DefaultLangSys:
-                feature_index = len(gpos.FeatureList.FeatureRecord) - 1
-                script.DefaultLangSys.FeatureIndex.append(feature_index)
-                script.DefaultLangSys.FeatureCount += 1
-    else:
-        kern_feature.LookupListIndex.append(new_lookup_index)
-        kern_feature.LookupCount += 1
 
     print(f"  ✓ Added kerning: {len(class_pair_values)} class pairs, {len(all_left_glyphs)} left glyphs (Format 2)")
     return True
 
 
-def post_process_font(font_path, output_path=None):
-
-    """Apply all post-processing fixes to a font"""
+def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bool:
+    """Apply all post-processing fixes to a font."""
     if output_path is None:
         output_path = font_path
 
-    print(f"\nProcessing: {font_path.name}")
+    logger.info(f"\nProcessing: {font_path.name}")
 
     try:
         font = TTFont(font_path)
-
         fixes_applied = []
 
-        if fix_font_revision(font):
-            fixes_applied.append("font_revision")
+        fix_map = [
+            (fix_font_revision, "font_revision"),
+            (fix_copyright_notice, "copyright_notice"),
+            (fix_windows_metrics, "windows_metrics"),
+            (fix_vertical_metrics, "vertical_metrics"),
+            (fix_fontbakery_version, "fontbakery_metadata"),
+            (fix_zero_width_glyphs, "zero_width_glyphs"),
+            (fix_font_names, "font_names"),
+            (fix_dotted_circle, "dotted_circle"),
+            (flatten_nested_components, "flattened_components"),
+            (normalize_simple_glyphs, "normalized_glyf_flags"),
+        ]
 
-        if fix_copyright_notice(font):
-            fixes_applied.append("copyright_notice")
-
-        if fix_windows_metrics(font):
-            fixes_applied.append("windows_metrics")
-
-        if fix_vertical_metrics(font):
-            fixes_applied.append("vertical_metrics")
-
-        if fix_fontbakery_version(font):
-            fixes_applied.append("fontbakery_metadata")
-
-        if fix_zero_width_glyphs(font):
-            fixes_applied.append("zero_width_glyphs")
-
-        if fix_font_names(font):
-            fixes_applied.append("font_names")
-
-        if fix_dotted_circle(font):
-            fixes_applied.append("dotted_circle")
-
-        if flatten_nested_components(font):
-            fixes_applied.append("flattened_components")
-
-        if normalize_simple_glyphs(font):
-            fixes_applied.append("normalized_glyf_flags")
+        for fix_func, fix_name in fix_map:
+            if fix_func(font):
+                fixes_applied.append(fix_name)
 
         # Run a light gftools fix pass for additional GF hygiene.
         font = gftools_fix_font(font, include_source_fixes=False)
         fixes_applied.append("gftools_fix_font")
 
-        if fix_panose_monospace(font):
-            fixes_applied.append("panose_monospace")
+        extra_fix_map = [
+            (fix_panose_monospace, "panose_monospace"),
+            (fix_license_entries, "license_entries"),
+            (fix_style_bits, "style_bits"),
+            (drop_glyph_names, "stripped_glyph_names"),
+            (fix_broken_mark_anchors, "fixed_broken_mark_anchors"),
+            (add_fallback_mark_anchors, "fallback_mark_anchors"),
+            (add_dotted_circle_fallback, "dotted_circle_fallback"),
+            (fix_gdef_mark_classes, "gdef_mark_classes"),
+            (add_kerning_feature, "kerning"),
+        ]
 
-        if fix_license_entries(font):
-            fixes_applied.append("license_entries")
-
-        if fix_style_bits(font):
-            fixes_applied.append("style_bits")
-
-        if drop_glyph_names(font):
-            fixes_applied.append("stripped_glyph_names")
-
-        if fix_broken_mark_anchors(font):
-            fixes_applied.append("fixed_broken_mark_anchors")
-
-        if add_fallback_mark_anchors(font):
-            fixes_applied.append("fallback_mark_anchors")
-
-        if add_dotted_circle_fallback(font):
-            fixes_applied.append("dotted_circle_fallback")
-
-        if fix_gdef_mark_classes(font):
-            fixes_applied.append("gdef_mark_classes")
-
-        if add_kerning_feature(font):
-            fixes_applied.append("kerning")
+        for fix_func, fix_name in extra_fix_map:
+            if fix_func(font):
+                fixes_applied.append(fix_name)
 
         # Remove unwanted tables
-        unwanted_tables = ['DSIG', 'FFTM', 'prop']
+        unwanted_tables = ["DSIG", "FFTM", "prop"]
         removed_tables = []
         for table in unwanted_tables:
             if table in font:
                 del font[table]
                 removed_tables.append(table)
+
         if removed_tables:
             fixes_applied.append(f"removed_tables({','.join(removed_tables)})")
-            print(f"  ✓ Removed unwanted tables: {', '.join(removed_tables)}")
+            logger.info(f"  ✓ Removed unwanted tables: {', '.join(removed_tables)}")
 
         # Save the modified font
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         font.save(output_path)
         font.close()
 
-        print(f"  ✅ Saved: {output_path.name}")
-        print(f"  Fixes applied: {', '.join(fixes_applied) if fixes_applied else 'none'}\n")
-
+        logger.info(f"  ✅ Saved: {output_path.name}")
+        logger.info(f"  Fixes applied: {', '.join(fixes_applied) if fixes_applied else 'none'}\n")
         return True
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"  ❌ Error: {e}\n")
+        logger.error(f"  ❌ Error processing {font_path.name}: {e}")
+        if logger.isEnabledFor(logging.DEBUG):
+            import traceback
+            traceback.print_exc()
         return False
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Post-process Iosevka fonts for Google Fonts compliance'
-    )
+def process_and_copy_font(font_path: Path) -> Tuple[bool, Path, Optional[Path]]:
+    """Helper for parallel processing: fix and copy to 'fonts/' directory."""
+    try:
+        # font_path structure: unprocessed_fonts/<plan_name>/ttf/<font>.ttf
+        plan_dir = font_path.parent.parent.name
+        dest_dir_name = plan_dir.lower().replace(" ", "")
+        dest_dir = Path("fonts") / dest_dir_name
+
+        # Normalize filename
+        filename = font_path.name
+        replacements = {"ExtraBold": "Extrabold", "ExtraLight": "Extralight", "SemiBold": "Semibold"}
+        for old, new in replacements.items():
+            filename = filename.replace(old, new)
+
+        output_path = dest_dir / filename
+        success = post_process_font(font_path, output_path)
+        return success, font_path, output_path
+
+    except Exception as e:
+        logger.error(f"ERROR calculating paths for {font_path}: {e}")
+        return False, font_path, None
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Post-process Iosevka fonts for Google Fonts compliance")
     parser.add_argument(
-        'fonts',
-        nargs='+',
-        type=Path,
-        help='Font files to process (.ttf)'
+        "fonts", nargs="*", type=Path, help="Font files to process. If omitted, uses unprocessed_fonts/"
     )
-    parser.add_argument(
-        '--output-dir',
-        type=Path,
-        help='Output directory (default: overwrite input files)'
-    )
+    parser.add_argument("--output-dir", type=Path, help="Output directory (default: overwrite or use fonts/)")
+    parser.add_argument("--parallel", action="store_true", help="Process fonts in parallel")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
 
-    if args.output_dir:
-        args.output_dir.mkdir(parents=True, exist_ok=True)
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
 
-    success_count = 0
-    total_count = len(args.fonts)
+    if not args.fonts:
+        bulk_root = Path("unprocessed_fonts")
+        fonts = sorted(bulk_root.glob("**/*.ttf"))
 
-    for font_path in args.fonts:
-        if not font_path.exists():
-            print(f"❌ File not found: {font_path}")
-            continue
+        if not fonts:
+            logger.error(f"ERROR: No TTF files found in {bulk_root} and no files specified.")
+            sys.exit(1)
 
-        output_path = font_path
+        output_root = Path("fonts")
+        if output_root.exists():
+            logger.info(f"Cleaning existing output directory: {output_root}")
+            shutil.rmtree(output_root)
+        output_root.mkdir(parents=True, exist_ok=True)
+
+        num_workers = cpu_count()
+        logger.info(f"Bulk processing {len(fonts)} fonts using {num_workers} workers...")
+
+        with Pool(num_workers) as pool:
+            results = pool.map(process_and_copy_font, fonts)
+
+        success_count = sum(1 for success, _, _ in results if success)
+        total_count = len(results)
+
+        if success_count < total_count:
+            logger.error("\nFailed fonts:")
+            for success, input_path, _ in results:
+                if not success:
+                    logger.error(f"  - {input_path}")
+    else:
+        # Process specified fonts
         if args.output_dir:
-            output_path = args.output_dir / font_path.name
+            args.output_dir.mkdir(parents=True, exist_ok=True)
 
-        if post_process_font(font_path, output_path):
-            success_count += 1
+        total_count = len(args.fonts)
+        if args.parallel and total_count > 1:
+            num_workers = min(cpu_count(), total_count)
+            logger.info(f"Processing {total_count} fonts in parallel using {num_workers} workers...")
 
-    print(f"\n{'='*60}")
-    print(f"Processed {success_count}/{total_count} fonts successfully")
-    print(f"{'='*60}\n")
+            def _worker(f: Path) -> bool:
+                out = args.output_dir / f.name if args.output_dir else f
+                return post_process_font(f, out)
 
-    return 0 if success_count == total_count else 1
+            with Pool(num_workers) as pool:
+                results_list = pool.map(_worker, args.fonts)
+            success_count = sum(1 for r in results_list if r)
+        else:
+            success_count = 0
+            for f in args.fonts:
+                if not f.exists():
+                    logger.warning(f"File not found: {f}")
+                    continue
+                out = args.output_dir / f.name if args.output_dir else f
+                if post_process_font(f, out):
+                    success_count += 1
+
+    logger.info(f"\n{'='*60}")
+    logger.info(f"Processed {success_count}/{total_count} fonts successfully")
+    logger.info(f"{'='*60}\n")
+
+    if success_count < total_count:
+        sys.exit(1)
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+if __name__ == "__main__":
+    main()

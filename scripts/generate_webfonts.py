@@ -11,24 +11,44 @@ in three variants:
 Output is written to webfonts/<subset>/<family>/ with subset-first directory structure.
 """
 
+import logging
 import pathlib
 import shutil
 import sys
 from multiprocessing import Pool, cpu_count
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 from fontTools import subset
 from fontTools.ttLib import TTFont
 
+# Constants
+# ----------------------------------------------------------------------------
+
+INPUT_ROOT = Path("fonts")
+OUTPUT_ROOT = Path("webfonts")
 
 # Unicode ranges for subsetting
-SUBSETS = {
+SUBSETS: Dict[str, Optional[str]] = {
     "full": None,  # No subsetting - keep all glyphs
     "latin-ext": "U+0000-024F",  # Basic Latin + Latin-1 Supplement + Latin Extended-A/B
     "latin": "U+0000-00FF",  # Basic Latin + Latin-1 Supplement
 }
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+logger = logging.getLogger(__name__)
 
-def generate_webfont(args):
+
+# Core Functions
+# ----------------------------------------------------------------------------
+
+
+def generate_webfont(args: Tuple[Path, str, Optional[str]]) -> Tuple[bool, Path, Optional[Path], str]:
     """
     Generate a single WOFF2 webfont, optionally with subsetting.
 
@@ -36,7 +56,7 @@ def generate_webfont(args):
         args: Tuple of (font_path, subset_name, unicode_range)
 
     Returns:
-        tuple: (success: bool, input_path: Path, output_path: Path, subset_name: str)
+        tuple: (success, input_path, output_path, subset_name)
     """
     font_path, subset_name, unicode_range = args
 
@@ -48,7 +68,7 @@ def generate_webfont(args):
         stem = font_path.stem  # e.g., "IosevkaCharon-Regular"
         output_filename = f"{stem}.woff2"
 
-        output_dir = pathlib.Path("webfonts") / subset_name / family_dir
+        output_dir = OUTPUT_ROOT / subset_name / family_dir
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / output_filename
 
@@ -75,48 +95,47 @@ def generate_webfont(args):
             subsetter.subset(font)
             subset.save_font(font, output_path, options)
 
-        return (True, font_path, output_path, subset_name)
+        return True, font_path, output_path, subset_name
 
     except Exception as e:
-        import traceback
+        logger.error(f"ERROR generating {subset_name} for {font_path}: {e}")
+        if logger.isEnabledFor(logging.DEBUG):
+            import traceback
+            traceback.print_exc()
+        return False, font_path, None, subset_name
 
-        print(f"ERROR generating {subset_name} for {font_path}: {e}", file=sys.stderr)
-        traceback.print_exc()
-        return (False, font_path, None, subset_name)
+
+# Main Entry Point
+# ----------------------------------------------------------------------------
 
 
-def main():
-    input_root = pathlib.Path("fonts")
-    output_root = pathlib.Path("webfonts")
-
-    fonts = sorted(input_root.glob("**/*.ttf"))
+def main() -> None:
+    """Main execution block."""
+    fonts = sorted(INPUT_ROOT.glob("**/*.ttf"))
 
     if not fonts:
-        print(
-            "ERROR: No TTF files found in fonts/ to process.",
-            file=sys.stderr,
-        )
+        logger.error(f"ERROR: No TTF files found in {INPUT_ROOT} to process.")
         sys.exit(1)
 
     # Clean and prepare output directory
-    if output_root.exists():
-        print(f"Cleaning existing output directory: {output_root}")
-        shutil.rmtree(output_root)
-    output_root.mkdir(parents=True, exist_ok=True)
+    if OUTPUT_ROOT.exists():
+        logger.info(f"Cleaning existing output directory: {OUTPUT_ROOT}")
+        shutil.rmtree(OUTPUT_ROOT)
+    OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
     # Build work queue: each font × each subset variant
-    work_items = []
+    work_items: List[Tuple[Path, str, Optional[str]]] = []
     for font_path in fonts:
         for subset_name, unicode_range in SUBSETS.items():
             work_items.append((font_path, subset_name, unicode_range))
 
     # Parallelize generation using all available CPU cores
     num_workers = cpu_count()
-    print(f"Generating {len(work_items)} WOFF2 files ({len(fonts)} fonts × {len(SUBSETS)} subsets)")
-    print(f"Using {num_workers} parallel workers...")
-    print(f"Input:  fonts/")
-    print(f"Output: webfonts/")
-    print()
+    logger.info(f"Generating {len(work_items)} WOFF2 files ({len(fonts)} fonts × {len(SUBSETS)} subsets)")
+    logger.info(f"Using {num_workers} parallel workers...")
+    logger.info(f"Input:  {INPUT_ROOT}/")
+    logger.info(f"Output: {OUTPUT_ROOT}/")
+    logger.info("")
 
     with Pool(num_workers) as pool:
         results = pool.map(generate_webfont, work_items)
@@ -125,27 +144,27 @@ def main():
     successful = sum(1 for success, _, _, _ in results if success)
     failed = len(results) - successful
 
-    print()
-    print("=" * 60)
-    print(f"WOFF2 generation complete!")
-    print(f"  Successful: {successful}/{len(results)}")
+    logger.info("")
+    logger.info("=" * 60)
+    logger.info("WOFF2 generation complete!")
+    logger.info(f"  Successful: {successful}/{len(results)}")
 
     if failed > 0:
-        print(f"  Failed: {failed}")
-        print("\nFailed items:")
+        logger.error(f"  Failed: {failed}")
+        logger.error("\nFailed items:")
         for success, input_path, _, subset_name in results:
             if not success:
-                print(f"  - {input_path} ({subset_name})")
+                logger.error(f"  - {input_path} ({subset_name})")
         sys.exit(1)
 
     # Print file size summary for one font as a sanity check
-    print()
-    print("Sample file sizes (IosevkaCharon-Regular):")
+    logger.info("")
+    logger.info("Sample file sizes (IosevkaCharon-Regular):")
     for subset_name in SUBSETS.keys():
-        sample_file = output_root / subset_name / "iosevkacharon" / "IosevkaCharon-Regular.woff2"
+        sample_file = OUTPUT_ROOT / subset_name / "iosevkacharon" / "IosevkaCharon-Regular.woff2"
         if sample_file.exists():
             size_kb = sample_file.stat().st_size / 1024
-            print(f"  {subset_name}: {size_kb:.1f} KB")
+            logger.info(f"  {subset_name}: {size_kb:.1f} KB")
 
 
 if __name__ == "__main__":

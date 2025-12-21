@@ -3,6 +3,9 @@
 #      / > [nix-shell]  <-- this provides all dependencies
 SHELL := ./scripts/run-in-nix.sh
 
+# Default build plan
+PLAN ?= sources/private-build-plans.toml
+
 help:
 	@echo "###"
 	@echo "# Build targets for Iosevka Charon"
@@ -51,7 +54,7 @@ fonts: fonts.stamp
 postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 	@echo "==> Stage 2: Post-processing fonts for GF compliance..."
 	rm -rf fonts
-	python3 scripts/post_process_parallel.py
+	python3 scripts/fix_fonts.py
 	@touch postprocess.stamp
 	@echo "==> Final fonts available in fonts/"
 
