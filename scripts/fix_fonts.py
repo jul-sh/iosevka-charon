@@ -808,12 +808,16 @@ def normalize_simple_glyphs(font: TTFont) -> bool:
 
 
 def fix_panose_monospace(font: TTFont) -> bool:
-    """Ensure PANOSE proportion is set to monospaced."""
-    if "OS/2" not in font:
+    """Ensure PANOSE proportion is set correctly based on font spacing."""
+    if "OS/2" not in font or "post" not in font:
         return False
+    
     panose = font["OS/2"].panose
-    if panose.bProportion != 9:
-        panose.bProportion = 9
+    is_mono = font["post"].isFixedPitch
+    target = 9 if is_mono else 0  # 9=Monospaced, 0=Any
+    
+    if panose.bProportion != target:
+        panose.bProportion = target
         return True
     return False
 
@@ -904,6 +908,92 @@ def fix_gdef_mark_classes(font: TTFont) -> bool:
     return updated
 
 
+def names_for_categories(font: TTFont, categories: set) -> List[str]:
+    """Get glyph names matching specific Unicode categories."""
+    cmap = font.getBestCmap()
+    glyph_names = []
+    for cp, name in cmap.items():
+        if unicodedata.category(chr(cp)) in categories:
+            glyph_names.append(name)
+    return glyph_names
+
+
+def fix_punctuation_spacing(font: TTFont) -> bool:
+    """Reduce excessive space around punctuation in quasi-proportional fonts."""
+    if "post" in font and font["post"].isFixedPitch:
+        return False
+
+    if "hmtx" not in font or "glyf" not in font:
+        return False
+
+    hmtx = font["hmtx"]
+    glyf = font["glyf"]
+    changed = False
+
+    # Target widths for quasi-proportional (UPEM 1000)
+    small_punct_target = 300
+    large_punct_target = 450
+
+    # Po: Other Punctuation (.,:;!?)
+    # Pe: Close Punctuation (])
+    # Ps: Open Punctuation ([)
+    # Pi: Initial Punctuation («)
+    # Pf: Final Punctuation (»)
+    # Pd: Dash Punctuation (-)
+    
+    small_punct_glyphs = set(names_for_categories(font, {"Po", "Pe", "Ps", "Pi", "Pf", "Pd"}))
+    
+    # Large punctuation override
+    large_punct_chars = "?¿\u2026"  # ? ¿ ellipsis
+    cmap = font.getBestCmap()
+    large_punct_glyphs = {cmap[ord(c)] for c in large_punct_chars if ord(c) in cmap}
+    
+    # Exceptions (dashes usually look better with more width)
+    exclude_from_fix = set(names_for_categories(font, {"Pd"}))
+
+    for glyph_name in sorted(small_punct_glyphs):
+        if glyph_name in exclude_from_fix:
+            continue
+        if glyph_name not in hmtx.metrics:
+            continue
+
+        glyph = glyf.get(glyph_name)
+        if not glyph:
+            continue
+
+        target_width = large_punct_target if glyph_name in large_punct_glyphs else small_punct_target
+        
+        # Ellipsis special case
+        if any(c in glyph_name for c in ["ellipsis", "uni2026"]):
+            target_width = 800
+
+        # Recalculate bounds
+        if glyph.isComposite():
+            glyph.recalcBounds(glyf)
+
+        if not hasattr(glyph, "xMin") or glyph.xMin is None:
+            continue
+
+        ink_width = glyph.xMax - glyph.xMin
+        new_lsb = (target_width - ink_width) // 2
+        
+        dx = new_lsb - glyph.xMin
+        if dx != 0:
+            if glyph.isComposite():
+                for component in glyph.components:
+                    component.x += dx
+            elif hasattr(glyph, "coordinates"):
+                glyph.coordinates.translate((dx, 0))
+        
+        hmtx[glyph_name] = (target_width, new_lsb)
+        changed = True
+
+    if changed:
+        print(f"  ✓ Adjusted spacing for {len(small_punct_glyphs)} punctuation glyphs")
+
+    return changed
+
+
 def add_kerning_feature(font: TTFont) -> bool:
     """Add GPOS kern feature for quasi-proportional fonts."""
     # Only apply to quasi-proportional fonts
@@ -962,9 +1052,10 @@ def add_kerning_feature(font: TTFont) -> bool:
         "@L_P": expand_with_accents(names_for_chars("PÞṔṖƤРрҎҏΡρ")),
         "@L_r": expand_with_accents(names_for_chars("rŕřŗṙṛṝṟɍɾгґ")),
         "@L_f": expand_with_accents(names_for_chars("fḟƒﬁﬂ")),
-        "@L_L": expand_with_accents(names_for_chars("LĹĻĽĿŁḶḸḺḼȽГгҐґ")),
-        "@L_quote": names_for_chars("\"'\u2019\u00bb\u203a"),
-        "@L_paren": names_for_chars(")]}"),
+        "@L_L": expand_with_accents(names_for_chars("LĹĻĽĿŁḶḸḺḺȽГгҐґ")),
+        "@L_quote": names_for_categories(font, {"Pi", "Pf", "Po"}), # Catch quotes dynamically
+        "@L_paren": names_for_categories(font, {"Pe"}),
+        "@L_punct": names_for_categories(font, {"Po"}),
         "@L_o": expand_with_accents(names_for_chars("oòóôõöōŏőơǒọỏốồổỗộớờởỡợøœоөοό")),
         "@L_a": expand_with_accents(names_for_chars("aàáâãäåāăąǎạảấầẩẫậắằẳẵặæаα")),
         "@L_e": expand_with_accents(names_for_chars("eèéêëēĕėęěẹẻẽếềểễệеёєεέ")),
@@ -987,10 +1078,10 @@ def add_kerning_feature(font: TTFont) -> bool:
         "@R_V": expand_with_accents(names_for_chars("VṼṾѴ")),
         "@R_T": expand_with_accents(names_for_chars("TŦȚŢƬƮȾṪṬṮṰТЋЂΤτ")),
         "@R_Y": expand_with_accents(names_for_chars("YỲỴỶỸŶŸÝƳƴУЎҮΥΎ")),
-        "@R_punct": names_for_chars(".,;:!?"),
+        "@R_punct": names_for_categories(font, {"Po"}),
         "@R_hyphen": names_for_chars("-–—"),
-        "@R_quote": names_for_chars("\"'\u201c\u2018\u00ab\u2039"),
-        "@R_paren": names_for_chars("([{"),
+        "@R_quote": names_for_categories(font, {"Pi", "Pf", "Po"}),
+        "@R_paren": names_for_categories(font, {"Ps"}),
     }
 
     # Filter to only include glyphs that exist in the font
@@ -1039,6 +1130,14 @@ def add_kerning_feature(font: TTFont) -> bool:
         ("@L_o", "@R_T"): -50, ("@L_o", "@R_V"): -35, ("@L_o", "@R_Y"): -40,
         ("@L_a", "@R_T"): -45, ("@L_a", "@R_V"): -30, ("@L_a", "@R_Y"): -35,
         ("@L_e", "@R_T"): -45, ("@L_e", "@R_V"): -30, ("@L_e", "@R_Y"): -35,
+        # Punctuation kerning
+        ("@L_punct", "@R_quote"): -40, ("@L_punct", "@R_punct"): -30,
+        ("@L_punct", "@R_o"): -20, ("@L_punct", "@R_a"): -20, ("@L_punct", "@R_e"): -20,
+        ("@L_punct", "@R_A"): -30, ("@L_punct", "@R_V"): -35, ("@L_punct", "@R_T"): -35,
+        ("@L_punct", "@R_Y"): -35,
+        ("@L_quote", "@R_punct"): -40,
+        ("@L_V", "@R_punct"): -60, ("@L_W", "@R_punct"): -50, ("@L_Y", "@R_punct"): -70,
+        ("@L_T", "@R_punct"): -70, ("@L_A", "@R_punct"): -30,
     }
 
     gpos_table = font["GPOS"].table
@@ -1168,6 +1267,7 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
             (add_fallback_mark_anchors, "fallback_mark_anchors"),
             (add_dotted_circle_fallback, "dotted_circle_fallback"),
             (fix_gdef_mark_classes, "gdef_mark_classes"),
+            (fix_punctuation_spacing, "punctuation_spacing"),
             (add_kerning_feature, "kerning"),
         ]
 
