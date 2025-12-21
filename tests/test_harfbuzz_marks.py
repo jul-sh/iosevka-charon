@@ -150,29 +150,28 @@ def fuzzy_compare_pen(val1: list, val2: list) -> bool:
     if len(val1) != len(val2):
         return False
         
-    def extract_points(v):
-        pts = []
+    def get_first_point(v):
         for _, args in v:
             for arg in args:
                 if isinstance(arg, tuple) and len(arg) == 2 and all(isinstance(i, (int, float)) for i in arg):
-                    pts.append(arg)
+                    return arg
                 elif isinstance(arg, (list, tuple)):
                     for sub in arg:
                         if isinstance(sub, tuple) and len(sub) == 2 and all(isinstance(i, (int, float)) for i in sub):
-                            pts.append(sub)
-        return pts
+                            return sub
+        return None
         
-    pts1 = extract_points(val1)
-    pts2 = extract_points(val2)
+    p1 = get_first_point(val1)
+    p2 = get_first_point(val2)
     
-    if not pts1 and not pts2:
+    if p1 is None and p2 is None:
         return True # Both empty
-    if not pts1 or not pts2:
+    if p1 is None or p2 is None:
         return False # One empty, one not
         
     # Offset based on first point for translation invariance
-    dx = pts1[0][0] - pts2[0][0]
-    dy = pts1[0][1] - pts2[0][1]
+    dx = p1[0] - p2[0]
+    dy = p1[1] - p2[1]
     
     for (op1, args1), (op2, args2) in zip(val1, val2):
         if op1 != op2:
@@ -200,22 +199,24 @@ def fuzzy_compare_pen(val1: list, val2: list) -> bool:
     return True
 
 
-def test_glyph_integrity_batch(args: tuple) -> list[tuple[str, bool, str]]:
-    """Test outline and single-character shaping identity for a batch of codepoints."""
-    codepoints, gf_data, base_data = args
-    
-    # Initialize in worker
-    gf_hb_font = hb.Font(hb.Face(gf_data))
-    base_hb_font = hb.Font(hb.Face(base_data))
-    
+# Worker globals to cache font objects
+worker_context = {}
+
+def init_worker(gf_data, base_data):
+    """Initialize worker process with cached font objects."""
     gf_tt = TTFont(BytesIO(gf_data))
     base_tt = TTFont(BytesIO(base_data))
     
-    gf_cmap = gf_tt.getBestCmap()
-    base_cmap = base_tt.getBestCmap()
-    
-    gf_glyph_set = gf_tt.getGlyphSet()
-    base_glyph_set = base_tt.getGlyphSet()
+    worker_context['gf_tt'] = gf_tt
+    worker_context['base_tt'] = base_tt
+    worker_context['gf_hb'] = hb.Font(hb.Face(gf_data))
+    worker_context['base_hb'] = hb.Font(hb.Face(base_data))
+    worker_context['gf_cmap'] = gf_tt.getBestCmap()
+    worker_context['base_cmap'] = base_tt.getBestCmap()
+    worker_context['gf_glyph_set'] = gf_tt.getGlyphSet()
+    worker_context['base_glyph_set'] = base_tt.getGlyphSet()
+
+def fuzzy_equal(v1, v2, tol=TOLERANCE):
 
     results = []
     for cp in codepoints:
@@ -454,7 +455,6 @@ def main():
     # Batch codepoints for performance
     batch_size = 500
     batches = [all_cps[i:i + batch_size] for i in range(0, len(all_cps), batch_size)]
-    batch_cases = [(batch, gf_data, base_data) for batch in batches]
     
     integrity_passed = 0
     integrity_failed = 0
@@ -462,8 +462,12 @@ def main():
     integrity_shaping_failures = 0
     integrity_outline_failures = 0
     
-    with ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-        futures = {executor.submit(test_glyph_integrity_batch, bc): bc for bc in batch_cases}
+    with ProcessPoolExecutor(
+        max_workers=os.cpu_count(),
+        initializer=init_worker,
+        initargs=(gf_data, base_data)
+    ) as executor:
+        futures = {executor.submit(test_glyph_integrity_batch, batch): batch for batch in batches}
         
         for future in as_completed(futures):
             batch_results = future.result()
