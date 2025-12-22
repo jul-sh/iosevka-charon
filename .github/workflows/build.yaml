@@ -197,7 +197,7 @@ jobs:
             cd release/webfonts && zip -r "../../${WEBFONTS_ZIP}" . && cd ../..
           fi
 
-          printf -v NOTES "Automated prerelease for commit %s.\n\n**For general use, download \`iosevka-charon.zip\`**\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka)\n- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts\n- **\`iosevka-charon-webfonts.zip\`**: WOFF2 webfonts with three subsets (full, latin-ext, latin)\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build" "${GITHUB_SHA}"
+          printf -v NOTES "Automated prerelease for commit %s.\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka)\n- **\`iosevka-charon-google-fonts-version.zip\`**: Fonts processed specifically for Google Fonts\n- **\`iosevka-charon-webfonts.zip\`**: WOFF2 webfonts with three subsets (full, latin-ext, latin)\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report for the Google Fonts build" "${GITHUB_SHA}"
 
           gh release delete "$TAG" -y 2>/dev/null || true
           gh release create "$TAG" \
@@ -312,8 +312,6 @@ jobs:
           fi
           {
             echo "## ${{ github.event.release.tag_name }}"
-            echo ""
-            echo "**For general use, download \`iosevka-charon.zip\`**"
             echo ""
             echo "This release includes three archives:"
             echo "- **\`iosevka-charon.zip\`**: General use fonts (unprocessed TrueType fonts from Iosevka, suitable for general use)"
