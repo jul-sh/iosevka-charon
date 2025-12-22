@@ -929,10 +929,23 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
     hmtx = font["hmtx"]
     glyf = font["glyf"]
     changed = False
+    adjusted_count = 0
+
+    # Get the standard monospace advance width from a reference glyph
+    cmap = font.getBestCmap()
+    ref_glyph = cmap.get(ord("m")) or cmap.get(ord("n")) or cmap.get(ord("o"))
+    if ref_glyph and ref_glyph in hmtx.metrics:
+        standard_advance, _ = hmtx[ref_glyph]
+    else:
+        standard_advance = 600  # Fallback for UPEM 1000
 
     # Target widths for quasi-proportional (UPEM 1000)
     small_punct_target = 300
     large_punct_target = 450
+
+    # Wide glyph threshold: if ink width exceeds this fraction of standard advance,
+    # skip spacing adjustment (glyphs like @ are naturally wide)
+    wide_glyph_threshold = 0.60
 
     # Po: Other Punctuation (.,:;!?)
     # Pe: Close Punctuation (])
@@ -945,7 +958,6 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
     
     # Large punctuation override
     large_punct_chars = "?¿\u2026"  # ? ¿ ellipsis
-    cmap = font.getBestCmap()
     large_punct_glyphs = {cmap[ord(c)] for c in large_punct_chars if ord(c) in cmap}
     
     # Exceptions (dashes usually look better with more width)
@@ -961,13 +973,7 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
         if not glyph:
             continue
 
-        target_width = large_punct_target if glyph_name in large_punct_glyphs else small_punct_target
-        
-        # Ellipsis special case
-        if any(c in glyph_name for c in ["ellipsis", "uni2026"]):
-            target_width = 800
-
-        # Recalculate bounds
+        # Recalculate bounds first to get accurate ink width
         if glyph.isComposite():
             glyph.recalcBounds(glyf)
 
@@ -975,6 +981,17 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
             continue
 
         ink_width = glyph.xMax - glyph.xMin
+
+        # Skip wide glyphs (e.g., @, ©, ®, §) - they need their natural width
+        if ink_width > standard_advance * wide_glyph_threshold:
+            continue
+
+        target_width = large_punct_target if glyph_name in large_punct_glyphs else small_punct_target
+        
+        # Ellipsis special case
+        if any(c in glyph_name for c in ["ellipsis", "uni2026"]):
+            target_width = 800
+
         new_lsb = (target_width - ink_width) // 2
         
         dx = new_lsb - glyph.xMin
@@ -986,10 +1003,11 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
                 glyph.coordinates.translate((dx, 0))
         
         hmtx[glyph_name] = (target_width, new_lsb)
+        adjusted_count += 1
         changed = True
 
     if changed:
-        print(f"  ✓ Adjusted spacing for {len(small_punct_glyphs)} punctuation glyphs")
+        print(f"  ✓ Adjusted spacing for {adjusted_count} punctuation glyphs")
 
     return changed
 
