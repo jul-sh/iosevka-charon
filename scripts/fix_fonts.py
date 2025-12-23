@@ -886,10 +886,20 @@ def drop_glyph_names(font: TTFont) -> bool:
 def fix_punctuation_spacing(font: TTFont) -> bool:
     """Reduce spacing around narrow punctuation while preserving wide characters.
 
-    Uses ink-width based detection: if a glyph's ink width is > 60% of the standard
-    advance width (from 'm'), it's considered "wide" and skipped. This preserves
-    spacing for characters like @ # % & while tightening . , ; : ! etc.
+    Uses Unicode categories to identify punctuation and ink-width based detection
+    to decide what to narrow. If a glyph's ink width is > 60% of the standard
+    advance width, it's considered "wide" and skipped. This automatically
+    preserves characters like @ # % & while tightening . , ; : ! etc.
+
+    Only applies to non-monospace variants (skips fonts with "Mono" in name).
     """
+    # Skip monospace fonts - only apply to quasi-proportional variant
+    name_table = font.get("name")
+    if name_table:
+        family_name = name_table.getName(1, 3, 1, 0x409)
+        if family_name and "Mono" in family_name.toUnicode():
+            return False
+
     if "hmtx" not in font or "glyf" not in font:
         return False
 
@@ -906,31 +916,28 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
     if standard_advance is None:
         standard_advance = 600  # fallback for UPEM 1000
 
-    # Wide glyph threshold: 60% of standard advance
-    wide_threshold = standard_advance * 0.60
+    # Ink-width thresholds (as fraction of standard advance)
+    wide_threshold = standard_advance * 0.60  # Skip glyphs wider than this
 
-    # Target widths for different punctuation categories
-    small_punct_target = 300   # . , ; : ! '
-    large_punct_target = 450   # ? ¡ ¿
-    ellipsis_target = 800      # …
+    # Target width: proportional to ink width with minimum padding
+    min_padding = 80  # Minimum total padding (both sides)
+    target_cap = int(standard_advance * 0.75)  # Never exceed 75% of standard
 
-    # Define punctuation codepoints by category
-    small_punct = set(ord(c) for c in ".,:;!'`")
-    large_punct = set(ord(c) for c in "?¡¿")
-    ellipsis_cps = {0x2026}  # …
-
-    # Characters to explicitly skip (wide punctuation)
-    skip_chars = set(ord(c) for c in "@#%&*$^~\\|/<>()[]{}=+")
+    # Unicode punctuation categories to consider
+    punct_categories = {"Po", "Ps", "Pe", "Pi", "Pf", "Pd", "Pc", "Sm", "Sc", "So"}
 
     adjusted = []
 
     for cp, glyph_name in cmap.items():
-        # Skip non-punctuation
-        if cp not in small_punct and cp not in large_punct and cp not in ellipsis_cps:
+        # Use Unicode category to identify punctuation and symbols
+        try:
+            char = chr(cp)
+            category = unicodedata.category(char)
+        except (ValueError, OverflowError):
             continue
 
-        # Skip explicitly excluded characters
-        if cp in skip_chars:
+        # Only process punctuation and symbol categories
+        if category not in punct_categories:
             continue
 
         if glyph_name not in glyf or glyph_name not in hmtx.metrics:
@@ -955,13 +962,11 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
         if ink_width > wide_threshold:
             continue
 
-        # Determine target width
-        if cp in ellipsis_cps:
-            target_width = ellipsis_target
-        elif cp in large_punct:
-            target_width = large_punct_target
-        else:
-            target_width = small_punct_target
+        # Calculate target width: ink width + minimum padding, capped
+        target_width = min(ink_width + min_padding, target_cap)
+
+        # Round to nearest 50 for cleaner metrics
+        target_width = ((target_width + 25) // 50) * 50
 
         # Skip if already at or below target
         if current_advance <= target_width:
