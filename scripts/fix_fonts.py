@@ -883,6 +883,120 @@ def drop_glyph_names(font: TTFont) -> bool:
     return True
 
 
+def fix_punctuation_spacing(font: TTFont) -> bool:
+    """Reduce spacing around narrow punctuation while preserving wide characters.
+
+    Uses ink-width based detection: if a glyph's ink width is > 60% of the standard
+    advance width (from 'm'), it's considered "wide" and skipped. This preserves
+    spacing for characters like @ # % & while tightening . , ; : ! etc.
+    """
+    if "hmtx" not in font or "glyf" not in font:
+        return False
+
+    hmtx = font["hmtx"]
+    glyf = font["glyf"]
+    cmap = font.getBestCmap()
+
+    # Get standard advance width from reference glyphs
+    standard_advance = None
+    for ref in ("m", "n", "o"):
+        if ref in hmtx.metrics:
+            standard_advance, _ = hmtx[ref]
+            break
+    if standard_advance is None:
+        standard_advance = 600  # fallback for UPEM 1000
+
+    # Wide glyph threshold: 60% of standard advance
+    wide_threshold = standard_advance * 0.60
+
+    # Target widths for different punctuation categories
+    small_punct_target = 300   # . , ; : ! '
+    large_punct_target = 450   # ? ¡ ¿
+    ellipsis_target = 800      # …
+
+    # Define punctuation codepoints by category
+    small_punct = set(ord(c) for c in ".,:;!'`")
+    large_punct = set(ord(c) for c in "?¡¿")
+    ellipsis_cps = {0x2026}  # …
+
+    # Characters to explicitly skip (wide punctuation)
+    skip_chars = set(ord(c) for c in "@#%&*$^~\\|/<>()[]{}=+")
+
+    adjusted = []
+
+    for cp, glyph_name in cmap.items():
+        # Skip non-punctuation
+        if cp not in small_punct and cp not in large_punct and cp not in ellipsis_cps:
+            continue
+
+        # Skip explicitly excluded characters
+        if cp in skip_chars:
+            continue
+
+        if glyph_name not in glyf or glyph_name not in hmtx.metrics:
+            continue
+
+        glyph = glyf[glyph_name]
+        current_advance, current_lsb = hmtx[glyph_name]
+
+        # Recalculate bounds if needed (especially for composites)
+        if not hasattr(glyph, "xMax") or glyph.xMax is None:
+            try:
+                glyph.recalcBounds(glyf)
+            except Exception:
+                continue
+
+        if glyph.xMin is None or glyph.xMax is None:
+            continue
+
+        ink_width = glyph.xMax - glyph.xMin
+
+        # Skip wide glyphs (ink width > 60% of standard advance)
+        if ink_width > wide_threshold:
+            continue
+
+        # Determine target width
+        if cp in ellipsis_cps:
+            target_width = ellipsis_target
+        elif cp in large_punct:
+            target_width = large_punct_target
+        else:
+            target_width = small_punct_target
+
+        # Skip if already at or below target
+        if current_advance <= target_width:
+            continue
+
+        # Calculate new LSB to center glyph
+        new_lsb = (target_width - ink_width) // 2
+        dx = new_lsb - glyph.xMin
+
+        # Translate glyph to center it
+        if glyph.isComposite():
+            for component in glyph.components:
+                component.x = getattr(component, 'x', 0) + dx
+        elif hasattr(glyph, 'coordinates') and glyph.coordinates:
+            glyph.coordinates.translate((dx, 0))
+
+        # Update bounds after translation
+        glyph.xMin += dx
+        glyph.xMax += dx
+
+        # Set new advance width
+        hmtx[glyph_name] = (target_width, new_lsb)
+        adjusted.append((glyph_name, current_advance, target_width))
+
+    if adjusted:
+        logger.info(f"  ✓ Adjusted punctuation spacing: {len(adjusted)} glyphs")
+        for name, old, new in adjusted[:5]:  # Show first 5
+            logger.info(f"      {name}: {old} → {new}")
+        if len(adjusted) > 5:
+            logger.info(f"      ... and {len(adjusted) - 5} more")
+        return True
+
+    return False
+
+
 def fix_gdef_mark_classes(font: TTFont) -> bool:
     """Ensure combining marks are classified as marks in GDEF."""
     if "GDEF" not in font:
@@ -1163,6 +1277,7 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
             (fix_panose_monospace, "panose_monospace"),
             (fix_license_entries, "license_entries"),
             (fix_style_bits, "style_bits"),
+            (fix_punctuation_spacing, "punctuation_spacing"),
             (drop_glyph_names, "stripped_glyph_names"),
             (fix_broken_mark_anchors, "fixed_broken_mark_anchors"),
             (add_fallback_mark_anchors, "fallback_mark_anchors"),
