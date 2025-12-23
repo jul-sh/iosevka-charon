@@ -7,7 +7,11 @@ do not crash on newer gflanguages entries that reference the non-standard
 glyphsets that rely on standard scripts will simply skip it.
 """
 
-from fontTools.unicodedata import Scripts
+try:
+    from fontTools.unicodedata import Scripts
 
-# Ensure unknown script code from gflanguages does not raise KeyError in glyphsets
-Scripts.NAMES.setdefault("Berf", "Berf")
+    # Ensure unknown script code from gflanguages does not raise KeyError in glyphsets
+    Scripts.NAMES.setdefault("Berf", "Berf")
+except ImportError:
+    # fontTools not available yet (e.g., during nix shell initialization)
+    pass
