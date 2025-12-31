@@ -12,12 +12,14 @@ Output is written to webfonts/<subset>/<family>/ with subset-first directory str
 """
 
 import logging
-import pathlib
+import os
 import shutil
 import sys
-from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+import trio
+import trio_parallel
 
 from fontTools import subset
 from fontTools.ttLib import TTFont
@@ -109,8 +111,8 @@ def generate_webfont(args: Tuple[Path, str, Optional[str]]) -> Tuple[bool, Path,
 # ----------------------------------------------------------------------------
 
 
-def main() -> None:
-    """Main execution block."""
+async def async_main() -> None:
+    """Async main execution block."""
     fonts = sorted(INPUT_ROOT.glob("**/*.ttf"))
 
     if not fonts:
@@ -129,16 +131,33 @@ def main() -> None:
         for subset_name, unicode_range in SUBSETS.items():
             work_items.append((font_path, subset_name, unicode_range))
 
-    # Parallelize generation using all available CPU cores
-    num_workers = cpu_count()
+    # Results collector
+    results: List[Tuple[bool, Path, Optional[Path], str]] = []
+
+    async def process_webfont_async(
+        args: Tuple[Path, str, Optional[str]],
+        limiter: trio.CapacityLimiter,
+    ) -> None:
+        """Async wrapper for CPU-bound webfont generation."""
+        async with limiter:
+            result = await trio_parallel.run_sync(
+                generate_webfont,
+                args,
+                cancellable=True,
+            )
+            results.append(result)
+
+    num_workers = os.cpu_count() or 4
     logger.info(f"Generating {len(work_items)} WOFF2 files ({len(fonts)} fonts × {len(SUBSETS)} subsets)")
     logger.info(f"Using {num_workers} parallel workers...")
     logger.info(f"Input:  {INPUT_ROOT}/")
     logger.info(f"Output: {OUTPUT_ROOT}/")
     logger.info("")
 
-    with Pool(num_workers) as pool:
-        results = pool.map(generate_webfont, work_items)
+    limiter = trio.CapacityLimiter(num_workers)
+    async with trio.open_nursery() as nursery:
+        for work_item in work_items:
+            nursery.start_soon(process_webfont_async, work_item, limiter)
 
     # Summary
     successful = sum(1 for success, _, _, _ in results if success)
@@ -165,6 +184,11 @@ def main() -> None:
         if sample_file.exists():
             size_kb = sample_file.stat().st_size / 1024
             logger.info(f"  {subset_name}: {size_kb:.1f} KB")
+
+
+def main() -> None:
+    """Entry point - runs the async main function."""
+    trio.run(async_main)
 
 
 if __name__ == "__main__":

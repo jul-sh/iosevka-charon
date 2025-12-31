@@ -16,6 +16,40 @@
           inherit system overlays;
         };
 
+        # Custom Python packages not in nixpkgs
+        tricycle = pkgs.python3Packages.buildPythonPackage rec {
+          pname = "tricycle";
+          version = "0.4.1";
+          src = pkgs.python3Packages.fetchPypi {
+            inherit pname version;
+            hash = "sha256-9W7bSz4b7T4lUrG0mbJKLatHdB6S6bTYBqzFw1yeYGY=";
+          };
+          format = "pyproject";
+          nativeBuildInputs = [ pkgs.python3Packages.setuptools ];
+          propagatedBuildInputs = [ pkgs.python3Packages.trio ];
+          doCheck = false;
+        };
+
+        trio-parallel = pkgs.python3Packages.buildPythonPackage rec {
+          pname = "trio-parallel";
+          version = "1.3.0";
+          src = pkgs.python3Packages.fetchPypi {
+            pname = "trio_parallel";
+            inherit version;
+            hash = "sha256-2xJCoZI4g84VURRlyY8vQ31rxpWWsa/i79l4LvE4cQc=";
+          };
+          format = "pyproject";
+          nativeBuildInputs = with pkgs.python3Packages; [ setuptools setuptools-scm ];
+          propagatedBuildInputs = with pkgs.python3Packages; [
+            trio
+            outcome
+            attrs
+            tblib
+            tricycle
+          ];
+          doCheck = false;
+        };
+
         # Python environment with font processing tools
         pythonEnv = pkgs.python3.withPackages (ps: with ps; [
           # Core font tools
@@ -44,6 +78,12 @@
           freetype-py
           unicodedata2
           uharfbuzz
+
+          # Async concurrency
+          trio
+          outcome
+          trio-parallel
+          tricycle
 
           # Additional packages
           setuptools
@@ -123,7 +163,8 @@
             export PYTHONPATH="${pythonEnv}/${pythonEnv.sitePackages}"
             # Workaround for protobuf compatibility with gflanguages
             export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
-
+            # Install trio-parallel (not available in nixpkgs)
+            pip install --quiet --user trio-parallel 2>/dev/null || true
           '';
         };
       });

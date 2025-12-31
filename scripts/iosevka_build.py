@@ -10,7 +10,6 @@ Steps:
 """
 
 import argparse
-import concurrent.futures
 import logging
 import os
 import re
@@ -19,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Optional
+
+import trio
 
 # Constants
 # ----------------------------------------------------------------------------
@@ -43,8 +44,8 @@ logger = logging.getLogger(__name__)
 # ----------------------------------------------------------------------------
 
 
-def run_cmd(command: str, cwd: Optional[Path] = None) -> None:
-    """Executes a shell command and raises an error if it fails.
+async def run_cmd(command: str, cwd: Optional[Path] = None) -> None:
+    """Executes a shell command asynchronously and raises an error if it fails.
 
     Args:
         command: The shell command to execute.
@@ -55,8 +56,15 @@ def run_cmd(command: str, cwd: Optional[Path] = None) -> None:
     """
     logger.info(f"Running command: {command}")
     try:
-        # Use shell=True to support the npm syntax with arguments
-        subprocess.run(command, shell=True, cwd=cwd, check=True)
+        # Use trio.run_process for async subprocess execution
+        result = await trio.run_process(
+            command,
+            shell=True,
+            cwd=cwd,
+            check=False,  # We'll handle the error ourselves
+        )
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, command)
     except subprocess.CalledProcessError as e:
         logger.error(f"Command failed with exit code {e.returncode}")
         logger.error(f"Command: {command}")
@@ -68,7 +76,7 @@ def run_cmd(command: str, cwd: Optional[Path] = None) -> None:
 # ----------------------------------------------------------------------------
 
 
-def prep_environment(build_plan_file: Path) -> None:
+async def prep_environment(build_plan_file: Path) -> None:
     """Prepares the build environment.
 
     Copies build plans, installs dependencies, and cleans output directory.
@@ -92,7 +100,7 @@ def prep_environment(build_plan_file: Path) -> None:
 
     # Install npm dependencies
     logger.info("Installing npm dependencies...")
-    run_cmd("npm ci", cwd=REPO_DIR)
+    await run_cmd("npm ci", cwd=REPO_DIR)
 
     # Ensure output directory exists
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -136,7 +144,7 @@ def get_build_plans(build_plan_file: Path) -> List[str]:
 # ----------------------------------------------------------------------------
 
 
-def build_one_plan(plan_name: str) -> None:
+async def build_one_plan(plan_name: str) -> None:
     """Builds a single font plan.
 
     Steps:
@@ -155,7 +163,7 @@ def build_one_plan(plan_name: str) -> None:
 
     # 1) Build TTF
     logger.info(f"Building TTF for '{plan_name}'...")
-    run_cmd(f"npm run build -- ttf::{plan_name}", cwd=REPO_DIR)
+    await run_cmd(f"npm run build -- ttf::{plan_name}", cwd=REPO_DIR)
 
     # 2) Copy TTFs
     if not plan_dist_dir.is_dir():
@@ -186,8 +194,8 @@ def get_worker_count(plan_total: int) -> int:
 # ----------------------------------------------------------------------------
 
 
-def main() -> None:
-    """Main entry point."""
+async def async_main() -> None:
+    """Async main entry point."""
     parser = argparse.ArgumentParser(
         description="Build custom Iosevka fonts from build plans."
     )
@@ -206,7 +214,7 @@ def main() -> None:
     logger.info(f"Build plan file: {build_plan_file}")
 
     try:
-        prep_environment(build_plan_file)
+        await prep_environment(build_plan_file)
 
         build_plans = get_build_plans(build_plan_file)
         if not build_plans:
@@ -218,21 +226,29 @@ def main() -> None:
         worker_count = get_worker_count(len(build_plans))
         logger.info(f"Building with up to {worker_count} parallel worker(s).")
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=worker_count
-        ) as executor:
-            future_to_plan = {
-                executor.submit(build_one_plan, name): name for name in build_plans
-            }
+        # Track errors for reporting
+        errors: List[tuple] = []
 
-            for future in concurrent.futures.as_completed(future_to_plan):
-                plan_name = future_to_plan[future]
+        async def build_plan_async(
+            plan_name: str,
+            limiter: trio.CapacityLimiter,
+        ) -> None:
+            """Async wrapper for building a single plan."""
+            async with limiter:
                 try:
-                    future.result()
+                    await build_one_plan(plan_name)
                     logger.info(f"Plan '{plan_name}' completed.")
                 except Exception as e:
                     logger.error(f"Error building plan '{plan_name}': {e}")
-                    raise
+                    errors.append((plan_name, e))
+
+        limiter = trio.CapacityLimiter(worker_count)
+        async with trio.open_nursery() as nursery:
+            for plan_name in build_plans:
+                nursery.start_soon(build_plan_async, plan_name, limiter)
+
+        if errors:
+            raise RuntimeError(f"Failed to build {len(errors)} plan(s)")
 
         logger.info("All font builds completed successfully.")
     except Exception as e:
@@ -241,6 +257,11 @@ def main() -> None:
             import traceback
             traceback.print_exc()
         sys.exit(1)
+
+
+def main() -> None:
+    """Entry point - runs the async main function."""
+    trio.run(async_main)
 
 
 if __name__ == "__main__":

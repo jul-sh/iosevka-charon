@@ -14,12 +14,15 @@ Fixes:
 
 import argparse
 import logging
+import os
 import shutil
 import sys
 import unicodedata
-from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from typing import List, Optional, Tuple
+
+import trio
+import trio_parallel
 
 from fontTools.otlLib.builder import buildAnchor, buildMarkBasePos
 from fontTools.pens.recordingPen import DecomposingRecordingPen, RecordingPen
@@ -1347,7 +1350,7 @@ def process_and_copy_font(font_path: Path) -> Tuple[bool, Path, Optional[Path]]:
         return False, font_path, None
 
 
-def main() -> None:
+async def async_main() -> None:
     parser = argparse.ArgumentParser(description="Post-process Iosevka fonts for Google Fonts compliance")
     parser.add_argument(
         "fonts", nargs="*", type=Path, help="Font files to process. If omitted, uses unprocessed_fonts/"
@@ -1360,6 +1363,39 @@ def main() -> None:
 
     if args.debug:
         logger.setLevel(logging.DEBUG)
+
+    # Results collector
+    results: List[Tuple[bool, Path, Optional[Path]]] = []
+
+    async def process_font_async(
+        font_path: Path,
+        output_path: Optional[Path],
+        limiter: trio.CapacityLimiter,
+    ) -> None:
+        """Async wrapper that offloads CPU-bound font processing to a separate process."""
+        async with limiter:
+            # Run the CPU-bound work in a separate process via trio_parallel
+            success = await trio_parallel.run_sync(
+                post_process_font,
+                font_path,
+                output_path,
+                cancellable=True,
+            )
+            results.append((success, font_path, output_path))
+
+    async def process_bulk_font_async(
+        font_path: Path,
+        limiter: trio.CapacityLimiter,
+    ) -> None:
+        """Async wrapper for bulk processing with path calculation."""
+        async with limiter:
+            # Run the CPU-bound work in a separate process via trio_parallel
+            result = await trio_parallel.run_sync(
+                process_and_copy_font,
+                font_path,
+                cancellable=True,
+            )
+            results.append(result)
 
     if not args.fonts:
         bulk_root = Path("unprocessed_fonts")
@@ -1375,11 +1411,13 @@ def main() -> None:
             shutil.rmtree(output_root)
         output_root.mkdir(parents=True, exist_ok=True)
 
-        num_workers = cpu_count()
+        num_workers = os.cpu_count() or 4
         logger.info(f"Bulk processing {len(fonts)} fonts using {num_workers} workers...")
 
-        with Pool(num_workers) as pool:
-            results = pool.map(process_and_copy_font, fonts)
+        limiter = trio.CapacityLimiter(num_workers)
+        async with trio.open_nursery() as nursery:
+            for font_path in fonts:
+                nursery.start_soon(process_bulk_font_async, font_path, limiter)
 
         success_count = sum(1 for success, _, _ in results if success)
         total_count = len(results)
@@ -1396,16 +1434,16 @@ def main() -> None:
 
         total_count = len(args.fonts)
         if args.parallel and total_count > 1:
-            num_workers = min(cpu_count(), total_count)
+            num_workers = min(os.cpu_count() or 4, total_count)
             logger.info(f"Processing {total_count} fonts in parallel using {num_workers} workers...")
 
-            def _worker(f: Path) -> bool:
-                out = args.output_dir / f.name if args.output_dir else f
-                return post_process_font(f, out)
+            limiter = trio.CapacityLimiter(num_workers)
+            async with trio.open_nursery() as nursery:
+                for f in args.fonts:
+                    out = args.output_dir / f.name if args.output_dir else f
+                    nursery.start_soon(process_font_async, f, out, limiter)
 
-            with Pool(num_workers) as pool:
-                results_list = pool.map(_worker, args.fonts)
-            success_count = sum(1 for r in results_list if r)
+            success_count = sum(1 for success, _, _ in results if success)
         else:
             success_count = 0
             for f in args.fonts:
@@ -1422,6 +1460,11 @@ def main() -> None:
 
     if success_count < total_count:
         sys.exit(1)
+
+
+def main() -> None:
+    """Entry point - runs the async main function."""
+    trio.run(async_main)
 
 
 if __name__ == "__main__":
