@@ -33,4 +33,6 @@ The Make targets rely on the Nix flake dev shell, which not only bootstraps the 
 
 ## License
 
-SIL Open Font License 1.1 (see `OFL.txt`).
+Code, build tooling, and documentation are licensed under the MIT License (see
+`LICENSE`). The font files remain under the SIL Open Font License 1.1 (see
+`OFL.txt`).
