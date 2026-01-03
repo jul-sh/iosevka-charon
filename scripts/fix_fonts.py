@@ -886,23 +886,6 @@ def drop_glyph_names(font: TTFont) -> bool:
     return True
 
 
-def fix_punctuation_spacing(font: TTFont) -> bool:
-    """Reduce spacing around narrow punctuation while preserving wide characters.
-
-    TODO: Implement this properly without causing glyph rotation/corruption.
-    Currently disabled because it causes issues with composite glyphs that use 
-    point-matched attachment (like the semicolon).
-    """
-    # Skip monospace fonts - only apply to quasi-proportional variant
-    name_table = font.get("name")
-    if name_table:
-        family_name = name_table.getName(1, 3, 1, 0x409)
-        if family_name and "Mono" in family_name.toUnicode():
-            return False
-
-    return False
-
-
 
 def fix_gdef_mark_classes(font: TTFont) -> bool:
     """Ensure combining marks are classified as marks in GDEF."""
@@ -1184,7 +1167,6 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
             (fix_panose_monospace, "panose_monospace"),
             (fix_license_entries, "license_entries"),
             (fix_style_bits, "style_bits"),
-            (fix_punctuation_spacing, "punctuation_spacing"),
             (drop_glyph_names, "stripped_glyph_names"),
             (fix_broken_mark_anchors, "fixed_broken_mark_anchors"),
             (add_fallback_mark_anchors, "fallback_mark_anchors"),
