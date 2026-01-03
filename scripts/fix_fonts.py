@@ -971,13 +971,7 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
                     has_point_matching = True
                     break
             if has_point_matching:
-                try:
-                    glyph.expand(glyf)
-                    glyph.recalcBounds(glyf)
-                    # Update ink_width after decomposition
-                    ink_width = glyph.xMax - glyph.xMin
-                except Exception:
-                    continue
+                continue
 
 
         # Skip wide glyphs (ink width > 60% of standard advance)
