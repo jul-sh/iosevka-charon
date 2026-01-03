@@ -961,6 +961,25 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
 
         ink_width = glyph.xMax - glyph.xMin
 
+        # Custom check: Decompose glyphs with point-matched components to avoid corruption
+        # (Modifying x/y of point-matched components corrupts the attachment, so we flatten them)
+        if glyph.isComposite():
+            has_point_matching = False
+            for component in glyph.components:
+                # 0x0002 is ARGS_ARE_XY_VALUES. If unset, args are point indices.
+                if not (component.flags & 0x0002):
+                    has_point_matching = True
+                    break
+            if has_point_matching:
+                try:
+                    glyph.expand(glyf)
+                    glyph.recalcBounds(glyf)
+                    # Update ink_width after decomposition
+                    ink_width = glyph.xMax - glyph.xMin
+                except Exception:
+                    continue
+
+
         # Skip wide glyphs (ink width > 60% of standard advance)
         if ink_width > wide_threshold:
             continue
