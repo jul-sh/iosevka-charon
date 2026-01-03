@@ -889,12 +889,9 @@ def drop_glyph_names(font: TTFont) -> bool:
 def fix_punctuation_spacing(font: TTFont) -> bool:
     """Reduce spacing around narrow punctuation while preserving wide characters.
 
-    Uses Unicode categories to identify punctuation and ink-width based detection
-    to decide what to narrow. If a glyph's ink width is > 60% of the standard
-    advance width, it's considered "wide" and skipped. This automatically
-    preserves characters like @ # % & while tightening . , ; : ! etc.
-
-    Only applies to non-monospace variants (skips fonts with "Mono" in name).
+    TODO: Implement this properly without causing glyph rotation/corruption.
+    Currently disabled because it causes issues with composite glyphs that use 
+    point-matched attachment (like the semicolon).
     """
     # Skip monospace fonts - only apply to quasi-proportional variant
     name_table = font.get("name")
@@ -903,119 +900,8 @@ def fix_punctuation_spacing(font: TTFont) -> bool:
         if family_name and "Mono" in family_name.toUnicode():
             return False
 
-    if "hmtx" not in font or "glyf" not in font:
-        return False
-
-    hmtx = font["hmtx"]
-    glyf = font["glyf"]
-    cmap = font.getBestCmap()
-
-    # Get standard advance width from reference glyphs
-    standard_advance = None
-    for ref in ("m", "n", "o"):
-        if ref in hmtx.metrics:
-            standard_advance, _ = hmtx[ref]
-            break
-    if standard_advance is None:
-        standard_advance = 600  # fallback for UPEM 1000
-
-    # Ink-width thresholds (as fraction of standard advance)
-    wide_threshold = standard_advance * 0.60  # Skip glyphs wider than this
-
-    # Target width: proportional to ink width with minimum padding
-    min_padding = 80  # Minimum total padding (both sides)
-    target_cap = int(standard_advance * 0.75)  # Never exceed 75% of standard
-
-    # Unicode punctuation categories to consider
-    punct_categories = {"Po", "Ps", "Pe", "Pi", "Pf", "Pd", "Pc", "Sm", "Sc", "So"}
-
-    adjusted = []
-
-    for cp, glyph_name in cmap.items():
-        # Use Unicode category to identify punctuation and symbols
-        try:
-            char = chr(cp)
-            category = unicodedata.category(char)
-        except (ValueError, OverflowError):
-            continue
-
-        # Only process punctuation and symbol categories
-        if category not in punct_categories:
-            continue
-
-        if glyph_name not in glyf or glyph_name not in hmtx.metrics:
-            continue
-
-        glyph = glyf[glyph_name]
-        current_advance, current_lsb = hmtx[glyph_name]
-
-        # Recalculate bounds if needed (especially for composites)
-        if not hasattr(glyph, "xMax") or glyph.xMax is None:
-            try:
-                glyph.recalcBounds(glyf)
-            except Exception:
-                continue
-
-        if glyph.xMin is None or glyph.xMax is None:
-            continue
-
-        ink_width = glyph.xMax - glyph.xMin
-
-        # Custom check: Decompose glyphs with point-matched components to avoid corruption
-        # (Modifying x/y of point-matched components corrupts the attachment, so we flatten them)
-        if glyph.isComposite():
-            has_point_matching = False
-            for component in glyph.components:
-                # 0x0002 is ARGS_ARE_XY_VALUES. If unset, args are point indices.
-                if not (component.flags & 0x0002):
-                    has_point_matching = True
-                    break
-            if has_point_matching:
-                continue
-
-
-        # Skip wide glyphs (ink width > 60% of standard advance)
-        if ink_width > wide_threshold:
-            continue
-
-        # Calculate target width: ink width + minimum padding, capped
-        target_width = min(ink_width + min_padding, target_cap)
-
-        # Round to nearest 50 for cleaner metrics
-        target_width = ((target_width + 25) // 50) * 50
-
-        # Skip if already at or below target
-        if current_advance <= target_width:
-            continue
-
-        # Calculate new LSB to center glyph
-        new_lsb = (target_width - ink_width) // 2
-        dx = new_lsb - glyph.xMin
-
-        # Translate glyph to center it
-        if glyph.isComposite():
-            for component in glyph.components:
-                component.x = getattr(component, 'x', 0) + dx
-        elif hasattr(glyph, 'coordinates') and glyph.coordinates:
-            glyph.coordinates.translate((dx, 0))
-
-        # Update bounds after translation
-        glyph.xMin += dx
-        glyph.xMax += dx
-
-        # Set new advance width
-        hmtx[glyph_name] = (target_width, new_lsb)
-        adjusted.append((glyph_name, current_advance, target_width))
-
-    if adjusted:
-        logger.info(f"  ✓ Adjusted punctuation spacing: {len(adjusted)} glyphs")
-        for name, old, new in adjusted[:5]:  # Show first 5
-            logger.info(f"      {name}: {old} → {new}")
-        if len(adjusted) > 5:
-            logger.info(f"      ... and {len(adjusted) - 5} more")
-        return True
-
     return False
+
 
 
 def fix_gdef_mark_classes(font: TTFont) -> bool:
