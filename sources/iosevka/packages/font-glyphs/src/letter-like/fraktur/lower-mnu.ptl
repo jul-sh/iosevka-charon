@@ -1,0 +1,61 @@
+$$include '../../meta/macros.ptl'
+
+import [mix slY] from "@iosevka/util"
+
+glyph-module
+
+glyph-block LetterLike-Fraktur-Lower-MNU : begin
+	glyph-block-import Common-Derivatives
+	glyph-block-import CommonShapes
+	glyph-block-import Mark-Shared-Metrics : markMiddle markDotsRadius
+	glyph-block-import Mark-Above : StdAnchors aboveMarkTop aboveMarkBot aboveMarkMid aboveMarkStack
+	glyph-block-import LetterLike-Fraktur-Common : LowerDf S M fraktur-stroke change-pen
+	glyph-block-import LetterLike-Fraktur-Common : DecoSizeX DecoSizeY SlopeA SlopeB
+	glyph-block-import LetterLike-Fraktur-Common : Wave PHexTop PHexBot LTDecoration RBDecoration
+
+	create-glyph "frak/m" 0x1D52A : glyph-proc
+		local df : include : LowerDf para.advanceScaleM 3
+		include : df.markSet.e
+
+		local box : M.box XH 0 df.leftSB df.rightSB
+		include : fraktur-stroke M
+			LTDecoration box.left box.top
+			corner box.left box.bot
+		include : lift-@ : fraktur-stroke M
+			corner       (@xL = box.left)                                 [slY @xT @yT @xL SlopeA]
+			corner       (@xT = [box.xp : mix 0 0.5 : mix 0.5 1 PHexTop]) (@yT = box.top)
+			corner       (@xM = box.xMid)                                 [slY @xT @yT @xM SlopeB]
+			corner        @xM                                              box.bot
+		include : lift-@ : fraktur-stroke M
+			corner       (@xM = box.xMid)                                 [slY @xT @yT @xM SlopeA]
+			corner       (@xT = [box.xp : mix 0.5 1 : mix 0.5 1 PHexTop]) (@yT = box.top)
+			corner       (@xR = box.right)                                [slY @xT @yT @xR SlopeB]
+			RBDecoration  @xR                                              box.bot
+
+	create-glyph "frak/n" 0x1D52B : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.e
+
+		local box : S.box XH 0 df.leftSB df.rightSB
+		include : fraktur-stroke S
+			LTDecoration box.left box.top
+			corner box.left box.bot
+		include : lift-@ : fraktur-stroke S
+			corner       (@xL = box.left)                      [slY @xT @yT @xL SlopeA]
+			corner       (@xT = [box.xp : mix 0.5 1 PHexTop])  (@yT = box.top)
+			corner       (@xR = box.right)                     [slY @xT @yT @xR SlopeB]
+			RBDecoration  @xR                                   box.bot
+
+	create-glyph "frak/u" 0x1D532 : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.e
+
+		local box : S.box XH 0 df.leftSB df.rightSB
+		local leftStroke : include : lift-@ : fraktur-stroke S
+			LTDecoration  @xL                      box.top
+			corner       (@xL = box.left)         [slY @xB @yB @xL SlopeB]
+			corner       (@xB = [box.xp PHexBot]) (@yB = box.bot)
+			corner       (@xR = box.right)        [slY @xB @yB @xR SlopeA]
+		include : fraktur-stroke S
+			LTDecoration box.right box.top
+			RBDecoration box.right box.bot [leftStroke.last].y

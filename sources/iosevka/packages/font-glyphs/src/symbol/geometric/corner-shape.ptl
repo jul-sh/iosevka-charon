@@ -1,0 +1,73 @@
+$$include '../../meta/macros.ptl'
+
+import [mix] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Symbol-Geometric-Corner-Shape: begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	for-width-kinds WideWidth1 : do
+		define ptMaxWidth : MosaicWidth - SB
+		define ptHeight0 : 1.5 * (Width - SB / 2) * (MosaicWidthScalar ** (1 / 4))
+		define ptHeight  : (ptHeight0 ** 2) / [Math.hypot ptHeight0 : Math.min ptHeight0 ptMaxWidth]
+		define ptWidth  : Math.min ptMaxWidth ptHeight
+		define ptMidX : MosaicWidth / 2
+		define ptSB : (MosaicWidth - ptWidth) / 2
+		define ptRSB : MosaicWidth - ptSB
+		define ptTopFar : SymbolMid + ptHeight * 2
+		define ptTop : SymbolMid + ptHeight / 2
+		define ptBot : SymbolMid - ptHeight / 2
+		define ptBotFar : SymbolMid - ptHeight * 2
+
+		define CornerShapeConfig : list
+			list 0x231C ptTopFar SymbolMid (-MosaicWidth) (MosaicWidth / 2)
+			list 0x231D ptTopFar SymbolMid (MosaicWidth / 2) (2 * MosaicWidth)
+			list 0x231E SymbolMid ptBotFar (-MosaicWidth) (MosaicWidth / 2)
+			list 0x231F SymbolMid ptBotFar (MosaicWidth / 2) (2 * MosaicWidth)
+
+		foreach { unicode t b l r } [items-of CornerShapeConfig] : begin
+			create-glyph [MangleName : NameUni unicode] [MangleUnicode unicode] : glyph-proc
+				set-width MosaicWidth
+				include : intersection
+					Rect t b l r
+					union
+						VBar.l ptSB ptBot ptTop GeometryStroke
+						VBar.r ptRSB ptBot ptTop GeometryStroke
+						HBar.t ptSB ptRSB ptTop GeometryStroke
+						HBar.b ptSB ptRSB ptBot GeometryStroke
+
+	for-width-kinds WideWidth1 : do "Crop Shapes"
+		define vBot ParenBot
+		define vTop ParenTop
+		define hLeft 0
+		define hRight MosaicWidth
+
+		define cropKH : 0.3 * [Math.sqrt (1 / MosaicWidthScalar)]
+		define H_LEFT  { (0 - cropKH) 0 }
+		define H_RIGHT { 1 (1 + cropKH) }
+		define cropKV : cropKH * MosaicWidth / (vTop - vBot)
+		define V_BOTTOM { (0 - cropKV) 0 }
+		define V_TOP    { 1 (1 + cropKV) }
+
+		define CropConfig : list
+			#   Unicode hPos/Rg   vPos/Rg
+			list 0x230C 0 H_RIGHT 1 V_BOTTOM
+			list 0x230D 0 H_LEFT  0 V_BOTTOM
+			list 0x230E 1 H_RIGHT 1 V_TOP
+			list 0x230F 1 H_LEFT  0 V_TOP
+
+		foreach { unicode hPos hRg vPos vRg } [items-of CropConfig] : begin
+			create-glyph [MangleName : NameUni unicode] [MangleUnicode unicode] : glyph-proc
+				set-width MosaicWidth
+				include : HBar.m
+					mix hLeft hRight hRg.0
+					mix hLeft hRight hRg.1
+					mix (vBot + 0.5 * GeometryStroke) (vTop - 0.5 * GeometryStroke) hPos
+					begin GeometryStroke
+				include : VBar.m
+					mix (hLeft + [HSwToV : 0.5 * GeometryStroke]) (hRight - [HSwToV : 0.5 * GeometryStroke]) vPos
+					mix vBot vTop vRg.0
+					mix vBot vTop vRg.1
+					begin GeometryStroke

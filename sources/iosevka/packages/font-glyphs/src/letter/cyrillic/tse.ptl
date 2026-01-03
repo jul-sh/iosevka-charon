@@ -1,0 +1,105 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Letter-Cyrillic-Tse : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared-Shapes : SerifFrame CyrDescender CyrCurlDescender
+
+	define [CyrTseShape top fRev] : glyph-proc
+		include : VBar.l SB      0 top
+		include : VBar.r RightSB 0 top
+		include : HBar.b SB RightSB 0
+		include : if fRev
+			CyrDescender.lSideJut SB 0
+			CyrDescender.rSideJut RightSB 0
+		if SLAB : let [sf : SerifFrame.fromDf [DivFrame 1] top 0] : begin
+			include sf.lt.full
+			include sf.rt.full
+			include sf.lb.outer
+			include sf.rb.outer
+
+	create-glyph 'cyrl/Tse' 0x426 : glyph-proc
+		include : MarkSet.capital
+		include : CyrTseShape CAP false
+
+	create-glyph 'cyrl/tse.upright' : glyph-proc
+		include : MarkSet.e
+		include : CyrTseShape XH false
+
+	create-glyph 'cyrl/TseRev' 0xA660 : glyph-proc
+		include : MarkSet.capital
+		include : CyrTseShape CAP true
+
+	create-glyph 'cyrl/tseRev.upright' : glyph-proc
+		include : MarkSet.e
+		include : CyrTseShape XH true
+
+	define TeTseConfig : object
+		serifless     { false false }
+		motionSerifed { true  false }
+
+	define [CyrTeTseShape df top teSerifs] : glyph-proc
+		local sw : AdviceStroke 2.75
+		local left : [mix df.leftSB df.rightSB : if (df.adws > 1) 0.25 0.2] - [HSwToV : 0.25 * sw] + OX
+		local right : df.rightSB - OX
+
+		local xTopBarLeft : df.leftSB - SideJut
+		local xTopBarRight : mix xTopBarLeft (left + [HSwToV : 0.5 * sw]) 2
+
+		include : dispiro
+			widths.rhs sw
+			flat xTopBarLeft  top [if teSerifs [heading Rightward] null]
+			curl xTopBarRight top [if teSerifs [heading Rightward] null]
+
+		include : VBar.l left  0 top sw
+		include : VBar.r right 0 top sw
+		include : HBar.b left right 0 sw
+
+		local sf : SerifFrame top 0 left right (swRef -- sw)
+		include : CyrDescender.rSideJut right 0 (sideJut -- sf.sideJut)
+
+		if SLAB : begin
+			include sf.rt.outer
+			include sf.lb.outer
+			include sf.rb.outer
+
+		if teSerifs : begin
+			local swVJut : Math.min (VJutStroke * (sw / Stroke)) : VSwToH : 0.625 * (left - xTopBarLeft)
+			include : VSerif.dl xTopBarLeft  top VJut swVJut
+			include : VSerif.dr xTopBarRight top VJut swVJut
+
+	foreach { suffix { doST doSB } } [Object.entries TeTseConfig] : do
+		create-glyph "cyrl/TeTse.\(suffix)" : glyph-proc
+			local df : include : DivFrame para.advanceScaleT
+			include : df.markSet.capital
+			include : CyrTeTseShape df CAP doST
+
+		create-glyph "cyrl/tetse.upright.\(suffix)" : glyph-proc
+			local df : include : DivFrame para.advanceScaleT
+			include : df.markSet.e
+			include : CyrTeTseShape df XH doST
+
+	select-variant 'cyrl/TeTse' 0x4B4 (follow -- 'T/rtailBase')
+	select-variant 'cyrl/tetse.upright' (follow -- 'T/rtailBase')
+
+	define [CyrTsweShape top] : glyph-proc
+		include : VBar.l SB 0 top
+		include : HBar.b SB RightSB 0
+		include : VBar.r RightSB 0 top
+		include : CyrCurlDescender.rSideJut RightSB 0
+		if SLAB : let [sf : SerifFrame.fromDf [DivFrame 1] top 0] : begin
+			include sf.lt.full
+			include sf.rt.full
+			include sf.lb.outer
+			include sf.rb.outer
+
+	create-glyph 'cyrl/Tswe' 0xA68E : glyph-proc
+		include : MarkSet.capDesc
+		include : CyrTsweShape CAP
+	create-glyph 'cyrl/tswe.upright' : glyph-proc
+		include : MarkSet.p
+		include : CyrTsweShape XH

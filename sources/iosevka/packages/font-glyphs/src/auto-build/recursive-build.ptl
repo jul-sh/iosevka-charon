@@ -1,0 +1,96 @@
+$$include '../meta/macros.ptl'
+
+import [mix clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Recursive-Build : begin
+	define [Fork gs ps] : begin
+		local glyphs {}
+		foreach [glyphid : items-of gs] : begin
+			local g : glyphStore.queryByName glyphid
+			if g : glyphs.push g
+
+		local gs : buildGlyphs ps [$Exec$.dependencyManager.traverseDependencies glyphs]
+		return gs.glyphStore
+
+	define [MiniatureParaT] : with-params [pp crowd scale [sbscale (Width / UPM)] [mono false] [mono2 false] [forceUpright false]] : begin
+		local forkedPara : Object.assign {.} pp
+		forkedPara.stroke = [AdviceStroke crowd : Math.sqrt : clamp 0 1 (HalfUPM / Width)] / scale
+		forkedPara.dotSize = pp.dotSize * forkedPara.stroke / pp.stroke
+		forkedPara.periodSize = pp.periodSize * forkedPara.stroke / pp.stroke
+		forkedPara.sb = SB * sbscale
+		if forceUpright : begin
+			forkedPara.slopeAngle  = 0
+		if mono : begin
+			forkedPara.advanceScaleMM = 1
+			forkedPara.advanceScaleM  = 1
+			forkedPara.advanceScaleT  = 1
+		if mono2 : begin
+			forkedPara.advanceScaleF  = 1
+			forkedPara.advanceScaleI  = 1
+			forkedPara.advanceScaleII = 1
+
+		return forkedPara
+
+	define [Miniature glyphs] : begin
+		return : Fork glyphs : MiniatureParaT.apply null { para :: [{}.slice.call arguments 1] }
+
+	define [Thinner] : with-params [glyphs p fMono crowd crowdAdjScale] : begin
+		local forkedPara : Object.assign {.} para
+
+		if (crowd && crowdAdjScale) : begin
+			forkedPara.stroke = [AdviceStroke crowd] / crowdAdjScale
+			forkedPara.dotSize = para.dotSize * forkedPara.stroke / para.stroke
+			forkedPara.periodSize = para.periodSize * forkedPara.stroke / para.stroke
+
+		forkedPara.unitWidthScalar = para.unitWidthScalar * p
+		forkedPara.width = Width * p
+		forkedPara.accentWidth = AccentWidth * p
+		forkedPara.jut = Jut * p
+		forkedPara.longjut = LongJut * p
+		forkedPara.advanceScaleMM = 1
+		forkedPara.advanceScaleM  = 1
+		forkedPara.advanceScaleT  = 1
+		if fMono : begin
+			forkedPara.advanceScaleF  = 1
+			forkedPara.advanceScaleI  = 1
+			forkedPara.advanceScaleII = 1
+		#forkedPara.hookx = HookX * p
+		return : Fork glyphs forkedPara
+
+	define [Widen glyphs p psb] : begin
+		local forkedPara : Object.assign {.} para
+		forkedPara.unitWidthScalar = para.unitWidthScalar * p
+		forkedPara.width = Width * p
+		forkedPara.sb = SB * [fallback psb p]
+		forkedPara.accentWidth = AccentWidth * p
+		forkedPara.jut = Jut * p
+		forkedPara.longjut = LongJut * p
+		forkedPara.hookx = HookX * p
+		return : Fork glyphs forkedPara
+
+	glyph-block-export Fork Miniature MiniatureParaT Thinner Widen
+
+glyph-block Recursive-Build-ParaTfm : begin
+	glyph-block-export ForkTfm
+	define ForkTfm : namespace
+		define [boldGrade g] : begin
+			local pGrade : (900 - g) / 100
+			return : 900 - 100 * (2 / 25) * (pGrade ** 2)
+
+		export : define [Bold   a]     : begin [set a.shape.weight : boldGrade a.shape.weight]
+		export : define [Italic a]     : begin
+			set a.shape.slope 'italic'
+			set a.shape.slopeAngle : mix (para.slopeAngle || 0) 15 (94 / 150)
+		export : define [Sans   a]     : begin [set a.shape.serifs 'sans']
+
+		export : define [BoldItalic a] : begin [Bold a] [Italic a]
+		export : define [SansBold   a]     : begin [Sans a] [Bold a]
+		export : define [SansItalic a]     : begin [Sans a] [Italic a]
+		export : define [SansBoldItalic a] : begin [Sans a] [Bold a] [Italic a]
+
+		export : define [TypeWriter a] : begin
+			set a.shape.spacing 'fixed'
+			if (a.derivingVariants && a.derivingVariants.mathtt)
+				set a.variants a.derivingVariants.mathtt

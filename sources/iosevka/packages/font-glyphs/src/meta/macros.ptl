@@ -1,0 +1,415 @@
+### Autoarg macro
+define-operator "--" 890 'right' : syntax-rules
+	`(@l -- @r) [atom l] : dirty `[new $NamedParameterPair$ @{".quote" [formOf l]} @r]
+	`(@{".quote" l} -- @r) : dirty `[new $NamedParameterPair$ @l @r]
+
+### Arbitrary pair operator
+define-operator "~>" 880 'right' : syntax-rules
+	`(@l ~> @r) `{.left @l .right @r}
+
+### The operator indicating a "delay" for the knot controls. Equivalent to a call to [decor@].
+define-operator prefix "~~~"  : syntax-rules
+	`(~~~ @x) : dirty `[decor@ @x]
+
+### Exponentiation operator
+define-operator "**" 150 "right" : syntax-rules
+	`(@l ** @r) `[Math.pow @l @r]
+
+### Macro for identity match
+define-macro Just : begin
+	local m : syntax-rules
+		`[Just @x] : dirty x
+
+	set coinit.initFn : lambda [m] : begin
+		set m.toPattern : lambda [form env w] : match form
+			`[Just @x] : object
+				whether : lambda [t] : ex `(@t === @x) env
+				assign  : lambda [t locallyQ] : ex `[begin] env
+
+	return m
+
+# Macro for "at-lifting" form. In this form we could use @ sign to prefix some "ad-hoc" variables
+# which will be replaced with the actual values at the time of the form evaluation.
+#
+# This is a handy tool for defineing a stroke's coordinates. Given a form like
+#
+#     lift-@ : dispiro
+#         g4 (@1 = 0) (@y = XH)
+#         g2 [mix @1 @2 0.5] @y
+#         g4 (@2 = Width) @y
+#
+# The macro will transform it into something like
+#
+#     begin
+#         local t1 0
+#         local t2 Width
+#         local ty XH
+#         dispiro
+#             g4 t1 ty
+#             g2 [mix t1 t2 0.5] ty
+#             g4 t2 ty
+define-macro lift-@ : syntax-rules
+	`[lift-@ @x] : begin
+		define xEnv : scopeOf x
+
+		# Detect whether a form is {".unquote" <string>} (indicating @identifier) or
+		# {".unquote" {".quote" literal}} (indicating @literal)
+		# Return the string representation of the identifier or the literal, or null if neither
+		define [isUnquote form] : match form
+			{".unquote" {".quote" lit}} : String lit
+			{".unquote" ident} [atom ident] : String ident
+			otherwise null
+
+		# Detect whether a form is {".operatorPiece" x "=" ...} where x matches isUnquote
+		# Return the RHS when the form is a match, or null if not
+		define [isUnquoteAssign form] : match form
+			{".operatorPiece" lhs "=" rhs} : begin
+				local unquoteId : isUnquote lhs
+				if unquoteId : return {unquoteId rhs}
+				else : return null
+			{".operatorPiece" lhs "=" :: rhs} : begin
+				local unquoteId : isUnquote lhs
+				if unquoteId : return {unquoteId {".operatorPiece" :: rhs}}
+				else : return null
+			otherwise null
+
+		define atFormMap {.}
+		define [fetchAtFormMappedObj identifier] : begin
+			local existing atFormMap.(identifier)
+			if existing : return existing
+
+			local t : env.newt
+			local mapObj : object
+				t t
+				def `[begin undefined]
+				dependencies {}
+				sorted false
+			set atFormMap.(identifier) mapObj
+			return mapObj
+
+		define [addDeps mapObj form] : begin
+			if [not : Array.isArray form] : return nothing
+
+			local unquoteId : isUnquote form
+			if unquoteId : begin
+				mapObj.dependencies.push unquoteId
+				return nothing
+
+			foreach [j : range 0 form.length] : begin
+				addDeps mapObj form.(j)
+
+		define [transform form] : begin
+			if [not : Array.isArray form] : return form
+
+			# Handle definitions
+			local unquoteDef : isUnquoteAssign form
+			if unquoteDef : begin
+				local {unquoteId rhs} unquoteDef
+				local mapObj : fetchAtFormMappedObj unquoteId
+				addDeps mapObj rhs
+				set mapObj.def : transform rhs
+				return mapObj.t
+
+			# Handle usages
+			local unquoteId : isUnquote form
+			if unquoteId : begin
+				local mapObj : fetchAtFormMappedObj unquoteId
+				return mapObj.t
+
+			# None of the cases above match, perform in-place transformation of the form's children
+			foreach [j : range 0 form.length] : begin
+				set form.(j) : transform form.(j)
+			return form
+
+		define [pushAtDef sink identifier] : begin
+			local mapObj : fetchAtFormMappedObj identifier
+			if mapObj.sorted : return nothing
+
+			foreach [dep : items-of mapObj.dependencies] : begin
+				pushAtDef sink dep
+
+			sink.push `[local @(mapObj.t) @(mapObj.def)]
+			set mapObj.sorted true
+
+		local body : transform : formOf x
+
+		local result `[begin]
+		foreach k [items-of : Object.keys atFormMap] : begin
+			pushAtDef result k
+
+		result.push body
+		return : dirty result
+
+define-macro $$InitFlexParameters$$ : syntax-rules
+	`[$$InitFlexParameters$$ @::$pairs] : begin
+		local tb : env.newt
+		local t : env.newt
+
+		local ps `[begin
+			[local $-flex-arguments : {}.slice.call arguments 0]
+			[local @tb {}]
+			[for [local @t 0] (@t < $-flex-arguments.length) [inc @t] : if [not : $-flex-arguments.(@t) <@ $NamedParameterPair$] : @tb.push $-flex-arguments.(@t)]
+		]
+
+		local declarations `[begin]
+		local namedAssigns `[begin]
+		local indexAssigns `[begin]
+		local tearDowns    `[begin]
+
+		local j 0
+		foreach $pf [items-of $pairs] : begin
+			local name
+			match [formOf $pf]
+				pf [atom pf] : begin
+					declarations.push `[local @pf]
+					indexAssigns.push `[set @pf : fallback @pf (@tb).(@{".quote" j})]
+					set name pf
+				`[@pf] : begin
+					declarations.push `[local @pf]
+					indexAssigns.push `[set @pf : fallback @pf (@tb).(@{".quote" j})]
+					set name pf
+				`[@decl @dflt] : begin
+					declarations.push `[local @decl]
+					indexAssigns.push `[set @decl : fallback @decl (@tb).(@{".quote" j}) @dflt]
+					set name decl
+				`(@decl -- @dflt) : begin
+					declarations.push `[local @decl]
+					indexAssigns.push `[set @decl : fallback @decl (@tb).(@{".quote" j}) @dflt]
+					set name decl
+				{".operatorPiece" :: items} : match [opSegToRegular items [scopeOf $pf]]
+					`(@decl -- @dflt) : begin
+						declarations.push `[local @decl]
+						indexAssigns.push `[set @decl : fallback @decl (@tb).(@{".quote" j}) @dflt]
+						set name decl
+					____ : throw : new Error "Invalid postulation syntax"
+				____ : throw : new Error "Invalid postulation syntax"
+
+			namedAssigns.push `[if (@t && @t <@ $NamedParameterPair$ && @t.left == @{".quote" name})
+				[set @name @t.right]]
+			inc j
+
+		ps.push declarations
+		ps.push `[foreach [@t : items-of $-flex-arguments] @namedAssigns]
+		ps.push indexAssigns
+		ps.push tearDowns
+
+		return : dirty ps
+
+# TODO: replace this with the new [with-params]
+define-macro with-params : syntax-rules
+	`[with-params @_pairs @body] : dirty `[begin
+		[$$InitFlexParameters$$ @::[formOf _pairs]]
+		@[formOf body]
+	]
+
+define-macro flex-params : syntax-rules
+	`[flex-params @_lam] : begin
+		local lam : formOf _lam
+		local lamArgs lam.1
+		local {lamBodyLeader :: lamBodyStatements} lam.2
+
+		local finalStatements {}
+
+		foreach stmt [items-of lamBodyStatements] : begin
+			if ([Array.isArray stmt] && stmt.0 == 'local-parameter')
+			: then : begin
+				lamArgs.push stmt.1
+			: else : begin
+				finalStatements.push stmt
+
+		return : dirty {'.lambda'
+			{}
+			`[begin
+				[$$InitFlexParameters$$ @::lamArgs]
+				@{lamBodyLeader :: finalStatements}
+			]
+		}
+
+### Necessary macros
+# A glyph construction is a function which "modifies" a glyph.
+define-macro glyph-proc : syntax-rules
+	`[glyph-proc @::steps] : dirty `[new $Capture$.GlyphProc : function [currentGlyph] [begin \\
+		# local currentGlyph this
+		begin @::[steps.map formOf]
+		return nothing
+	]]
+
+define-macro composite-proc : syntax-rules
+	`[composite-proc @::steps] : dirty `[new $Capture$.GlyphProc : function [currentGlyph] [begin \\
+		# local currentGlyph this
+		begin @::[steps.map : lambda [x j] : if j `[include @[formOf x]] `[include @[formOf x] true true]]
+		return nothing
+	]]
+
+# Remap Glyph's methods to macros in order to simplify writing
+define-macro set-width : syntax-rules
+	`[set-width @::args] {'.syntactic-closure' `[currentGlyph.setWidth @::args] env}
+define-macro include : syntax-rules
+	`[include @::args] {'.syntactic-closure' `[currentGlyph.include @::args] env}
+define-macro set-mark-anchor : syntax-rules
+	`[set-mark-anchor @::args] {'.syntactic-closure' `[currentGlyph.setMarkAnchor @::args] env}
+define-macro set-base-anchor : syntax-rules
+	`[set-base-anchor @::args] {'.syntactic-closure' `[currentGlyph.setBaseAnchor @::args] env}
+define-macro eject-contour : syntax-rules
+	`[eject-contour @::args] {'.syntactic-closure' `[currentGlyph.ejectTagged @::args] env}
+
+###### Canvas-based mechanism
+define-macro new-glyph : syntax-rules
+	`[new-glyph @body] : begin
+		dirty `[$GlyphSaveSink$.save null null @[formOf body]]
+
+define-macro create-glyph : syntax-rules
+	`[create-glyph @body] : begin
+		dirty `[$GlyphSaveSink$.save null null @[formOf body]]
+	`[create-glyph @name @body] : begin
+		dirty `[$GlyphSaveSink$.save @[formOf name] null @[formOf body]]
+	`[create-glyph @name @code @body] : begin
+		dirty `[$GlyphSaveSink$.save @[formOf name] @[formOf code] @[formOf body]]
+
+define-macro create-aliased-glyph : syntax-rules
+	`[create-aliased-glyph @name] : begin
+		dirty `[create-aliased-glyph @[formOf name] null]
+	`[create-aliased-glyph @name @code] : begin
+		dirty `[$GlyphSaveSink$.save @[formOf name] @[formOf code]
+			[new $Capture$.ForkGlyphProc currentGlyph null] ]
+
+define-macro create-forked-glyph : syntax-rules
+	`[create-forked-glyph @body] : begin
+		dirty `[create-forked-glyph null null @[formOf body]]
+	`[create-forked-glyph @name @body] : begin
+		dirty `[create-forked-glyph @[formOf name] null @[formOf body]]
+	`[create-forked-glyph @name @code @body] : begin
+		dirty `[$GlyphSaveSink$.save @[formOf name] @[formOf code]
+			[new $Capture$.ForkGlyphProc currentGlyph @[formOf body]] ]
+
+define-macro glyph-is-needed : syntax-rules
+	`[glyph-is-needed @name] : dirty `[$GlyphSaveSink$.glyphIsNeeded @[formOf name]]
+
+###### Glyph modules and Glyph blocks
+
+define-macro glyph-module : syntax-rules
+	`[glyph-module] : dirty `[begin \\
+		define $GlyphBlocks$ {}
+		export : define [apply] : begin
+			foreach [block : items-of $GlyphBlocks$] : block this
+		]
+
+define-macro run-glyph-module : syntax-rules
+	`[run-glyph-module @{'.quote' path}] : dirty `[@{'.import' [formOf path]}.apply.call $$Capture$$]
+
+define-macro glyph-block-import : syntax-rules
+	`[glyph-block-import @_blockName] : begin
+		define allExports : object
+			Common-Derivatives `[select-variant conditional-follow orthographic-italic
+			orthographic-slanted refer-glyph query-glyph alias turned HDual HCombine VDual VCombine
+			derive-glyphs derive-composites link-reduced-variant alias-reduced-variant HalfAdvance
+			derive-multi-part-glyphs DeriveMeshT link-gr]
+
+			CommonShapes `[no-shape tagged Rect SquareAt Ring RingAt DotAt RingStroke RingStrokeAt
+			DotStrokeAt Circle Ellipse OShapeT OShape OShapeOutline OShapeFlatTB UShapeT UShape
+			UShapeOutline HSerif VSerif NeedSlab NeedNotItalic HBar HOverlayBar HOverlayObliqueBar VBar
+			FlatSlashShape hookstart hookend flatside arch Ungizmo Regizmo FlipAround ScaleAround Realign
+			ForceUpright DiagCor NameUni PointingTo with-transform with-outlined remove-holes radicalize
+			clear-geometry clear-anchors ExtLineCenter ExtLineLhs ExtLineRhs DiagCorDs HCrossBar
+			MaskAbove MaskBelow MaskLeft MaskRight HalfRectTriangle MaskAboveLine MaskBelowLine
+			MaskLeftLine MaskRightLine DotVariants WithDotVariants TangentToNormal VectorDot sharp-corner]
+
+		define vartiableFilter : if externEnv.$glyphBlockVariableUsage$
+			lambda [x] externEnv.$glyphBlockVariableUsage$.(x)
+			lambda [x] true
+
+		local blockName : formOf _blockName
+		local blockNameForm {".quote" blockName}
+		if allExports.(blockName)
+			dirty `[define [object @::[allExports.(blockName).filter vartiableFilter]] : $Capture$.$Exec$.glyphBlockStore.(@blockNameForm).resolve]
+			dirty `[$Capture$.$Exec$.glyphBlockStore.(@blockNameForm).resolve]
+
+	`[glyph-block-import @_blockName @_variables] : begin
+		local blockName {'.quote' [formOf _blockName]}
+		local variables : formOf _variables
+		dirty `[define [object @::variables] : $Capture$.$Exec$.glyphBlockStore.(@blockName).resolve]
+
+define-macro glyph-block-export : syntax-rules
+	`[glyph-block-export @::obj] : begin
+		dirty `[$ExportCapture$ : lambda [] : object @::[obj.map formOf]]
+
+define-macro for-width-kinds : syntax-rules
+	`[for-width-kinds @_desired @::_body] : dirty `[ do \\
+		define WidthKinds {
+			{ 0 '.NWID' $Capture$.Metrics.Width      1 }
+			{ 1 '.WWID' $Capture$.Metrics.WideWidth0 2 }
+		}
+		foreach {FMosaicWide MosaicNameSuffix MosaicWidth MosaicWidthScalar} [items-of WidthKinds] : do
+			define MosaicDesiredWidth @[formOf _desired]
+			define MosaicMiddle : MosaicWidth / 2
+			define MosaicUnitWidth : MosaicWidth / MosaicWidthScalar
+			define [MangleUnicode unicode _desiredOverride]
+				if (MosaicWidth == (_desiredOverride || MosaicDesiredWidth)) unicode nothing
+			define [MangleName name] : name + MosaicNameSuffix
+			begin @::[_body.map formOf]
+	]
+
+define-macro end-glyph-block : syntax-rules
+	`[end-glyph-block] : begin
+		set externEnv.$glyphBlockVariableUsage$ null
+		dirty `[begin nothing]
+
+### Do not nest
+define-macro glyph-block : syntax-rules
+	`[glyph-block @_blockName @_body] : begin
+		local blockName {'.quote' [formOf _blockName]}
+		local body : formOf _body
+
+		# Trace every variable name in the body
+		local variableSet : Object.create null
+		define [traceBody form] : piecewise
+			(form <@ Array) : form.forEach traceBody
+			([typeof form] === "string") : set variableSet.(form) true
+
+		traceBody body
+		traceBody `[$NamedParameterPair$ $GlyphSaveSink$ $Exec$]
+
+		set externEnv.$glyphBlockVariableUsage$ variableSet
+
+		define captureImports `[$GlyphSaveSink$ $NamedParameterPair$ $Exec$ Metrics para recursive
+			glyphStore SpiroFns BooleFns MarkSet AS_BASE ALSO_METRICS buildGlyphs DivFrame
+			fontMetrics]
+
+		define metricImports `[DesignParameters UPM HalfUPM Width SB CAP XH Ascender Descender
+			Contrast SymbolMid ParenTop ParenBot OperTop OperBot TackTop TackBot PlusTop PlusBot
+			PictTop PictBot BgOpTop BgOpBot BgTkTop BgTkBot Italify Upright Scale Translate
+			ApparentTranslate Rotate GlobalTransform TanSlope HVContrast Upward Downward Rightward
+			Leftward O OX OXHook Hook AHook SHook RHook JHook HookX TailX TailY ArchDepth
+			SmallArchDepth Stroke HalfStroke QuarterStroke DotSize PeriodSize HBarPos OverlayPos
+			Jut LongJut VJut LongVJut VJutStroke AccentStackOffset AccentWidth AccentClearance
+			AccentHeight CThin CThinB SLAB IBalance IBalance2 JBalance JBalance2 TBalance
+			TBalance2 RBalance RBalance2 FBalance OneBalance WideWidth0 WideWidth1 WideWidth2
+			WideWidth3 WideWidth4 EssUpper EssLower EssQuestion RightSB Middle DotRadius
+			PeriodRadius ArchDepthA ArchDepthB SmallArchDepthA SmallArchDepthB CorrectionOMidX
+			CorrectionOMidS compositeBaseAnchors AdviceStroke AdviceStroke2 AdviceStrokeInSpace
+			OverlayStroke OperatorStroke GeometryStroke UnicodeWeightGrade StrokeWidthBlend
+			ArchDepthAOf ArchDepthBOf SmoothAdjust SideJut MidJutSide MidJutCenter YSmoothMidR
+			YSmoothMidL DToothlessRise DMBlend ShoulderFine DefaultTightBendInnerRadius HSwToV
+			VSwToH NarrowUnicodeT WideUnicodeT VERY-FAR TINY]
+
+		define spiroFnImports `[g4 g2 corner flat curl virt close end straight g2c cg2 flatc ccurl
+			widths disable-contrast heading unimportant important alsoThru alsoThruThem bezControls
+			quadControls archv arcvh dispiro spiro-outline spiro-collect]
+
+		define spiroFnImportsAlways `[decor@ decor@@ decor@@@]
+
+		define booleFnImports `[union intersection difference with-knockout]
+
+		dirty `[$GlyphBlocks$.push : lambda [$Capture_Ext$] : begin \\
+			$Capture_Ext$.$Exec$.defineGlyphBlock $Capture_Ext$ @blockName
+				function [$Capture$ $ExportCapture$] : begin
+					define [object @::[captureImports.filter : lambda [x] variableSet.(x)]] $Capture$
+					define [object @::[metricImports.filter  : lambda [x] variableSet.(x)]] $Capture$.Metrics
+					define [object @::[spiroFnImports.filter : lambda [x] variableSet.(x)]] $Capture$.SpiroFns
+					define [object @::spiroFnImportsAlways] $Capture$.SpiroFns
+					define [object @::[booleFnImports.filter : lambda [x] variableSet.(x)]] $Capture$.BooleFns
+
+					* @body
+
+			end-glyph-block
+		]

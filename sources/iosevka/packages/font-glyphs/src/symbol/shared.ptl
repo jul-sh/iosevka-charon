@@ -1,0 +1,186 @@
+$$include '../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [Point] from "@iosevka/geometry/point"
+
+glyph-module
+
+glyph-block Shared-Symbol-Shapes : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	glyph-block-export CreateWaveShape
+	define [CreateWaveShape dist sw _phaseShift] : begin
+		define WaveResolution 256
+		define WaveMagnitude : dist * (3 / 4) - sw / 2
+		define WaveAdj : TanSlope * WaveMagnitude * (-0.75)
+		define phaseShift : fallback _phaseShift 0
+		define [WaveShapeImpl] : with-params [left right ts te xsJoin xfJoin diagJoinS diagJoinF] : glyph-proc
+			local resolution : Math.ceil (WaveResolution * (te - ts))
+			local knots {}
+			foreach [pr : range 0 till resolution] : begin
+				local theta : (phaseShift + [mix ts te (pr / resolution)]) * Math.PI * 2
+				local waveRelY : [Math.sin theta] + 0.075 * [Math.sin (theta * 3)]
+				knots.push : g2
+					(WaveAdj * waveRelY) + [mix left right (pr / resolution)]
+					SymbolMid + WaveMagnitude * waveRelY
+			include : dispiro
+				widths.center sw
+				if (xsJoin === nothing) {} :  if diagJoinS
+					list [g2                   xsJoin SymbolMid]
+					list [straight.right.start xsJoin SymbolMid]
+				begin knots
+				if (xfJoin === nothing) {} :  if diagJoinF
+					list [g2                   xfJoin SymbolMid]
+					list [straight.right.end   xfJoin SymbolMid]
+
+		define [WaveShape] : with-params [left right xsJoin xfJoin diagJoinS diagJoinF [waveCount 1] [unitWidth Width]] : WaveShapeImpl (unitWidth * -left) (unitWidth * (1 + right)) (-left * waveCount) ((1 + right) * waveCount) xsJoin xfJoin diagJoinS diagJoinF
+		return WaveShape
+
+	glyph-block-export Polyline ClosedPolyline
+	define [Polyline] : with-params [af points [contrast HVContrast] [upright 0] [startAf af] [endAf af]] : begin
+		local {{x0 y0} {xp yp}} points
+		local knots : list
+			flat x0 y0 startAf
+			sharp-corner xp yp contrast upright
+		foreach {x y} [items-of : points.slice 2 (-1)] : begin
+			knots.push : virt [mix xp x 0.5] [mix yp y 0.5] af
+			knots.push : sharp-corner x y contrast upright
+			set {xp yp} {x y}
+		set {xp yp} points.[points.length - 1]
+		knots.push : curl xp yp endAf
+
+		return knots
+
+	define [ClosedPolyline] : with-params [af points [contrast HVContrast] [upright 0]] : begin
+		local {xp yp} points.[points.length - 1]
+		local knots : list
+		foreach {x y} [items-of points] : begin
+			knots.push : virt [mix xp x 0.5] [mix yp y 0.5] af
+			knots.push : sharp-corner x y contrast upright
+			set {xp yp} {x y}
+		knots.push : close
+
+		return knots
+
+	glyph-block-export TriangleShape
+	define [TriangleShape x1 y1 x2 y2 x3 y3 sw] : begin
+		local widthSide : if ((y2 - y1) * (y3 - y2) + (x2 - x1) * (x3 - x2) < 0) widths.rhs widths.lhs
+
+		return : intersection
+			spiro-outline
+				corner x1 y1
+				corner x2 y2
+				corner x3 y3
+			union
+				dispiro
+					widthSide sw
+					corner x1 y1
+					corner x2 y2
+				dispiro
+					widthSide sw
+					corner x2 y2
+					corner x3 y3
+				dispiro
+					widthSide sw
+					corner x3 y3
+					corner x1 y1
+
+	glyph-block-export HZigzag VZigzag
+	define HZigzag : namespace
+		define [getOffset dx dy upright sw] : begin
+			local T : new Point Point.Type.Corner dx dy
+			local N : TangentToNormal T HVContrast [if upright 0]
+			local D : T.scale : N.x / T.x * sw / 2
+			return D
+
+		export : define [fromSide midy left right amp sgmts phase sw upright] : glyph-proc
+			local halfPeriod : (right - left) / sgmts
+			local posOff : getOffset halfPeriod ( 2 * amp) upright (-sw)
+			local negOff : getOffset halfPeriod (-2 * amp) upright sw
+
+			local pos : midy + amp
+			local neg : midy - amp
+			local points : list
+			points.push : list
+				if phase (left - posOff.x) (left - negOff.x)
+				if phase (neg - posOff.y) (pos - negOff.y)
+			foreach [j : range 1 sgmts] : begin
+				points.push : list
+					left + j * halfPeriod
+					if ((j + phase) % 2) neg pos
+			points.push : list
+				if ((sgmts + phase) % 2) (right + negOff.x) (right + posOff.x)
+				if ((sgmts + phase) % 2) (neg + negOff.y) (pos + posOff.y)
+
+			include : dispiro : Polyline [widths.center sw] points (upright -- upright)
+
+		export : define [fromCenter midy left right amp sgmts phase sw upright] : glyph-proc
+			local halfPeriod : (right - left) / sgmts
+			local posOff : getOffset halfPeriod ( 2 * amp) upright (-sw)
+			local negOff : getOffset halfPeriod (-2 * amp) upright sw
+
+			local pos : midy + amp
+			local neg : midy - amp
+			local points : list
+			points.push : list
+				if phase (left - negOff.x) (left - posOff.x)
+				if phase (midy - negOff.y) (midy - posOff.y)
+			foreach [j : range 0 sgmts] : begin
+				points.push : list
+					left + (j + 0.5) * halfPeriod
+					if ((j + phase) % 2) neg pos
+			points.push : list
+				if ((sgmts + phase) % 2) (right + negOff.x) (right + posOff.x)
+				if ((sgmts + phase) % 2) (midy + negOff.y) (midy + posOff.y)
+
+			include : dispiro : Polyline [widths.center sw] points (upright -- upright)
+
+	define VZigzag : namespace
+		define [getOffset dx dy upright sw] : begin
+			local T : new Point Point.Type.Corner dx dy
+			local N : TangentToNormal T HVContrast [if upright 0]
+			local D : T.scale : N.y / T.y * sw / 2
+			return D
+
+		export : define [fromSide midx bot top amp sgmts phase sw upright] : glyph-proc
+			local halfPeriod : (top - bot) / sgmts
+			local posOff : getOffset ( 2 * amp) halfPeriod upright sw
+			local negOff : getOffset (-2 * amp) halfPeriod upright (-sw)
+
+			local pos : midx + amp
+			local neg : midx - amp
+			local points : list
+			points.push : list
+				if phase (neg - posOff.x) (pos - negOff.x)
+				if phase (bot - posOff.y) (bot - negOff.y)
+			foreach [j : range 1 sgmts] : begin
+				points.push : list
+					if ((j + phase) % 2) neg pos
+					bot + j * halfPeriod
+			points.push : list
+				if ((sgmts + phase) % 2) (neg + negOff.x) (pos + posOff.x)
+				if ((sgmts + phase) % 2) (top + negOff.y) (top + posOff.y)
+
+			include : dispiro : Polyline [widths.center sw] points (upright -- upright)
+
+		export : define [fromCenter midx bot top amp sgmts phase sw upright] : glyph-proc
+			local halfPeriod : (top - bot) / sgmts
+			local posOff : getOffset ( 2 * amp) halfPeriod upright sw
+			local negOff : getOffset (-2 * amp) halfPeriod upright (-sw)
+
+			local pos : midx + amp
+			local neg : midx - amp
+			local points : list
+			points.push : list
+				if phase (midx - negOff.x) (midx - posOff.x)
+				if phase (bot - negOff.y) (bot - posOff.y)
+			foreach [j : range 0 sgmts] : begin
+				points.push : list
+					if ((j + phase) % 2) neg pos
+					bot + (j + 0.5) * halfPeriod
+			points.push : list
+				if ((sgmts + phase) % 2) (midx + negOff.x) (midx + posOff.x)
+				if ((sgmts + phase) % 2) (top + negOff.y) (top + posOff.y)
+
+			include : dispiro : Polyline [widths.center sw] points (upright -- upright)

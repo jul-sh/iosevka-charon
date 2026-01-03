@@ -1,0 +1,37 @@
+{
+  "name": "@iosevka/monorepo",
+  "version": "33.3.5",
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
+  "scripts": {
+    "build": "verda -f verdafile.mjs",
+    "bump-ver": "node tools/misc/src/update-package-json-version.mjs && npm install && node tools/misc/src/generate-ttfa-ranges.mjs",
+    "clean": "verda -f verdafile.mjs clean",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "copy-char-name-to-markdown": "node tools/misc/src/copy-char-name-to-markdown.mjs"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "deep-equal": "^2.2.3",
+    "otb-ttc-bundle": "^1.7.6",
+    "semver": "^7.7.3",
+    "uuid": "^13.0.0",
+    "verda": "^1.12.3",
+    "which": "^6.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-import": "^2.32.0",
+    "glob": "^11.0.3",
+    "patel": "^0.41.0",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
