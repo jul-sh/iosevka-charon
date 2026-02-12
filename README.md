@@ -1,6 +1,6 @@
 # Iosevka Charon
 
-Iosevka Charon is a quasi-proportional font excellent for technical writing and dense UI. Iosevka Charon Mono is a true monospace font tuned for coding and terminal use. Iosveka Charon is a unique derivative of [Iosevka](https://github.com/be5invis/Iosevka) by **Belleve Invis**; built in a manner that makes the resulting fonts Google Fonts compliant.
+Iosevka Charon is a quasi-proportional font excellent for technical writing and dense UI. Iosevka Charon Mono is a true monospace font tuned for coding and terminal use. These font families are unique derivative of [Iosevka](https://github.com/be5invis/Iosevka) by **Belleve Invis**; built in a manner that makes the resulting fonts Google Fonts compliant.
 
 ![Iosevka Charon specimen](documentation/iosevka-charon.png)
 
