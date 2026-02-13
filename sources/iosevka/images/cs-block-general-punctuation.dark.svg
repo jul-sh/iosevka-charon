@@ -23,7 +23,7 @@
 <path d="M 436 -305 L 64 -305 L 64 -375 L 436 -375 Z " id="path20"/>
 <path d="M 468 -305 L 32 -305 L 32 -375 L 468 -375 Z " id="path21"/>
 <path d="M 1000 -305 L 0 -305 L 0 -375 L 1000 -375 Z " id="path22"/>
-<path d="M 303 143 L 303 -823 L 372 -823 L 372 143 Z M 128 143 L 128 -823 L 197 -823 L 197 143 Z " id="path23"/>
+<path d="M 299 143 L 299 -823 L 368 -823 L 368 143 Z M 132 143 L 132 -823 L 201 -823 L 201 143 Z " id="path23"/>
 <path d="M 436 70 L 64 70 L 64 0 L 436 0 Z M 436 200 L 64 200 L 64 130 L 436 130 Z " id="path24"/>
 <path d="M 250 -434 Q 234 -434 218.5 -439 Q 203 -444 192 -455.5 Q 181 -467 177 -482.5 Q 173 -498 173 -514 Q 173 -552 181.5 -589.5 Q 190 -627 205 -662.5 Q 220 -698 240.5 -730.5 Q 261 -763 285 -793 L 343 -748 Q 311 -713 285 -673 Q 259 -633 246 -588 L 251 -588 Q 266 -588 281 -583 Q 296 -578 307 -567.5 Q 318 -557 322.5 -541.5 Q 327 -526 327 -511 Q 327 -495 322.5 -480 Q 318 -465 307 -454 Q 296 -443 281 -438.5 Q 266 -434 250 -434 Z " id="path25"/>
 <path d="M 215 -421 L 157 -466 Q 189 -501 215 -541 Q 241 -581 254 -626 L 249 -626 Q 234 -626 219 -630.5 Q 204 -635 193 -646 Q 182 -657 177.5 -672 Q 173 -687 173 -703 Q 173 -718 177.5 -733.5 Q 182 -749 193 -760 Q 204 -771 219 -775.5 Q 234 -780 250 -780 Q 266 -780 281.5 -775 Q 297 -770 308 -758.5 Q 319 -747 323 -731.5 Q 327 -716 327 -700 Q 327 -661 318.5 -623.5 Q 310 -586 295 -551 Q 280 -516 259.5 -483.5 Q 239 -451 215 -421 Z " id="path26"/>
@@ -221,12 +221,12 @@
 <g data-source-text="‍" fill="#dee4e3" transform="translate(1116 118.584) rotate(0) scale(0.047999997)"/>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1176 118.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1176 118.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1248 118.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1248 118.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
@@ -377,27 +377,27 @@
 <g data-source-text=" " fill="#dee4e3" transform="translate(828 217.584) rotate(0) scale(0.047999997)"/>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(888 262.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(888 262.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(960 262.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(960 262.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1032 262.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1032 262.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1104 262.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1104 262.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1176 262.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1176 262.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
@@ -698,57 +698,57 @@
 <g data-source-text="⁤" fill="#dee4e3" transform="translate(468 550.584) rotate(0) scale(0.047999997)"/>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(528 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(528 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(600 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(600 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(672 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(672 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(744 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(744 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(816 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(816 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(888 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(888 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(960 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(960 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1032 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1032 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1104 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1104 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1176 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1176 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1248 550.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e340" transform="translate(1248 550.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
