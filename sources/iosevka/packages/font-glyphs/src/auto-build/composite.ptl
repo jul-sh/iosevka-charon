@@ -125,6 +125,7 @@ glyph-block AutoBuild-Enclosure : begin
 	glyph-block-import Common-Derivatives
 	glyph-block-import Recursive-Build : Fork Miniature MiniatureParaT
 	glyph-block-import Autobuild-Enclosure-Shared : CircNameNoCheck CircName CollectJobs EnsureComponentGlyphT CreateDerivedFontFromJobs applyRelations getGlyphDefaultShift
+	glyph-block-import CommonShapes-Polygon : Polygon
 
 	define circleWidthClasses {{'NWID' Width 0.12} {'WWID' WideWidth0 0.08}}
 	define [AdjustDigitCount digits width] : Math.max 1 (digits * Width / width)
@@ -132,27 +133,44 @@ glyph-block AutoBuild-Enclosure : begin
 
 	define enclosureInnerPartActualWidth : new Map
 
-	define [GlyphNameInnerOf gniPrefix subGlyph mp actualWidth accumulatedTfm] : begin
-		define nameParts : list mp actualWidth accumulatedTfm
+	define [GlyphNameInnerOf gniPrefix subGlyph isMultiPart actualWidth accumulatedTfm] : begin
+		define nameParts : list isMultiPart actualWidth accumulatedTfm
 			hashGeometry subGlyph.geometry
 			hashCv subGlyph
 		return : '.ci.' + gniPrefix + '/' + [nameParts.join '/']
 
-	define [EnsureInnerSubGlyphImpl inners markClass miniatureFont mp actualWidth accumulatedTfm] : function [gidPart] : begin
-		define subGlyph : miniatureFont.queryByNameEnsured gidPart
-		define gniPart : GlyphNameInnerOf inners.gniPrefix subGlyph mp actualWidth accumulatedTfm
-		if [query-glyph gniPart] : return gniPart
+	define flex-params [EnsureInnerSubGlyphImpl] : begin
+		local-parameter inners
+		local-parameter markClass
+		local-parameter miniatureFont
+		local-parameter isMultiPart
+		local-parameter actualWidth
+		local-parameter accumulatedTfm
 
-		enclosureInnerPartActualWidth.set gniPart (actualWidth)
-		create-glyph gniPart : glyph-proc
-			set-width 0
-			set-mark-anchor 'compositeInner' 0 0
-			include : inners.buildInnerShape subGlyph
-			include accumulatedTfm
-			include : inners.addAnchors mp markClass actualWidth
-		return gniPart
+		return : function [gidPart] : begin
+			define subGlyph : miniatureFont.queryByNameEnsured gidPart
+			define gniPart : GlyphNameInnerOf inners.gniPrefix subGlyph isMultiPart actualWidth accumulatedTfm
+			if [query-glyph gniPart] : return gniPart
 
-	define [EnsureInnerSubGlyphSeq inners markClass miniatureFont job dimens yCompress kExtraYShift] : begin
+			enclosureInnerPartActualWidth.set gniPart (actualWidth)
+			create-glyph gniPart : glyph-proc
+				set-width 0
+				set-mark-anchor 'compositeInner' 0 0
+				include : inners.buildInnerShape subGlyph
+				include accumulatedTfm
+				include : inners.addAnchors isMultiPart markClass actualWidth
+			return gniPart
+
+	define flex-params [EnsureInnerSubGlyphSeq] : begin
+		local-parameter inners
+		local-parameter markClass
+		local-parameter miniatureFont
+		local-parameter job
+		local-parameter dimens
+		local-parameter xCompress
+		local-parameter yCompress
+		local-parameter kExtraYShift
+
 		define { gn unicode parts w bal baly }      job
 		define [object width mockInnerWidth dscale] dimens
 
@@ -162,22 +180,27 @@ glyph-block AutoBuild-Enclosure : begin
 			local derivedGlyph : miniatureFont.queryByNameEnsured gidPart
 			if [not firstDerivedGyph] : set firstDerivedGyph derivedGlyph
 			set totalWidth : totalWidth + derivedGlyph.advanceWidth
-		local xCompress : inners.getXScalar parts.length markClass mockInnerWidth totalWidth
+		local xCompressInternal : inners.getXScalar parts.length markClass mockInnerWidth totalWidth
 		set totalWidth : Math.min mockInnerWidth totalWidth
 
 		local shift : inners.getShift bal baly firstDerivedGyph
 		local accumulatedTfm : Transform.Combine
 			firstDerivedGyph.gizmo.inverse
-			Scale (dscale * xCompress) (dscale * yCompress)
+			Scale (dscale * xCompressInternal * xCompress) (dscale * yCompress)
 			Translate 0 (dscale * shift + SymbolMid + (kExtraYShift - 0.5) * CAP * dscale)
 			begin firstDerivedGyph.gizmo
 
 		local finalParts {}
 		foreach partIndex [range 0 parts.length] : do
 			local gidPart parts.(partIndex)
-			local actualWidth : [miniatureFont.queryByNameEnsured gidPart].advanceWidth * dscale * xCompress
-			finalParts.push : EnsureComponentGlyphT gidPart
-				EnsureInnerSubGlyphImpl inners markClass miniatureFont (parts.length > 1) actualWidth accumulatedTfm
+			local actualWidth : [miniatureFont.queryByNameEnsured gidPart].advanceWidth * dscale * xCompress * xCompressInternal
+			finalParts.push : EnsureComponentGlyphT gidPart : EnsureInnerSubGlyphImpl
+				markClass      -- markClass
+				inners         -- inners
+				miniatureFont  -- miniatureFont
+				isMultiPart    -- (parts.length > 1)
+				actualWidth    -- actualWidth
+				accumulatedTfm -- accumulatedTfm
 
 		return finalParts
 
@@ -192,22 +215,49 @@ glyph-block AutoBuild-Enclosure : begin
 			include : with-transform [Translate x 0] : refer-glyph gniPart
 			set x : x + ([enclosureInnerPartActualWidth.get gniPart] || 0)
 
-	define [EnclosureInner dimens inners miniatureFont job] : glyph-proc
-		define { gn unicode parts w bal baly }      job
+	define [EnclosureInnerWithScale dimens inners miniatureFont xs ys job] : glyph-proc
+		define { gn unicode parts w bal baly } job
 		define [object width] dimens
 
-		local finalParts : EnsureInnerSubGlyphSeq inners 'enclosureInner' miniatureFont job dimens 1 0
+		local finalParts : EnsureInnerSubGlyphSeq
+			markClass     -- 'enclosureInner'
+			inners        -- inners
+			miniatureFont -- miniatureFont
+			job           -- job
+			dimens        -- dimens
+			xCompress     -- xs
+			yCompress     -- ys
+			kExtraYShift  -- (0.5 * (1 - ys))
 
 		include : new-glyph : EnclosureInnerImpl dimens finalParts
 		return finalParts
+
+	define [EnclosureInner dimens inners miniatureFont job] : begin
+		return : EnclosureInnerWithScale dimens inners miniatureFont 1.0 1.0 job
 
 	define [TwoRowEnclosureInner dimens inners miniatureFont job] : glyph-proc
 		define { gn unicode parts w bal baly }      job
 		define [object width] dimens
 		local jobFirstHalf  { gn unicode [parts.slice 0 (parts.length / 2)] w bal baly }
 		local jobSecondHalf { gn unicode [parts.slice   (parts.length / 2)] w bal baly }
-		local finalPartsFirstHalf  : EnsureInnerSubGlyphSeq inners "enclosureInnerFirstHalf"  miniatureFont jobFirstHalf  dimens 0.55 (+0.55)
-		local finalPartsSecondHalf : EnsureInnerSubGlyphSeq inners "enclosureInnerSecondHalf" miniatureFont jobSecondHalf dimens 0.55 (-0.10)
+		local finalPartsFirstHalf  : EnsureInnerSubGlyphSeq
+			markClass     -- 'enclosureInnerFirstHalf'
+			inners        -- inners
+			miniatureFont -- miniatureFont
+			job           -- jobFirstHalf
+			dimens        -- dimens
+			xCompress     -- 1.00
+			yCompress     -- 0.55
+			kExtraYShift  -- (+0.55)
+		local finalPartsSecondHalf : EnsureInnerSubGlyphSeq
+			markClass     -- 'enclosureInnerSecondHalf'
+			inners        -- inners
+			miniatureFont -- miniatureFont
+			job           -- jobSecondHalf
+			dimens        -- dimens
+			xCompress     -- 1.00
+			yCompress     -- 0.55
+			kExtraYShift  -- (-0.10)
 
 		return : {}.concat finalPartsFirstHalf finalPartsSecondHalf
 
@@ -217,8 +267,24 @@ glyph-block AutoBuild-Enclosure : begin
 		local jobFirstHalf  { gn unicode [parts.slice 0 (parts.length / 2)] w bal baly }
 		local jobSecondHalf { gn unicode [parts.slice   (parts.length / 2)] w bal baly }
 
-		local finalPartsFirstHalf  : EnsureInnerSubGlyphSeq inners "enclosureInnerFirstHalf"  miniatureFont jobFirstHalf  dimens 0.6 (+0.55)
-		local finalPartsSecondHalf : EnsureInnerSubGlyphSeq inners "enclosureInnerSecondHalf" miniatureFont jobSecondHalf dimens 0.6 (-0.15)
+		local finalPartsFirstHalf  : EnsureInnerSubGlyphSeq
+			markClass     -- 'enclosureInnerFirstHalf'
+			inners        -- inners
+			miniatureFont -- miniatureFont
+			job           -- jobFirstHalf
+			dimens        -- dimens
+			xCompress     -- 1.0
+			yCompress     -- 0.6
+			kExtraYShift  -- (+0.55)
+		local finalPartsSecondHalf : EnsureInnerSubGlyphSeq
+			markClass     -- 'enclosureInnerSecondHalf'
+			inners        -- inners
+			miniatureFont -- miniatureFont
+			job           -- jobSecondHalf
+			dimens        -- dimens
+			xCompress     -- 1.0
+			yCompress     -- 0.6
+			kExtraYShift  -- (-0.15)
 
 		return : {}.concat finalPartsFirstHalf finalPartsSecondHalf
 
@@ -348,6 +414,14 @@ glyph-block AutoBuild-Enclosure : begin
 			local parts : include : EnclosureInner dimens inners miniatureFont job
 			if decomp : CvDecompose.set currentGlyph [{gnEnclosure}.concat parts]
 
+	define DiamondBuilder : object
+		decomposable true
+		buildGlyph : function [dimens inners miniatureFont decomp job gnEnclosure] : glyph-proc
+			include : refer-glyph gnEnclosure
+			local s : Math.min 1.0 (0.75 * (dimens.width / Width))
+			local parts : include : EnclosureInnerWithScale dimens inners miniatureFont s s job
+			if decomp : CvDecompose.set currentGlyph [{gnEnclosure}.concat parts]
+
 	define DecomposableInsetBuilder : object
 		decomposable true
 		buildGlyph : function [dimens inners miniatureFont decomp job gnEnclosure] : glyph-proc
@@ -445,6 +519,30 @@ glyph-block AutoBuild-Enclosure : begin
 		define [object width dscale mockInnerWidth] dimens
 		set-base-anchor 'enclosureInnerFirstHalf'  (0.5 * width - 0.5 * dscale * [Math.min (Width * digits) mockInnerWidth]) 0
 		set-base-anchor 'enclosureInnerSecondHalf' (0.5 * width - 0.5 * dscale * [Math.min (Width * digits) mockInnerWidth]) 0
+
+	define [createAribSpeedSignGlyphs digits demands]
+		EnclosureT 'aribSpeedSign' CircledBuilder StandardInners digits 1 demands AribSpeedSignEnclosureShape
+	define [AribSpeedSignEnclosureShape digits ww gap] : glyph-proc
+		define [object width sw top bot left right] : CircleDimens digits ww
+		set-width width
+		local f : AdviceStroke 8
+		include : difference
+			Rect top bot left right
+			Ring (top - f) (bot + f) (left + f) (right - f)
+		include : AddEnclosureMark digits : CircleDimens digits ww
+
+	define [createDiamondGlyphs digits demands]
+		EnclosureT 'diamond' DiamondBuilder StandardInners digits 1 demands DiamondEnclosureShape
+	define [DiamondEnclosureShape digits ww gap] : glyph-proc
+		define [object width sw top bot left right] : CircleDimens digits ww
+		local swAdj : sw * [AdviceStroke 3] / Stroke
+		set-width width
+		include : Polygon.inset-bordered swAdj : list
+			corner (left + O)  [mix bot top 0.5]
+			corner [mix left right 0.5] (bot + O)
+			corner (right - O) [mix bot top 0.5]
+			corner [mix left right 0.5] (top - O)
+		include : AddEnclosureMark digits : CircleDimens digits ww
 
 	define [createPlayingCardGlyphs digits demands]
 		EnclosureT 'playingCard' PlayingCardBuilder PlayingCardInners digits 2 demands PlayingCardEnclosure.Shape
@@ -945,6 +1043,21 @@ glyph-block AutoBuild-Enclosure : begin
 		createTwoRowBoxedGlyphs 4 : list
 			list 0x1F1A9 { 'L' 'O' 'S' 'S' 'L' 'E' 'S' 'S' } WideWidth1
 
+	do "ARIB STD B24 speed signs"
+		createAribSpeedSignGlyphs 2 : list
+			list 0x3248 {'one.lnum' 'zero.lnum'} WideWidth1
+			list 0x3249 {'two.lnum' 'zero.lnum'} WideWidth1
+			list 0x324A {'three.lnum' 'zero.lnum'} WideWidth1
+			list 0x324B {'four.lnum' 'zero.lnum'} WideWidth1
+			list 0x324C {'five.lnum' 'zero.lnum'} WideWidth1
+			list 0x324D {'six.lnum' 'zero.lnum'} WideWidth1
+			list 0x324E {'seven.lnum' 'zero.lnum'} WideWidth1
+			list 0x324F {'eight.lnum' 'zero.lnum'} WideWidth1
+
+	do "Diamond"
+		createDiamondGlyphs 1 : list
+			list 0x2BD1 {'question'} WideWidth2
+
 	do "Playing cards"
 		# Here we always construct the two-digit cards to ensure that all digit and suit glyphs
 		# are aligned across all cards.
@@ -1024,10 +1137,11 @@ glyph-block AutoBuild-Enclosure : begin
 		createPlayingCardBackGlyphs 1 : list
 			list 0x1F0A0 {'sp1'} WideWidth4
 
-	do "Single-digit dashed-boxed"
-		local compositions {}
-		foreach [j : range 0 26] : compositions.push {(0x1F1E6 + j) {[glyphStore.queryNameByUnicode (['A'.charCodeAt 0] + j)]} WideWidth1}
-		createDashedBoxedGlyphs 1 compositions
+	# RIS is removed from the font since v34 to avoid conflict with flag emojis.
+	# do "Single-digit dashed-boxed"
+	# 	local compositions {}
+	# 	foreach [j : range 0 26] : compositions.push {(0x1F1E6 + j) {[glyphStore.queryNameByUnicode (['A'.charCodeAt 0] + j)]} WideWidth1}
+	# 	createDashedBoxedGlyphs 1 compositions
 
 	do "Triple-digit dashed-boxed"
 		createDashedBoxedGlyphs 3 : list
@@ -1372,6 +1486,14 @@ glyph-block AutoBuild-Accented-Equal : begin
 		list 0x1F16A {"M" "C"}
 		list 0x1F16B {"M" "D"}
 		list 0x1F16C {"M" "R"}
+	createAccentedOp 'insertSignBase' 6 0.5 0 (0.625 * XH) : list
+		list 0x2380 {"a"}
+	createAccentedOp 'underscoreSignBase' 6 0.5 0 (SymbolMid - 0.25 * XH) : list
+		list 0x2381 {"a" "ellipsis.NWID"}
+	createAccentedOp 'BrokenUnderscoreSignBase' 6 0.5 0 (SymbolMid - 0.25 * XH) : list
+		list 0x2382 {"a" "a"}
+	createAccentedOp 'correctionSignBase' 6 0.5 0 (SymbolMid - 0.25 * XH) : list
+		list 0x2383 {"a"}
 
 glyph-block Autobuild-Ligatures : begin
 	glyph-block-import CommonShapes
@@ -1475,12 +1597,12 @@ glyph-block Autobuild-Ligatures : begin
 	createLigatures 'compatLigature1' ijShrink ijShrink 1 1 [if (para.advanceScaleI < 1) 0 0.2] : list
 		list 0x132 { 'I' 'J' }
 		list 0x133 { 'i' 'j' }
-		list 0xEF11 { 'IAcute' 'JAcute' }
-		list 0xEF12 { 'iAcute' 'jAcute' }
+		list 0xf882 { 'IAcute' 'JAcute' }
+		list 0xf883 { 'iAcute' 'jAcute' }
 
 	# Link Gr for acute variants
-	NLDAcuteVariant.set [glyphStore.queryByUnicodeEnsured 0x132] [glyphStore.queryNameByUnicodeEnsured 0xEF11]
-	NLDAcuteVariant.set [glyphStore.queryByUnicodeEnsured 0x133] [glyphStore.queryNameByUnicodeEnsured 0xEF12]
+	NLDAcuteVariant.set [glyphStore.queryByUnicodeEnsured 0x132] [glyphStore.queryNameByUnicodeEnsured 0xf882]
+	NLDAcuteVariant.set [glyphStore.queryByUnicodeEnsured 0x133] [glyphStore.queryNameByUnicodeEnsured 0xf883]
 
 	define stdShrink : clamp 0.75 0.9 : StrokeWidthBlend 0.75 0.9
 	createLigatures 'compatLigature2' stdShrink stdShrink 1 1 0 : list
