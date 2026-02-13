@@ -21,6 +21,7 @@ help:
 	@echo "  make compare:                        Compares raw vs post-processed fonts"
 	@echo "  make webfonts:                       Generates WOFF2 webfonts with subsets (full, latin-ext, latin)"
 	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
+	@echo "  make sync-version:                   Syncs upstream version to GF-compliant format"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
 
@@ -29,7 +30,7 @@ TEST_TARGETS := build fonts postprocess webfonts images test proof compare
 
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
-POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null)
+POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null) sources/version.json
 
 # DrawBot image generation
 DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
@@ -38,8 +39,13 @@ DRAWBOT_OUTPUT=$(shell ls documentation/*.py 2>/dev/null | sed 's/\.py/.png/g')
 # Full build pipeline
 build: postprocess.stamp
 
+# Stage 0: Sync upstream version to GF-compliant format
+sync-version:
+	@echo "==> Syncing upstream Iosevka version to GF format..."
+	python3 scripts/sync_version.py
+
 # Stage 1: Build raw fonts from Iosevka, into unprocessed_fonts/
-fonts.stamp: $(BUILD_SOURCES)
+fonts.stamp: sync-version $(BUILD_SOURCES)
 	@echo "==> Stage 1: Building raw fonts from Iosevka sources..."
 	@echo "Using build plan: $(PLAN)"
 	rm -rf unprocessed_fonts
@@ -127,4 +133,4 @@ update-subtree:
 	git subtree pull --prefix=sources/iosevka iosevka-upstream $(TAG) -m "Update Iosevka subtree to $(TAG)"
 	@echo "==> Subtree updated successfully to $(TAG)"
 
-.PHONY: $(TEST_TARGETS) help clean update-subtree webfonts
+.PHONY: $(TEST_TARGETS) help clean update-subtree webfonts sync-version
