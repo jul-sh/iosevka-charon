@@ -68,12 +68,15 @@ export : define [buildGlyphs para recursive] : begin
 	run-glyph-module "./common/derivatives.mjs"
 	run-glyph-module "./common/shapes.mjs"
 	run-glyph-module "./common/o-shape-variants.mjs"
+	run-glyph-module "./common/polygon.mjs"
 	run-glyph-module "./space/index.mjs"
 	run-glyph-module "./marks/index.mjs"
 
 	# Unified letters
 	run-glyph-module "./letter/accent-builder.mjs"
 	run-glyph-module "./letter/shared.mjs"
+	run-glyph-module "./letter/shared/arc-hook.mjs"
+	run-glyph-module "./letter/shared/shoulder-bowl.mjs"
 	run-glyph-module "./letter/latin.mjs"
 	run-glyph-module "./letter/greek.mjs"
 	run-glyph-module "./letter/cyrillic.mjs"
@@ -100,6 +103,9 @@ export : define [buildGlyphs para recursive] : begin
 	run-glyph-module "./symbol/counting-rod.mjs"
 	run-glyph-module "./symbol/combining.mjs"
 	run-glyph-module "./symbol/ligation.mjs"
+
+	# Orthographic conventions
+	run-glyph-module "./orthography/index.mjs"
 
 	# Auto-builds
 	if [not recursive] : begin

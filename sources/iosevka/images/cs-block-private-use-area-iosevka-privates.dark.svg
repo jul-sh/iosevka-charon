@@ -19,10 +19,10 @@
 <path d="M 90 0 L 90 -735 L 440 -735 L 440 -647 L 190 -647 L 190 -426 L 383 -426 L 383 -338 L 190 -338 L 190 0 Z " id="path16"/>
 <path d="M 250 8 Q 223 8 196.5 2.5 Q 170 -3 147 -16.5 Q 124 -30 106.5 -50.5 Q 89 -71 78.5 -95.5 Q 68 -120 64 -146.5 Q 60 -173 60 -200 L 60 -735 L 160 -735 L 160 -200 Q 160 -186 161.5 -172 Q 163 -158 167.5 -144.5 Q 172 -131 179.5 -118.5 Q 187 -106 197.5 -97 Q 208 -88 222 -84 Q 236 -80 250 -80 Q 264 -80 278 -84 Q 292 -88 302.5 -97 Q 313 -106 320.5 -118.5 Q 328 -131 332.5 -144.5 Q 337 -158 338.5 -172 Q 340 -186 340 -200 L 340 -735 L 440 -735 L 440 -200 Q 440 -173 436 -146.5 Q 432 -120 421.5 -95.5 Q 411 -71 393.5 -50.5 Q 376 -30 353 -16.5 Q 330 -3 303.5 2.5 Q 277 8 250 8 Z " id="path17"/>
 <path d="M 296 -142 L 204 -142 L 204 -300 L 60 -300 L 60 -380 L 204 -380 L 204 -538 L 296 -538 L 296 -380 L 440 -380 L 440 -300 L 296 -300 Z " id="path18"/>
-<path d="M 315 -289 L 171 -340 L 375 -412 L 335 -625 L 452 -526 L 433 -478 L 412 -496 L 421 -447 L 412 -425 L 426 -405 L 425 -402 L 448 -370 L 409 -374 L 407 -372 L 382 -374 L 372 -361 L 312 -340 L 346 -328 Z M 685 -289 L 654 -328 L 688 -340 L 628 -361 L 618 -374 L 593 -372 L 591 -374 L 552 -370 L 575 -402 L 574 -405 L 588 -425 L 579 -447 L 588 -496 L 567 -478 L 548 -526 L 665 -625 L 625 -412 L 829 -340 Z M 500 -340 L 438 -425 L 500 -581 L 562 -425 Z M 500 -398 L 522 -429 L 500 -485 L 478 -429 Z M 708 -220 L 543 -244 L 500 -340 L 604 -351 L 628 -321 L 637 -309 Z M 292 -220 L 396 -351 L 500 -340 L 457 -244 Z M 630 -264 L 588 -317 L 550 -313 L 568 -273 Z M 370 -264 L 432 -273 L 450 -313 L 412 -317 Z M 665 -55 L 500 -195 L 335 -55 L 363 -205 L 417 -213 L 412 -184 L 452 -218 L 471 -221 L 481 -244 L 484 -244 L 500 -280 L 516 -244 L 519 -244 L 529 -221 L 548 -218 L 588 -184 L 583 -213 L 637 -205 Z " id="path19"/>
-<path d="M 127 -802 L 84 -828 L 165 -970 L 217 -940 Z M 17 0 L 17 -70 L 96 -70 L 96 -665 L 17 -665 L 17 -735 L 249 -735 L 249 -665 L 171 -665 L 171 -70 L 249 -70 L 249 0 Z M 387 -802 L 344 -828 L 425 -970 L 477 -940 Z M 348 8 Q 328 8 311 -1.5 Q 294 -11 282.5 -27 Q 271 -43 264.5 -61 Q 258 -79 254 -98 Q 250 -117 248 -136.5 Q 246 -156 246 -175 L 246 -180 L 321 -180 L 321 -177 Q 321 -171 321 -165 Q 321 -159 321.5 -152.5 Q 322 -146 322.5 -140 Q 323 -134 323.5 -128 Q 324 -122 324.5 -115.5 Q 325 -109 326 -103 Q 327 -97 328.5 -91 Q 330 -85 332 -79 Q 334 -73 338 -67.5 Q 342 -62 348 -62 Q 355 -62 358.5 -69 Q 362 -76 364 -83 Q 366 -90 367.5 -97 Q 369 -104 370 -110.5 Q 371 -117 371.5 -124.5 Q 372 -132 372.5 -139 Q 373 -146 373.5 -153 Q 374 -160 374 -167 Q 374 -174 374 -181 Q 374 -188 374 -195 L 374 -665 L 296 -665 L 296 -735 L 449 -735 L 449 -195 Q 449 -179 448.5 -163.5 Q 448 -148 446 -132.5 Q 444 -117 441 -101.5 Q 438 -86 433 -71 Q 428 -56 421 -42 Q 414 -28 403.5 -16.5 Q 393 -5 378 1.5 Q 363 8 348 8 Z " id="path20"/>
-<path d="M 130 -587 L 88 -613 L 169 -755 L 221 -725 Z M 17 0 L 17 -70 L 100 -70 L 100 -450 L 27 -450 L 27 -520 L 175 -520 L 175 -70 L 249 -70 L 249 0 Z M 414 -587 L 371 -613 L 452 -755 L 504 -725 Z M 343 223 Q 324 223 306 217.5 Q 288 212 273.5 200 Q 259 188 249 172 Q 239 156 233 138.5 Q 227 121 224.5 102.5 Q 222 84 221 65 L 296 65 Q 296 79 298 92.5 Q 300 106 304.5 119 Q 309 132 319 142.5 Q 329 153 343 153 Q 355 153 364 142.5 Q 373 132 377.5 120 Q 382 108 384.5 95.5 Q 387 83 388.5 70.5 Q 390 58 390 45.5 Q 390 33 390 20 L 390 -450 L 312 -450 L 312 -520 L 465 -520 L 465 20 Q 465 42 463.5 64 Q 462 86 457 107.5 Q 452 129 443.5 150 Q 435 171 420.5 187.5 Q 406 204 385.5 213.5 Q 365 223 343 223 Z " id="path21"/>
-<path d="M 64 0 L 64 -735 L 436 -735 L 436 0 Z M 104 -333 L 394 -695 L 300 -695 L 104 -450 Z M 104 -489 L 269 -695 L 175 -695 L 104 -606 Z M 104 -645 L 144 -695 L 104 -695 Z M 104 -176 L 396 -543 L 396 -660 L 104 -294 Z M 104 -40 L 119 -40 L 396 -386 L 396 -504 L 104 -137 Z M 150 -40 L 244 -40 L 396 -230 L 396 -347 Z M 275 -40 L 369 -40 L 396 -74 L 396 -191 Z " id="path22"/>
+<path d="M 64 0 L 64 -735 L 436 -735 L 436 0 Z M 104 -333 L 394 -695 L 300 -695 L 104 -450 Z M 104 -489 L 269 -695 L 175 -695 L 104 -606 Z M 104 -645 L 144 -695 L 104 -695 Z M 104 -176 L 396 -543 L 396 -660 L 104 -294 Z M 104 -40 L 119 -40 L 396 -386 L 396 -504 L 104 -137 Z M 150 -40 L 244 -40 L 396 -230 L 396 -347 Z M 275 -40 L 369 -40 L 396 -74 L 396 -191 Z " id="path19"/>
+<path d="M 315 -289 L 171 -340 L 375 -412 L 335 -625 L 452 -526 L 433 -478 L 412 -496 L 421 -447 L 412 -425 L 426 -405 L 425 -402 L 448 -370 L 409 -374 L 407 -372 L 382 -374 L 372 -361 L 312 -340 L 346 -328 Z M 685 -289 L 654 -328 L 688 -340 L 628 -361 L 618 -374 L 593 -372 L 591 -374 L 552 -370 L 575 -402 L 574 -405 L 588 -425 L 579 -447 L 588 -496 L 567 -478 L 548 -526 L 665 -625 L 625 -412 L 829 -340 Z M 500 -340 L 438 -425 L 500 -581 L 562 -425 Z M 500 -398 L 522 -429 L 500 -485 L 478 -429 Z M 708 -220 L 543 -244 L 500 -340 L 604 -351 L 628 -321 L 637 -309 Z M 292 -220 L 396 -351 L 500 -340 L 457 -244 Z M 630 -264 L 588 -317 L 550 -313 L 568 -273 Z M 370 -264 L 432 -273 L 450 -313 L 412 -317 Z M 665 -55 L 500 -195 L 335 -55 L 363 -205 L 417 -213 L 412 -184 L 452 -218 L 471 -221 L 481 -244 L 484 -244 L 500 -280 L 516 -244 L 519 -244 L 529 -221 L 548 -218 L 588 -184 L 583 -213 L 637 -205 Z " id="path20"/>
+<path d="M 127 -802 L 84 -828 L 165 -970 L 217 -940 Z M 17 0 L 17 -70 L 96 -70 L 96 -665 L 17 -665 L 17 -735 L 249 -735 L 249 -665 L 171 -665 L 171 -70 L 249 -70 L 249 0 Z M 387 -802 L 344 -828 L 425 -970 L 477 -940 Z M 348 8 Q 328 8 311 -1.5 Q 294 -11 282.5 -27 Q 271 -43 264.5 -61 Q 258 -79 254 -98 Q 250 -117 248 -136.5 Q 246 -156 246 -175 L 246 -180 L 321 -180 L 321 -177 Q 321 -171 321 -165 Q 321 -159 321.5 -152.5 Q 322 -146 322.5 -140 Q 323 -134 323.5 -128 Q 324 -122 324.5 -115.5 Q 325 -109 326 -103 Q 327 -97 328.5 -91 Q 330 -85 332 -79 Q 334 -73 338 -67.5 Q 342 -62 348 -62 Q 355 -62 358.5 -69 Q 362 -76 364 -83 Q 366 -90 367.5 -97 Q 369 -104 370 -110.5 Q 371 -117 371.5 -124.5 Q 372 -132 372.5 -139 Q 373 -146 373.5 -153 Q 374 -160 374 -167 Q 374 -174 374 -181 Q 374 -188 374 -195 L 374 -665 L 296 -665 L 296 -735 L 449 -735 L 449 -195 Q 449 -179 448.5 -163.5 Q 448 -148 446 -132.5 Q 444 -117 441 -101.5 Q 438 -86 433 -71 Q 428 -56 421 -42 Q 414 -28 403.5 -16.5 Q 393 -5 378 1.5 Q 363 8 348 8 Z " id="path21"/>
+<path d="M 130 -587 L 88 -613 L 169 -755 L 221 -725 Z M 17 0 L 17 -70 L 100 -70 L 100 -450 L 27 -450 L 27 -520 L 175 -520 L 175 -70 L 249 -70 L 249 0 Z M 414 -587 L 371 -613 L 452 -755 L 504 -725 Z M 343 223 Q 324 223 306 217.5 Q 288 212 273.5 200 Q 259 188 249 172 Q 239 156 233 138.5 Q 227 121 224.5 102.5 Q 222 84 221 65 L 296 65 Q 296 79 298 92.5 Q 300 106 304.5 119 Q 309 132 319 142.5 Q 329 153 343 153 Q 355 153 364 142.5 Q 373 132 377.5 120 Q 382 108 384.5 95.5 Q 387 83 388.5 70.5 Q 390 58 390 45.5 Q 390 33 390 20 L 390 -450 L 312 -450 L 312 -520 L 465 -520 L 465 20 Q 465 42 463.5 64 Q 462 86 457 107.5 Q 452 129 443.5 150 Q 435 171 420.5 187.5 Q 406 204 385.5 213.5 Q 365 223 343 223 Z " id="path22"/>
 </defs>
 <g>
 <g data-source-text="0" fill="#dee4e3" transform="translate(174 41.292) rotate(0) scale(0.023999998)">
@@ -105,93 +105,93 @@
 </g>
 </g>
 <g>
-<g data-source-text="U+EF10" fill="#dee4e3" transform="translate(36 113.292) rotate(0) scale(0.023999998)">
+<g data-source-text="U+F880" fill="#dee4e3" transform="translate(36 113.292) rotate(0) scale(0.023999998)">
 <use href="#path17" transform="translate(0 0)"/>
 <use href="#path18" transform="translate(500 0)"/>
-<use href="#path15" transform="translate(1000 0)"/>
-<use href="#path16" transform="translate(1500 0)"/>
-<use href="#path2" transform="translate(2000 0)"/>
+<use href="#path16" transform="translate(1000 0)"/>
+<use href="#path9" transform="translate(1500 0)"/>
+<use href="#path9" transform="translate(2000 0)"/>
 <use href="#path1" transform="translate(2500 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e3" transform="translate(156 118.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e3" transform="translate(168 118.584) rotate(0) scale(0.047999997)">
 <use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e3" transform="translate(240 118.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e3" transform="translate(228 118.584) rotate(0) scale(0.047999997)">
 <use href="#path20" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e3" transform="translate(312 118.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e3" transform="translate(312 118.584) rotate(0) scale(0.047999997)">
 <use href="#path21" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(384 118.584) rotate(0) scale(0.047999997)">
+<g data-source-text="" fill="#dee4e3" transform="translate(384 118.584) rotate(0) scale(0.047999997)">
 <use href="#path22" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(456 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(456 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(528 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(528 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(600 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(600 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(672 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(672 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(744 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(744 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(816 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(816 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(888 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(888 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(960 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(960 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1032 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(1032 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1104 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(1104 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1176 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(1176 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 <g>
-<g data-source-text="" fill="#dee4e340" transform="translate(1248 118.584) rotate(0) scale(0.047999997)">
-<use href="#path22" transform="translate(0 0)"/>
+<g data-source-text="" fill="#dee4e340" transform="translate(1248 118.584) rotate(0) scale(0.047999997)">
+<use href="#path19" transform="translate(0 0)"/>
 </g>
 </g>
 </svg>
