@@ -1,0 +1,11 @@
+{
+  "name": "@iosevka/generate-samples",
+  "version": "34.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "dependencies": {
+    "@iosevka/data-export": "34.1.0"
+  }
+}

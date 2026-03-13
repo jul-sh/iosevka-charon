@@ -1,0 +1,60 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DependentSelector] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Armenian-Upper-Za-Group : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Armenian-Shared-Shapes : ArmHBar
+
+	do "Za"
+		create-glyph 'armn/Za' 0x536 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+			local fine : df.adviceStroke 4
+			include : dispiro
+				widths.rhs df.mvs
+				g4 df.leftSB (CAP - Hook)
+				hookstart CAP (sw -- df.mvs)
+				flat df.rightSB (CAP - ArchDepthB)
+				curl df.rightSB (df.mvs - df.shoulderFine + ArchDepthA)
+				arcvh
+				g4 df.leftSB (df.mvs - df.shoulderFine) [widths.rhs df.shoulderFine]
+			include : VBar.l df.leftSB 0 VJut fine
+			include : [ArmHBar.normal df].base
+
+	do "Jheh"
+		create-glyph 'armn/Jheh' 0x54B : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+			local fine : df.adviceStroke 4
+			local x1 : df.middle + [HSwToV : [StrokeWidthBlend 0 0.5] * fine]
+			include : dispiro
+				widths.rhs df.mvs
+				straight.up.start df.leftSB (CAP - ArchDepthA)
+				arch.rhs CAP (sw -- df.mvs)
+				flat df.rightSB (CAP - ArchDepthB)
+				curl df.rightSB (df.mvs - df.shoulderFine + ArchDepthA)
+				arcvh
+				g4 df.leftSB (df.mvs - df.shoulderFine) [widths.rhs df.shoulderFine]
+			include : intersection
+				spiro-outline
+					flat df.rightSB CAP
+					curl df.rightSB (df.mvs - df.shoulderFine + ArchDepthA)
+					arcvh
+					corner df.leftSB (df.mvs - df.shoulderFine) [widths.rhs df.shoulderFine]
+					corner df.leftSB CAP
+				lift-@ : dispiro
+					widths.lhs df.mvs
+					flat @x2               (CAP - ArchDepthA)
+					curl (@x2 = df.leftSB) (@y2 = CAP - 1.1 * ArchDepthA)
+					g4   [mix x1 @x2 0.5]  [mix @y2 @y4 0.5] [widths.center df.mvs]
+					flat x1                (@y4 = 0.55 * ArchDepthB) [widths.rhs fine]
+					curl x1                (0.5 * ArchDepthB)
+					arcvh
+					g4 df.leftSB (df.mvs - df.shoulderFine) [widths.rhs df.shoulderFine]
+			include : VBar.l df.leftSB 0 VJut fine
+			include : [ArmHBar.normal df].base

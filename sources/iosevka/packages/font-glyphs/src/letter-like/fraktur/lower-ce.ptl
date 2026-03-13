@@ -1,0 +1,42 @@
+$$include '../../meta/macros.ptl'
+
+glyph-module
+
+import [mix fallback min max slY] from "@iosevka/util"
+
+glyph-block LetterLike-Fraktur-Lower-CE : begin
+	glyph-block-import Common-Derivatives
+	glyph-block-import CommonShapes
+	glyph-block-import LetterLike-Fraktur-Common : LowerDf S F T fraktur-stroke change-pen
+	glyph-block-import LetterLike-Fraktur-Common : DecoSizeX DecoSizeY SlopeA SlopeB
+	glyph-block-import LetterLike-Fraktur-Common : Wave FHook PHexTop PHexBot
+
+	create-glyph "frak/e" 0xAB32 : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.e
+
+		local box : S.box XH 0 df.leftSB df.rightSB
+		include : lift-@ : fraktur-stroke S
+			corner                  (@x1 = @xL + S.thick)     [slY @xM @y2 @x1 SlopeA]
+			g2                      (@xM = box.xMid)  (@y2 = [box.yp DesignParameters.eBarPos])
+			corner                  (@xR = box.right)         [slY @xM @y2 @xR SlopeA]
+			corner                  (@xT = [box.xp PHexTop])  (@yT = box.top)
+			corner                  (@xL = box.left)          [slY @xT @yT @xL SlopeA]
+			curl                     @xL                      (@yB + ArchDepthB)
+			[g2c.sr (-SlopeA)].end   @xT                      (@yB = box.bot)
+			corner                   @xR                      [slY @xT @yB @xR SlopeA]
+
+	alias 'mathFrak/e' 0x1D522 'frak/e'
+
+	create-glyph "frak/c" 0x1D520 : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.e
+
+		local box : S.box XH 0 df.leftSB df.rightSB
+		include : lift-@ : fraktur-stroke S
+			corner                 (@xR = box.right)        [slY @xT @yT @xR SlopeB]
+			corner                 (@xT = [box.xp PHexTop]) (@yT = box.top)
+			corner                 (@xL = box.left)         [slY @xT @yT @xL SlopeA]
+			curl                    @xL                     (@yB + ArchDepthB)
+			[g2c.sr (-SlopeA)].end (@xB = [box.xp PHexTop]) (@yB = box.bot)
+			corner                  @xR                     [slY @xB @yB @xR SlopeA]

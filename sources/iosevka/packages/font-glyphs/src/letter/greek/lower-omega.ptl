@@ -1,0 +1,89 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Letter-Greek-Lower-Omega : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared : CreateTurnedLetter
+
+	define [LowerOmegaShape df top] : glyph-proc
+		local stroke : Math.min df.mvs : AdviceStroke 3 df.adws
+		local fine : stroke * CThin
+
+		local x0 : mix df.leftSB df.rightSB 0.1
+		local x1 : df.leftSB + OX
+
+		local y0 : top - O
+		local y1 : mix 0 top 0.50 # 0.45
+		local y3 : mix 0 top 0.50
+		local y4 : mix 0 top 0.65
+
+		include : dispiro
+			widths.lhs stroke
+			g4   x0 y0
+			g4   x1 y1
+			arch.lhs 0 (sw -- stroke) (swAfter -- fine)
+			flat (df.middle - [HSwToV : stroke / 2 - fine]) y3 [widths.lhs.heading fine Upward]
+			curl (df.middle - [HSwToV : stroke / 2 - fine]) y4 [heading Upward]
+		include : dispiro
+			widths.rhs stroke
+			g4   (df.width - x0) y0
+			g4   (df.width - x1) y1
+			arch.rhs 0 (sw -- stroke) (swAfter -- fine)
+			flat (df.middle + [HSwToV : stroke / 2 - fine]) y3 [widths.rhs.heading fine Upward]
+			curl (df.middle + [HSwToV : stroke / 2 - fine]) y4 [heading Upward]
+
+	create-glyph 'grek/omega' 0x3C9 : glyph-proc
+		local df : include : DivFrame para.advanceScaleM 3
+		include : df.markSet.e
+		include : LowerOmegaShape df XH
+
+	CreateTurnedLetter 'turnomega' null 'grek/omega' HalfAdvance (XH / 2)
+
+	create-glyph 'grek/piSymbol' 0x3D6 : glyph-proc
+		local df : include : DivFrame para.advanceScaleM 3
+		include : df.markSet.e
+
+		include : union
+			HBar.t df.leftSB df.rightSB XH
+			difference
+				LowerOmegaShape df XH
+				MaskAbove XH
+
+	create-glyph 'latn/Omega' 0xA7B6 : glyph-proc
+		local df : include : DivFrame para.advanceScaleMM 3
+		include : df.markSet.capital
+		include : LowerOmegaShape df CAP
+
+	alias 'latn/omega' 0xA7B7 'grek/omega'
+
+	create-glyph 'latn/omegaClosed' 0x277 : glyph-proc
+		local df : include : DivFrame para.advanceScaleM 3
+		include : df.markSet.e
+		local stroke : Math.min df.mvs : AdviceStroke 3 df.adws
+		local fine : stroke * CThin
+
+		# local x0 : mix df.leftSB df.rightSB 0.1
+		local x1 : df.leftSB + OX
+
+		local y0 : XH - O
+		local y1 : mix 0 XH 0.45
+		local y3 : mix 0 XH 0.50
+		local y4 : mix 0 XH 0.65
+
+		include : dispiro
+			widths.rhs fine
+			flat (df.middle - [HSwToV : stroke / 2 - fine]) y4 [heading Downward]
+			curl (df.middle - [HSwToV : stroke / 2 - fine]) y3 [heading Downward]
+			arch.rhs 0 (sw -- stroke) (swBefore -- fine)
+			g4   x1 y1
+			# g4 x0 y0
+			arch.rhs y0 (sw -- stroke)
+			# g4 (df.width - x0) y0
+			g4   (df.width - x1) y1
+			arch.rhs 0 (sw -- stroke) (swAfter -- fine)
+			flat (df.middle + [HSwToV : stroke / 2 - fine]) y3 [widths.rhs.heading fine Upward]
+			curl (df.middle + [HSwToV : stroke / 2 - fine]) y4 [heading Upward]

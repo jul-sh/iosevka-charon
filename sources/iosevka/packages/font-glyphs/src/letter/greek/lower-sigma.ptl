@@ -1,0 +1,24 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DesignParameters] from "../../meta/aesthetics.mjs"
+
+glyph-module
+
+glyph-block Letter-Greek-Lower-Sigma : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	create-glyph 'grek/sigma' 0x3C3 : glyph-proc
+		include : MarkSet.e
+		local fine : Math.max QuarterStroke : AdviceStroke 8
+		include : dispiro
+			widths.lhs
+			flat (RightSB + SideJut + [HSwToV : 0.15 * Stroke]) XH [heading Leftward]
+			curl Middle (XH - O) [heading Leftward]
+			archv
+			flatside.ld SB      0 XH SmallArchDepthA SmallArchDepthB
+			arch.lhs 0
+			flatside.ru RightSB 0 XH SmallArchDepthA SmallArchDepthB 0
+			arcvh
+			g4.left.end Middle (XH - O - (Stroke - fine)) [widths.lhs.heading fine Leftward]
