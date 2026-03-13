@@ -20,7 +20,7 @@ help:
 	@echo "  make proof:                          Generates HTML proofs via diffenator2"
 	@echo "  make compare:                        Compares raw vs post-processed fonts"
 	@echo "  make webfonts:                       Generates WOFF2 webfonts with subsets (full, latin-ext, latin)"
-	@echo "  make update-subtree TAG=<version>:   Updates Iosevka subtree to specified tag (e.g., v34.0.0)"
+	@echo "  make update-subtree [TAG=<version>]: Updates Iosevka subtree to latest release or specified tag"
 	@echo "  make sync-version:                   Syncs upstream version to GF-compliant format"
 	@echo "  make clean:                          Removes build artifacts and stamp files"
 	@echo
@@ -121,16 +121,31 @@ clean:
 	fi
 
 # Update Iosevka subtree to a new version
-# Usage: make update-subtree TAG=v34.0.0
+# Usage: make update-subtree [TAG=v34.0.0]
 update-subtree:
-	@if [ -z "$(TAG)" ]; then \
-		echo "Error: TAG parameter is required"; \
-		echo "Usage: make update-subtree TAG=v34.0.0"; \
+	@upstream_url="https://github.com/be5invis/Iosevka.git"; \
+	if git remote get-url iosevka-upstream >/dev/null 2>&1; then \
+		current_url="$$(git remote get-url iosevka-upstream)"; \
+		if [ "$$current_url" != "$$upstream_url" ]; then \
+			echo "==> Updating iosevka-upstream remote to $$upstream_url"; \
+			git remote set-url iosevka-upstream "$$upstream_url"; \
+		fi; \
+	else \
+		echo "==> Adding iosevka-upstream remote: $$upstream_url"; \
+		git remote add iosevka-upstream "$$upstream_url"; \
+	fi; \
+	tag="$(TAG)"; \
+	if [ -z "$$tag" ]; then \
+		echo "==> Resolving latest upstream release tag..."; \
+		tag="$$(git ls-remote --refs --tags iosevka-upstream 'v*' | awk -F/ '{print $$3}' | sort -V | tail -n 1)"; \
+	fi; \
+	if [ -z "$$tag" ]; then \
+		echo "Error: Could not determine an upstream release tag"; \
 		exit 1; \
-	fi
-	@echo "==> Updating Iosevka subtree to $(TAG)..."
-	git fetch iosevka-upstream tag $(TAG) --no-tags
-	git subtree pull --prefix=sources/iosevka iosevka-upstream $(TAG) -m "Update Iosevka subtree to $(TAG)"
-	@echo "==> Subtree updated successfully to $(TAG)"
+	fi; \
+	echo "==> Updating Iosevka subtree to $$tag..."; \
+	git fetch iosevka-upstream tag "$$tag" --no-tags; \
+	git subtree pull --prefix=sources/iosevka iosevka-upstream "$$tag" -m "Update Iosevka subtree to $$tag"; \
+	echo "==> Subtree updated successfully to $$tag"
 
 .PHONY: $(TEST_TARGETS) help clean update-subtree webfonts sync-version
