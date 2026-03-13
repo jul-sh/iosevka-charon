@@ -32,33 +32,37 @@ glyph-block Symbol-Punctuation-Slashes-And-Number-Sign : begin
 			corner (l - w * cor) b
 
 	create-glyph 'slash' '/' : glyph-proc
-		include : SlashShape slashDefautLeft slashDefaultRight
+		local df : include : DivFrame para.advanceScaleF
+		include : SlashShape df.leftSB df.rightSB nothing nothing df.mvs
 
 	alias 'solidus'      0x2044 'slash'
 	alias 'fractionBar'  null   'slash'
 	alias 'mathDivSlash' 0x2215 'slash'
 
 	create-glyph 'doubleSlash' 0x2AFD : glyph-proc
-		define w : AdviceStroke 3
-		define b : Math.max w : Width * 0.15
-		include : SlashShape (slashDefautLeft - b) (slashDefaultRight - b) nothing nothing w
-		include : SlashShape (slashDefautLeft + b) (slashDefaultRight + b) nothing nothing w
+		local df : include : DivFrame para.advanceScaleF
+		define w : df.adviceStroke 3
+		define b : Math.max w : df.width * 0.15
+		include : SlashShape (df.leftSB - b)  (df.rightSB - b)  nothing nothing w
+		include : SlashShape (df.leftSB + b)  (df.rightSB + b)  nothing nothing w
 
 	create-glyph 'slash.left' : glyph-proc
+		local df : include : DivFrame para.advanceScaleF
 		Joining.set currentGlyph Joining.Classes.Right
-		include : SlashShape slashDefautLeft Width
+		include : SlashShape df.leftSB df.width nothing nothing df.mvs
 
 	create-glyph 'slash.right' : glyph-proc
+		local df : include : DivFrame para.advanceScaleF
 		Joining.set currentGlyph Joining.Classes.Left
-		include : SlashShape 0 slashDefaultRight
+		include : SlashShape 0 df.rightSB nothing nothing df.mvs
 
 	create-glyph 'slantedParallel' : glyph-proc
-		define w : AdviceStroke 3
-		define b : Math.max w : Width * 0.15
-		include : SlashShape (slashDefautLeft - b) (slashDefaultRight - b) TackTop TackBot w
-		include : SlashShape (slashDefautLeft + b) (slashDefaultRight + b) TackTop TackBot w
+		local df : include : DivFrame para.advanceScaleF
+		define w : df.adviceStroke 3
+		define b : Math.max w : df.width * 0.15
+		include : SlashShape (df.leftSB - b)  (df.rightSB - b)  TackTop TackBot w
+		include : SlashShape (df.leftSB + b)  (df.rightSB + b)  TackTop TackBot w
 
-	local backslashWidth : (slashDefaultRight - slashDefautLeft) * (1 + TanSlope * 2)
 	define flex-params [BackslashShape] : glyph-proc
 		local-parameter : l
 		local-parameter : r
@@ -74,7 +78,8 @@ glyph-block Symbol-Punctuation-Slashes-And-Number-Sign : begin
 			corner (r - w * cor) b
 
 	create-glyph 'backslash' "\\" : glyph-proc
-		include : BackslashShape slashDefautLeft slashDefaultRight
+		local df : include : DivFrame para.advanceScaleF
+		include : BackslashShape df.leftSB df.rightSB nothing nothing df.mvs
 
 	alias 'mathSetMinus'  0x2216 'backslash'
 	alias 'mathBackslash' 0x29F5 'backslash'
@@ -88,23 +93,28 @@ glyph-block Symbol-Punctuation-Slashes-And-Number-Sign : begin
 
 	create-glyph 'slashOverbar' 0x29F6 : glyph-proc
 		include : refer-glyph "slash"
-		include : HBar.m (Middle - markExtend) (Middle + markExtend) (ParenTop + AccentClearance) markStroke
+		local mid : currentGlyph.advanceWidth / 2
+		include : HBar.m (mid - markExtend) (mid + markExtend) (ParenTop + AccentClearance) markStroke
 
 	create-glyph 'backslashBar' 0x29F7 : glyph-proc
 		include : refer-glyph "backslash"
-		include : HBar.m SB RightSB SymbolMid OverlayStroke
+		include : HBar.m 0 currentGlyph.advanceWidth SymbolMid OverlayStroke
 
 	create-glyph 'backslash.left' : glyph-proc
+		local df : include : DivFrame para.advanceScaleF
+		local backslashWidth : (df.rightSB - df.leftSB) * (1 + TanSlope * 2)
 		Joining.set currentGlyph Joining.Classes.Right
-		include : BackslashShape (Middle - backslashWidth / 2) Width
+		include : BackslashShape (df.middle - backslashWidth / 2) df.width nothing nothing df.mvs
 
 	create-glyph 'backslash.right' : glyph-proc
+		local df : include : DivFrame para.advanceScaleF
+		local backslashWidth : (df.rightSB - df.leftSB) * (1 + TanSlope * 2)
 		Joining.set currentGlyph Joining.Classes.Left
-		include : BackslashShape 0 (Middle + backslashWidth / 2)
+		include : BackslashShape 0 (df.middle + backslashWidth / 2) nothing nothing df.mvs
 
 	WithDotVariants 'slashWithDot' 0x2E4A : function [DrawAt kr ov] : glyph-proc
 		include : refer-glyph "slash"
-		include : DrawAt Middle SymbolMid (PeriodRadius * kr - ov)
+		include : DrawAt (currentGlyph.advanceWidth / 2) SymbolMid (PeriodRadius * kr - ov)
 
 	do "number sign"
 		define fine : AdviceStroke 2.75
