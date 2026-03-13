@@ -1,0 +1,30 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DependentSelector] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Armenian-Upper-Yi : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Latin-Upper-F : EFVJutLength
+	glyph-block-import Letter-Cyrillic-Ze : CyrZe
+
+	do "Yi"
+		create-glyph 'armn/Yi' 0x545 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+			local ze : CyrZe 0 0 CAP 0
+				left   -- df.leftSB
+				right  -- df.rightSB
+				blend  -- (1 + (2 * O) / (df.rightSB - df.leftSB))
+				hook   -- Hook
+				barPos -- HBarPos
+				ada    -- ArchDepthA
+				adb    -- ArchDepthB
+			include : ze.Shape
+			if SLAB : begin
+				define [object stroke midx midy] : ze.Dim
+				local { jutTop jutBot jutMid } : EFVJutLength CAP HBarPos stroke Hook
+				include : VSerif.ml midx midy jutMid (VJutStroke * (stroke / Stroke))

@@ -1,0 +1,59 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DesignParameters] from "../../meta/aesthetics.mjs"
+
+glyph-module
+
+glyph-block Letter-Greek-Lower-Theta : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Common-OShape-Variants : OvalShapeT DiamondShapeT
+
+	define [ThetaShapeBase shapeT] : namespace
+		define [outlineT sink offsetX offsetY top] : shapeT sink (top - offsetY) (offsetY) (SB + offsetX) (RightSB - offsetX)
+		export : define [Shape top] : outlineT dispiro 0 0 top
+		export : define [Mask top] : outlineT spiro-outline 1 1 top
+
+	define Capsule : ThetaShapeBase OShapeT
+	define Oval : ThetaShapeBase OvalShapeT
+	define Diamond : ThetaShapeBase DiamondShapeT
+
+	define ThetaConfig : object
+		'capsule' Capsule
+		'oval'    Oval
+		'diamond' Diamond
+
+	foreach { suffix ShapeBase } [pairs-of ThetaConfig] : begin
+		create-glyph "grek/theta.\(suffix)" : glyph-proc
+			include : MarkSet.b
+			include : ShapeBase.Shape Ascender
+			include : intersection
+				ShapeBase.Mask Ascender
+				HBar.m SB RightSB (0.5 * Ascender)
+
+	create-glyph 'grek/theta.cursive' : glyph-proc
+		include : MarkSet.b
+
+		define pXTopLeft 0.2
+		define xTopLeft : mix SB RightSB pXTopLeft
+		define coXTopLeft : mix SB RightSB (2 - pXTopLeft)
+		define topSMA : ArchDepthAOf (SmallArchDepth * (1 - pXTopLeft)) (Width * (1 - pXTopLeft))
+		define topSMB : ArchDepthBOf (SmallArchDepth * (1 - pXTopLeft)) (Width * (1 - pXTopLeft))
+		define fine : AdviceStroke2 3 3 Ascender
+		include : intersection [MaskLeft : mix RightSB Width 0.5] : dispiro
+			widths.lhs
+			flat (SB + OX) (0.45 * Ascender) [heading Downward]
+			curl (SB + OX) SmallArchDepthB
+			arch.lhs 0
+			flat (RightSB - OX) SmallArchDepthA
+			curl (RightSB - OX) (Ascender - topSMB)
+			arch.lhs Ascender (swAfter -- fine) (blendPost -- {})
+			g4 xTopLeft (Ascender - topSMA) [widths.lhs fine]
+			g4 [mix xTopLeft RightSB 0.5] [mix (Ascender - topSMA) (Ascender / 2 - HalfStroke) 0.9]
+			g4 [mix RightSB Width 0.5] (Ascender / 2 - HalfStroke)
+			g4 coXTopLeft (Ascender - topSMA)
+
+	select-variant 'grek/theta' 0x3B8
+	select-variant 'grek/theta/nonCursive' (shapeFrom -- 'grek/theta')
+	alias 'grek/thetaSymbol' 0x03D1 'grek/theta.cursive'

@@ -1,0 +1,136 @@
+$$include './meta/macros.ptl'
+
+import [CvDecompose LocalizedForm] from "@iosevka/glyph/relation"
+import [createGsubLookupFromGr] from "./gsub-gr.mjs"
+
+extern Set
+
+export : define [buildLOCL gsub para glyphStore] : begin
+	local rec : gsub.beginBlock
+
+	define { chain-rule } : gsub.ChainRuleBuilder
+
+	define cyrlSRB  : gsub.copyLanguage 'cyrl_SRB ' 'cyrl_DFLT'
+	define cyrlMKD  : gsub.copyLanguage 'cyrl_MKD ' 'cyrl_DFLT'
+	define cyrlBOS  : gsub.copyLanguage 'cyrl_BOS ' 'cyrl_DFLT'
+	define cyrlBGR  : gsub.copyLanguage 'cyrl_BGR ' 'cyrl_DFLT'
+	define cyrlBSH  : gsub.copyLanguage 'cyrl_BSH ' 'cyrl_DFLT'
+	define cyrlCHU  : gsub.copyLanguage 'cyrl_CHU ' 'cyrl_DFLT'
+	define latnPLK  : gsub.copyLanguage 'latn_PLK ' 'latn_DFLT'
+	define latnROM  : gsub.copyLanguage 'latn_ROM ' 'latn_DFLT'
+	define latnMOL  : gsub.copyLanguage 'latn_MOL ' 'latn_DFLT'
+	define latnTRK  : gsub.copyLanguage 'latn_TRK ' 'latn_DFLT'
+	define latnAZE  : gsub.copyLanguage 'latn_AZE ' 'latn_DFLT'
+	define latnCRT  : gsub.copyLanguage 'latn_CRT ' 'latn_DFLT'
+	define latnGAG  : gsub.copyLanguage 'latn_GAG ' 'latn_DFLT'
+	define latnJCT  : gsub.copyLanguage 'latn_JCT ' 'latn_DFLT'
+	define latnKAZ  : gsub.copyLanguage 'latn_KAZ ' 'latn_DFLT'
+	define latnKJJ  : gsub.copyLanguage 'latn_KJJ ' 'latn_DFLT'
+	define latnKMZ  : gsub.copyLanguage 'latn_KMZ ' 'latn_DFLT'
+	define latnTAT  : gsub.copyLanguage 'latn_TAT ' 'latn_DFLT'
+	define latnTLY  : gsub.copyLanguage 'latn_TLY ' 'latn_DFLT'
+	define latnUDI  : gsub.copyLanguage 'latn_UDI ' 'latn_DFLT'
+	define latnZZA  : gsub.copyLanguage 'latn_ZZA ' 'latn_DFLT'
+	define latnVIT  : gsub.copyLanguage 'latn_VIT ' 'latn_DFLT'
+	define latnIPPH : gsub.copyLanguage 'latn_IPPH' 'latn_DFLT'
+	define latnAPPH : gsub.copyLanguage 'latn_APPH' 'latn_DFLT'
+	define grekIPPH : gsub.copyLanguage 'grek_IPPH' 'grek_DFLT'
+	define grekAPPH : gsub.copyLanguage 'grek_APPH' 'grek_DFLT'
+
+	# SRB
+	define loclSRB : gsub.createFeature 'locl'
+	cyrlSRB.addFeature loclSRB
+	cyrlMKD.addFeature loclSRB
+	cyrlBOS.addFeature loclSRB
+	loclSRB.addLookup : createGsubLookupFromGr gsub glyphStore
+		if [not para.isItalic] LocalizedForm.SRB.Upright LocalizedForm.SRB.Italic
+
+	# BGR
+	define loclBGR : cyrlBGR.addFeature : gsub.createFeature 'locl'
+	loclBGR.addLookup : createGsubLookupFromGr gsub glyphStore LocalizedForm.BGR
+
+	# BSH
+	define loclBSH : cyrlBSH.addFeature : gsub.createFeature 'locl'
+	loclBSH.addLookup : createGsubLookupFromGr gsub glyphStore
+		if [not para.isItalic] LocalizedForm.BSH.Upright LocalizedForm.BSH.Italic
+
+	# CHU
+	define loclCHU : cyrlCHU.addFeature : gsub.createFeature 'locl'
+	loclCHU.addLookup : createGsubLookupFromGr gsub glyphStore LocalizedForm.CHU
+
+	# PLK
+	define loclPLK : latnPLK.addFeature : gsub.createFeature 'locl'
+	loclPLK.addLookup : createGsubLookupFromGr gsub glyphStore LocalizedForm.PLK
+
+	# ROM
+	define loclROM : gsub.createFeature 'locl'
+	latnROM.addFeature loclROM
+	latnMOL.addFeature loclROM
+	loclROM.addLookup : gsub.createLookup
+		.type 'gsub_single'
+		.substitutions : object
+			'SCedilla' : glyphStore.ensureExists 'SComma'
+			'sCedilla' : glyphStore.ensureExists 'sComma'
+			'TCedilla' : glyphStore.ensureExists 'TComma'
+			'tCedilla' : glyphStore.ensureExists 'tComma'
+
+	# TRK
+	define loclTRK : gsub.createFeature 'locl'
+	latnTRK.addFeature loclTRK
+	latnAZE.addFeature loclTRK
+	latnCRT.addFeature loclTRK
+	latnGAG.addFeature loclTRK
+	latnJCT.addFeature loclTRK
+	latnKAZ.addFeature loclTRK
+	latnKJJ.addFeature loclTRK
+	latnKMZ.addFeature loclTRK
+	latnTAT.addFeature loclTRK
+	latnTLY.addFeature loclTRK
+	latnUDI.addFeature loclTRK
+	latnZZA.addFeature loclTRK
+	loclTRK.addLookup : createGsubLookupFromGr gsub glyphStore LocalizedForm.TRK
+
+	# VIT
+	define loclVIT : latnVIT.addFeature : gsub.createFeature 'locl'
+
+	define [sx s] : lambda [t] : t.map : lambda [x] "\(x)/\(s)"
+
+	do "Decompose Vietnamese glyphs"
+
+		local decompositionSubstitutions {.}
+		loclVIT.addLookup : gsub.createLookup
+			.type 'gsub_multiple'
+			.substitutions decompositionSubstitutions
+
+		local viCircumflex 'ẦẤẨỀẾỂỒỐỔầấẩềếểồốổ'
+		local viBreve      'ẮẰẲằắẳ'
+		local viShiftableMarks { 'acuteAbove' 'graveAbove' 'hookAbove' }
+
+		foreach ch (viCircumflex + viBreve) : begin
+			local u : ch.codePointAt 0
+			local gn : glyphStore.queryNameByUnicode u
+			local g : glyphStore.queryByNameEnsured gn
+			local decomp : CvDecompose.get g
+			set decompositionSubstitutions.(gn) decomp
+
+		loclVIT.addLookup : gsub.createLookup
+			.type 'gsub_chaining'
+			.rules : list
+				chain-rule
+					{'A' 'a' 'E' 'e' 'O' 'o'} ~> nothing
+					{'circumflexAbove'}       ~> nothing
+					viShiftableMarks          ~> [sx 'viSide']
+				chain-rule
+					{'A' 'a'}                 ~> nothing
+					{'breveAbove'}            ~> nothing
+					viShiftableMarks          ~> [sx 'viCenter']
+
+	# IPPH
+	define loclIPPH : gsub.createFeature 'locl'
+	latnIPPH.addFeature loclIPPH
+	latnAPPH.addFeature loclIPPH
+	grekIPPH.addFeature loclIPPH
+	grekAPPH.addFeature loclIPPH
+	loclIPPH.addLookup : createGsubLookupFromGr gsub glyphStore LocalizedForm.IPPH
+
+	gsub.endBlockAtFront rec

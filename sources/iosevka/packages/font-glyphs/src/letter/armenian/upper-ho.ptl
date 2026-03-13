@@ -1,0 +1,46 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DependentSelector] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Armenian-Upper-Ho : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared-Shapes : SerifFrame
+
+	# Common Params
+	define barPos : XH / 2
+	define highBarPos XH
+	define jut Jut
+
+	do "Ho"
+		create-glyph 'armn/Ho' 0x540 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+
+			local x1 : mix df.leftSB df.rightSB 0.1
+			local midy : CAP * HBarPos
+			local midyTop : midy + 0.5 * df.mvs
+			local midyBot : midy - 0.5 * df.mvs
+			include : dispiro
+				widths.rhs df.mvs
+				flat x1 CAP
+				curl df.middle CAP [heading Rightward]
+				archv
+				g4 (df.rightSB + O * 2) [mix CAP midyBot (ArchDepthB / (ArchDepthA + ArchDepthB))]
+				arcvh
+				straight.left.end df.middle midyBot [heading Leftward]
+
+			include : dispiro
+				widths.rhs df.mvs
+				flat (df.leftSB - jut + [HSwToV : 0.5 * df.mvs]) midyTop
+				curl df.middle midyTop [heading Rightward]
+				archv
+				flat df.rightSB [if (ArchDepthA + ArchDepthB < midyTop) (midyTop - ArchDepthB) : mix midyTop 0 (ArchDepthB / (ArchDepthA + ArchDepthB))]
+				curl df.rightSB 0 [heading Downward]
+
+			if SLAB : begin
+				local sf : SerifFrame.fromDf df CAP 0
+				include sf.rb.full

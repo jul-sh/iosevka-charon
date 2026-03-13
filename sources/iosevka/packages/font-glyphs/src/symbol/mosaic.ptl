@@ -1,0 +1,15 @@
+$$include '../meta/macros.ptl'
+
+export : define [apply] : begin
+	define $$Capture$$ this
+	run-glyph-module "./mosaic/block.mjs"
+	run-glyph-module "./mosaic/teletext.mjs"
+	run-glyph-module "./mosaic/smooth.mjs"
+	run-glyph-module "./mosaic/box-drawing.mjs"
+	run-glyph-module "./mosaic/dentistry.mjs"
+	run-glyph-module "./mosaic/split-graphic.mjs"
+	run-glyph-module "./mosaic/large-type.mjs"
+	run-glyph-module "./mosaic/powerline.mjs"
+	run-glyph-module "./mosaic/notdef.mjs"
+	run-glyph-module "./mosaic/inverted.mjs"
+	run-glyph-module "./mosaic/masked.mjs"

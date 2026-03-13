@@ -1,0 +1,56 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Letter-Cyrillic-Omega : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	define [CyrlOmegaShape df top p _ada _adb] : glyph-proc
+		local fine : df.mvs * CThin
+
+		local minHookDepth : Math.min (0.625 * (df.middle - df.leftSB - [HSwToV df.mvs])) ((df.rightSB - df.leftSB) / 3)
+		local xMidBarLeft    : df.middle - [HSwToV : df.mvs / 2]
+		local xMidBarRight   : df.middle + [HSwToV : df.mvs / 2]
+		local xMidBarCoLeft  : df.middle - [HSwToV : fine - df.mvs / 2]
+		local xMidBarCoRight : df.middle + [HSwToV : fine - df.mvs / 2]
+		local yMidBar : top * p
+
+		local xOpenL : Math.max [mix df.leftSB  xMidBarRight 0.5] (df.leftSB  + [HSwToV df.mvs] + minHookDepth)
+		local xOpenR : Math.min [mix df.rightSB xMidBarLeft  0.5] (df.rightSB - [HSwToV df.mvs] - minHookDepth)
+
+		local ada : _ada * (2 / 3) * df.adws
+		local adb : _adb * (2 / 3) * df.adws
+
+		include : dispiro
+			widths.lhs df.mvs
+			g4.left.start [arch.adjust-x.top xOpenL (sw -- df.mvs)] top
+			archv 8
+			flatside.ld df.leftSB 0 top ada adb
+			arcvh 8
+			g4 [mix df.leftSB xMidBarRight 0.5] O [heading Rightward]
+			archv 8
+			flat xMidBarCoRight [Math.min ada (yMidBar - TINY)] [widths.lhs.heading fine Upward]
+			curl xMidBarCoRight yMidBar [heading Upward]
+		include : dispiro
+			widths.rhs df.mvs
+			g4.right.start [arch.adjust-x.top xOpenR (sw -- df.mvs)] top
+			archv 8
+			flatside.rd df.rightSB 0 top ada adb
+			arcvh 8
+			g4 [mix df.rightSB xMidBarLeft 0.5] O [heading Leftward]
+			archv 8
+			flat xMidBarCoLeft [Math.min adb (yMidBar - TINY)] [widths.rhs.heading fine Upward]
+			curl xMidBarCoLeft yMidBar [heading Upward]
+
+	create-glyph 'cyrl/BroadOmega' 0xA64C : glyph-proc
+		local df : include : DivFrame para.advanceScaleMM 3
+		include : df.markSet.capital
+		include : CyrlOmegaShape df CAP 0.3 ArchDepthA ArchDepthB
+
+	create-glyph 'cyrl/broadOmega' 0xA64D : glyph-proc
+		local df : include : DivFrame para.advanceScaleMM 3
+		include : df.markSet.e
+		include : CyrlOmegaShape df XH 0.3 SmallArchDepthA SmallArchDepthB

@@ -1,0 +1,204 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Symbol-Pictograph-Faces : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	define [Face top bottom left right mosaicWidth mosaicWidthScalar _scale] : namespace
+		export : define [Dim] : begin
+			local scale : fallback _scale 1
+			local scaffold : object
+				top top
+				bot bottom
+				width : Math.min (right - left) (top - bottom)
+				midX : mix left right 0.5
+
+			local adws : (scaffold.width + SB * 2) / Width
+
+			set scaffold.left   : scaffold.midX - scaffold.width / 2
+			set scaffold.right  : scaffold.midX + scaffold.width / 2
+			set scaffold.sma    : ArchDepthAOf (SmallArchDepth * mosaicWidthScalar * scale) (mosaicWidth * scale)
+			set scaffold.smb    : ArchDepthBOf (SmallArchDepth * mosaicWidthScalar * scale) (mosaicWidth * scale)
+			set scaffold.rda    : ArchDepthAOf ((top - bottom) / 2) (mosaicWidth * scale)
+			set scaffold.rdb    : ArchDepthBOf ((top - bottom) / 2) (mosaicWidth * scale)
+			set scaffold.stroke : AdviceStroke 5 adws
+			set scaffold.fine   : AdviceStroke (6 * [Math.sqrt (mosaicWidthScalar * scale)]) adws
+
+			define eyeYPos      0.625
+			define noseYPos     0.5
+			define horiSep    : 0.6 * (scaffold.width - scaffold.stroke * 2)
+			define mouthDepth : 0.025 * [Math.sqrt (mosaicWidthScalar * scale)]
+
+			set scaffold.eyeRad    : DotRadius / Stroke * scaffold.fine * scale
+			set scaffold.bigEyeRad : scaffold.eyeRad * 1.1
+			set scaffold.eyeLeftX  : scaffold.midX - horiSep / 2 + scaffold.eyeRad / 2
+			set scaffold.eyeRightX : scaffold.midX + horiSep / 2 - scaffold.eyeRad / 2
+			set scaffold.eyeYPos   : mix scaffold.bot scaffold.top eyeYPos
+			set scaffold.noseRad     scaffold.fine
+			set scaffold.noseYPos  : mix scaffold.bot scaffold.top noseYPos
+			set scaffold.mouthLeftX  : scaffold.midX - horiSep / 2
+			set scaffold.mouthRightX : scaffold.midX + horiSep / 2
+			set scaffold.mouthYPos   : lambda [k] : mix scaffold.bot scaffold.top (1 - eyeYPos + k * mouthDepth)
+			set scaffold.minGap : scaffold.fine / 2
+
+			return scaffold
+		local dim : Dim
+
+		export : define [Ring F] : F dim.top dim.bot dim.left dim.right dim.stroke dim.sma dim.smb
+		export : define [RoundRing F] : F dim.top dim.bot dim.left dim.right dim.stroke dim.rda dim.rdb
+
+		export : define [Eyes] : union
+			DotAt dim.eyeLeftX  dim.eyeYPos dim.eyeRad
+			DotAt dim.eyeRightX dim.eyeYPos dim.eyeRad
+
+		export : define [OpenEyes] : union
+			DotStrokeAt dim.eyeLeftX  dim.eyeYPos dim.bigEyeRad dim.fine
+			DotStrokeAt dim.eyeRightX dim.eyeYPos dim.bigEyeRad dim.fine
+
+		export : define [ClosedEyes] : union
+			HBar.m (dim.eyeLeftX  - dim.bigEyeRad) [Math.min (dim.eyeLeftX + dim.bigEyeRad) (dim.midX - dim.minGap)] dim.eyeYPos dim.fine
+			HBar.m [Math.max (dim.eyeRightX - dim.bigEyeRad) (dim.midX + dim.minGap)] (dim.eyeRightX + dim.bigEyeRad) dim.eyeYPos dim.fine
+
+		export : define [Nose] : DotAt dim.midX dim.noseYPos dim.noseRad
+
+		export : define [Mouth k] : dispiro
+			widths.center dim.fine
+			g4 dim.mouthLeftX  [dim.mouthYPos   k ]
+			g4 dim.midX        [dim.mouthYPos (-k)]
+			g4 dim.mouthRightX [dim.mouthYPos   k ]
+
+		export : define [OpenMouth k] :	dispiro
+			widths.center dim.fine
+			g4 dim.mouthLeftX  [dim.mouthYPos   0 ]
+			arcvh
+			g4 dim.midX        [dim.mouthYPos (-k)]
+			archv
+			g4 dim.mouthRightX [dim.mouthYPos   0 ]
+			arcvh
+			g4 dim.midX        [dim.mouthYPos   k ]
+			archv
+			close
+
+	for-width-kinds WideWidth1
+		define faceTop : mix SymbolMid PictTop 0.75
+		define faceBot : mix SymbolMid PictBot 0.75
+
+		define face : Face faceTop faceBot SB (MosaicWidth - SB) MosaicWidth MosaicWidthScalar
+
+		create-glyph [MangleName 'whiteSadFace'] [MangleUnicode 0x2639] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+				face.Mouth (-1)
+
+		create-glyph [MangleName 'whiteSmileFace'] [MangleUnicode 0x263A] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+				face.Mouth 1
+
+		create-glyph [MangleName 'blackSmileFace'] [MangleUnicode 0x263B] : glyph-proc
+			set-width MosaicWidth
+			include : difference
+				face.Ring OShapeOutline
+				face.Eyes
+				face.Mouth 1
+
+		create-glyph [MangleName 'neutralFace'] [MangleUnicode 0x1F610] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+				face.Mouth 0
+
+		create-glyph [MangleName 'blackNeutralFace'] [MangleUnicode 0x1CC6F] : glyph-proc
+			set-width MosaicWidth
+			include : difference
+				face.Ring OShapeOutline
+				face.Eyes
+				face.Mouth 0
+
+		create-glyph [MangleName 'mouthlessFace'] [MangleUnicode 0x1F636] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+
+		create-glyph [MangleName 'slightFrownFace'] [MangleUnicode 0x1F641] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+				face.Mouth (-0.5)
+
+		create-glyph [MangleName 'slightSmileFace'] [MangleUnicode 0x1F642] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+				face.Mouth 0.5
+
+		create-glyph [MangleName 'upsideDownFace'] [MangleUnicode 0x1F643] : glyph-proc
+			set-width MosaicWidth
+			include : union
+				face.Ring OShape
+				face.Eyes
+				face.Mouth 1
+			include : FlipAround MosaicMiddle [mix faceTop faceBot 0.5]
+
+	for-width-kinds WideWidth4
+		glyph-block-import Symbol-Mosaic-Split-Graphic : Multicell
+		local multicell : Multicell MosaicWidth
+
+		define top     fontMetrics.os2.sTypoAscender
+		define bottom  fontMetrics.os2.sTypoDescender
+		define left    0
+		define right   MosaicWidth
+		define box : multicell.NBox top bottom left right 2 2
+
+		define bigFace : Face box.top box.bottom box.left box.right MosaicWidth MosaicWidthScalar 2
+		define [FaceOpenEyes t b l r] : union
+			bigFace.RoundRing OShape.NoOvershoot
+			bigFace.OpenEyes
+			bigFace.Nose
+		define [FaceClosedEyes t b l r] : union
+			bigFace.RoundRing OShape.NoOvershoot
+			bigFace.ClosedEyes
+			bigFace.Nose
+		define [FaceOpenMouth t b l r] : union
+			bigFace.RoundRing OShape.NoOvershoot
+			bigFace.Nose
+			bigFace.OpenMouth 1
+		define [FaceClosedMouth k] : lambda [t b l r] : union
+			bigFace.RoundRing OShape.NoOvershoot
+			bigFace.Nose
+			bigFace.Mouth k
+
+		create-glyph : glyph-proc
+			set-width MosaicWidth
+			include : ForceUpright
+
+			include : multicell.Split top bottom left right 2 2 FaceOpenEyes : list
+				list 1 0 [MangleName 'openEyeBigFaceLeft']    [MangleUnicode 0x1CCA6]
+				list 1 1 [MangleName 'openEyeBigFaceRight']   [MangleUnicode 0x1CCA7]
+			include : multicell.Split top bottom left right 2 2 FaceClosedEyes : list
+				list 1 0 [MangleName 'closedEyeBigFaceLeft']  [MangleUnicode 0x1CCA8]
+				list 1 1 [MangleName 'closedEyeBigFaceRight'] [MangleUnicode 0x1CCA9]
+			include : multicell.Split top bottom left right 2 2 [FaceClosedMouth 1] : list
+				list 0 0 [MangleName 'smileBigFaceLeft']      [MangleUnicode 0x1CCAA]
+				list 0 1 [MangleName 'smileBigFaceRight']     [MangleUnicode 0x1CCAB]
+			include : multicell.Split top bottom left right 2 2 [FaceClosedMouth 0] : list
+				list 0 0 [MangleName 'neutralBigFaceLeft']    [MangleUnicode 0x1CCAC]
+				list 0 1 [MangleName 'neutralBigFaceRight']   [MangleUnicode 0x1CCAD]
+			include : multicell.Split top bottom left right 2 2 FaceOpenMouth : list
+				list 0 0 [MangleName 'openMouthBigFaceLeft']  [MangleUnicode 0x1CCAE]
+				list 0 1 [MangleName 'openMouthBigFaceRight'] [MangleUnicode 0x1CCAF]
+			include : multicell.Split top bottom left right 2 2 [FaceClosedMouth : -1] : list
+				list 0 0 [MangleName 'frownBigFaceLeft']      [MangleUnicode 0x1CCB0]
+				list 0 1 [MangleName 'frownBigFaceRight']     [MangleUnicode 0x1CCB1]
