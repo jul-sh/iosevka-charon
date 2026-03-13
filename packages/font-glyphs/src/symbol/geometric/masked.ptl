@@ -1,0 +1,584 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DesignParameters] from "../../meta/aesthetics.mjs"
+
+glyph-module
+
+glyph-block Symbol-Geometric-Masked : for-width-kinds WideWidth1
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Symbol-Geometric-Shared : GeometricDim GeometricSizes
+
+	define Geom : GeometricDim MosaicUnitWidth MosaicWidth
+	define Size : GeometricSizes Geom
+
+	define [UpperHalfMask] : Rect (Geom.MidY + Geom.Size * 2) Geom.MidY 0 Geom.Width
+	define [LowerHalfMask] : Rect Geom.MidY (Geom.MidY - Geom.Size * 2) 0 Geom.Width
+	define [LeftHalfMask]  : Rect (Geom.MidY + Geom.Size * 2) (Geom.MidY - Geom.Size * 2) 0 Geom.MidX
+	define [RightHalfMask] : Rect (Geom.MidY + Geom.Size * 2) (Geom.MidY - Geom.Size * 2) Geom.MidX Geom.Width
+	define [UpperLeftQuarterMark]  : intersection [UpperHalfMask] [LeftHalfMask]
+	define [UpperRightQuarterMark] : intersection [UpperHalfMask] [RightHalfMask]
+	define [LowerLeftQuarterMark]  : intersection [LowerHalfMask] [LeftHalfMask]
+	define [LowerRightQuarterMark] : intersection [LowerHalfMask] [RightHalfMask]
+	define [UpperLeftHalfMark]  : spiro-outline
+		corner  (Geom.MidX + Geom.Size * 2) (Geom.MidY + Geom.Size * 2)
+		corner  (Geom.MidX - Geom.Size * 2) (Geom.MidY + Geom.Size * 2)
+		corner  (Geom.MidX - Geom.Size * 2) (Geom.MidY - Geom.Size * 2)
+	define [LowerRightHalfMark] : spiro-outline
+		corner  (Geom.MidX + Geom.Size * 2) (Geom.MidY + Geom.Size * 2)
+		corner  (Geom.MidX - Geom.Size * 2) (Geom.MidY - Geom.Size * 2)
+		corner  (Geom.MidX + Geom.Size * 2) (Geom.MidY - Geom.Size * 2)
+	define [UpperRightHalfMark]  : spiro-outline
+		corner  (Geom.MidX + Geom.Size * 2) (Geom.MidY + Geom.Size * 2)
+		corner  (Geom.MidX - Geom.Size * 2) (Geom.MidY + Geom.Size * 2)
+		corner  (Geom.MidX + Geom.Size * 2) (Geom.MidY - Geom.Size * 2)
+	define [LowerLeftHalfMark] : spiro-outline
+		corner  (Geom.MidX - Geom.Size * 2) (Geom.MidY - Geom.Size * 2)
+		corner  (Geom.MidX - Geom.Size * 2) (Geom.MidY + Geom.Size * 2)
+		corner  (Geom.MidX + Geom.Size * 2) (Geom.MidY - Geom.Size * 2)
+
+	do "Partial circles"
+		define partialCircleQuarters : list
+			list 0x25D0 1 1 1 0 0
+			list 0x25D1 1 0 0 1 1
+			list 0x25D2 1 0 1 0 1
+			list 0x25D3 1 1 0 1 0
+			list 0x25D4 1 0 0 1 0
+			list 0x25D5 1 0 1 1 1
+			list 0x2BCA 0 1 0 1 0
+			list 0x2BCB 0 0 1 0 1
+			list 0x25D6 0 1 1 0 0
+			list 0x25D7 0 0 0 1 1
+		foreach [{u WC LT LB RT RB} : items-of partialCircleQuarters] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include : union
+					new-glyph : glyph-proc
+						if WC : include : refer-glyph : MangleName 'whiteCircle'
+					intersection
+						refer-glyph : MangleName 'blackCircleO'
+						new-glyph : glyph-proc
+							if LT : include : UpperLeftQuarterMark
+							if LB : include : LowerLeftQuarterMark
+							if RT : include : UpperRightQuarterMark
+							if RB : include : LowerRightQuarterMark
+
+		define arcQuarters : list
+			list 0x25DC  1 0 0 0
+			list 0x25DD  0 0 1 0
+			list 0x25DE  0 0 0 1
+			list 0x25DF  0 1 0 0
+			list 0x25E0  1 0 1 0
+			list 0x25E1  0 1 0 1
+			list 0x1F907 1 1 0 0
+		foreach [{u LT LB RT RB} : items-of arcQuarters] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include : intersection
+					refer-glyph : MangleName 'whiteCircle'
+					new-glyph : glyph-proc
+						if LT : include : UpperLeftQuarterMark
+						if LB : include : LowerLeftQuarterMark
+						if RT : include : UpperRightQuarterMark
+						if RB : include : LowerRightQuarterMark
+
+		define [progressCircleMaskPoint pAngle] : corner
+			Geom.MidX + [Math.cos ((0.5 - pAngle * 2) * Math.PI)] * Geom.Width * 4
+			Geom.MidY + [Math.sin ((0.5 - pAngle * 2) * Math.PI)] * Geom.Width * 4
+		define progressCircleSections : list
+			list 0xEE06 (-1 / 12)         (1 / 12)
+			list 0xEE07  0                (1 / 3)
+			list 0xEE08 (1 / 6)           (1 / 2 + 1 / 24)
+			list 0xEE09 (1 / 4)           (3 / 4)
+			list 0xEE0A (1 / 2 - 1 / 24)  (5 / 6)
+			list 0xEE0B (2 / 3)            1
+		foreach [{u pAngleStart pAngleEnd} : items-of progressCircleSections] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include : intersection
+					refer-glyph : MangleName 'whiteCircle'
+					spiro-outline
+						corner Geom.MidX Geom.MidY
+						progressCircleMaskPoint [mix pAngleStart pAngleEnd (0 / 4)]
+						progressCircleMaskPoint [mix pAngleStart pAngleEnd (1 / 4)]
+						progressCircleMaskPoint [mix pAngleStart pAngleEnd (2 / 4)]
+						progressCircleMaskPoint [mix pAngleStart pAngleEnd (3 / 4)]
+						progressCircleMaskPoint [mix pAngleStart pAngleEnd (4 / 4)]
+
+
+	do "Partial square"
+		define squareParts : list
+			list 0x25E7 1 1 0 0 0 0 0 0
+			list 0x25E8 0 0 1 1 0 0 0 0
+			list 0x25E9 0 0 0 0 1 0 0 0
+			list 0x2B12 1 0 1 0 0 0 0 0
+			list 0x2B13 0 1 0 1 0 0 0 0
+			list 0x2B14 0 0 0 0 0 0 1 0
+			list 0x2B15 0 0 0 0 0 1 0 0
+			list 0x25EA 0 0 0 0 0 0 0 1
+		foreach [{u LT LB RT RB LTh LBh RTh RBh} : items-of squareParts] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include : union
+					refer-glyph : MangleName 'whiteSquare'
+					intersection
+						refer-glyph : MangleName 'blackSquare'
+						new-glyph : glyph-proc
+							if LT : include : UpperLeftQuarterMark
+							if LB : include : LowerLeftQuarterMark
+							if RT : include : UpperRightQuarterMark
+							if RB : include : LowerRightQuarterMark
+							if LTh : include : UpperLeftHalfMark
+							if LBh : include : LowerLeftHalfMark
+							if RTh : include : UpperRightHalfMark
+							if RBh : include : LowerRightHalfMark
+
+		create-glyph [MangleName 'heavyWhiteSquareUpperHalf'] [MangleUnicode 0x1CE03] : glyph-proc
+			set-width Geom.Width
+			include : intersection
+				UpperHalfMask
+				refer-glyph : MangleName 'heavyWhiteSquare'
+		create-glyph [MangleName 'heavyWhiteSquareLowerHalf'] [MangleUnicode 0x1CE04] : glyph-proc
+			set-width Geom.Width
+			include : intersection
+				LowerHalfMask
+				refer-glyph : MangleName 'heavyWhiteSquare'
+
+	do "Partial diamond"
+		define diamondParts : list
+			list 0x2B16 1 1 0 0
+			list 0x2B17 0 0 1 1
+			list 0x2B18 1 0 1 0
+			list 0x2B19 0 1 0 1
+		foreach [{u LT LB RT RB} : items-of diamondParts] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include : union
+					refer-glyph : MangleName 'whiteDiamond'
+					intersection
+						refer-glyph : MangleName 'blackDiamond'
+						new-glyph : glyph-proc
+							if LT : include : UpperLeftQuarterMark
+							if LB : include : LowerLeftQuarterMark
+							if RT : include : UpperRightQuarterMark
+							if RB : include : LowerRightQuarterMark
+
+	do "Partial triangle"
+		define triangleParts : list
+			list 0x25ED 1 0 1 0
+			list 0x25EE 1 0 0 1
+			list 0x29E8 0 1 1 0
+			list 0x29E9 0 1 0 1
+		foreach [{u UP DN LH RH} : items-of triangleParts] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include : union
+					glyph-proc
+						if UP : include : refer-glyph : MangleName 'whiteTriangleUp'
+						if DN : include : refer-glyph : MangleName 'whiteTriangleDown'
+					intersection
+						glyph-proc
+							if UP : include : refer-glyph : MangleName 'blackTriangleUp'
+							if DN : include : refer-glyph : MangleName 'blackTriangleDown'
+						glyph-proc
+							if LH : include : LeftHalfMask
+							if RH : include : RightHalfMask
+
+	do "Partial Stars"
+		define starParts : list
+			list 0x2BE8 1 0 0
+			list 0x2BE9 0 1 0
+			list 0x2BEA 1 0 1
+			list 0x2BEB 0 1 1
+
+		foreach { u lh rh bord } [items-of starParts] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				if bord : include [refer-glyph : MangleName 'whiteStar']
+				if lh : include : intersection [LeftHalfMask]  [refer-glyph : MangleName 'blackStar']
+				if rh : include : intersection [RightHalfMask] [refer-glyph : MangleName 'blackStar']
+
+	do "Quarter-line square and circle"
+		define quarterLineParts : list
+			list 0x25F0 'whiteSquare' 1 1 0 0
+			list 0x25F1 'whiteSquare' 0 1 1 0
+			list 0x25F2 'whiteSquare' 0 0 1 1
+			list 0x25F3 'whiteSquare' 1 0 0 1
+			list 0x25F4 'whiteCircle' 1 1 0 0
+			list 0x25F5 'whiteCircle' 0 1 1 0
+			list 0x25F6 'whiteCircle' 0 0 1 1
+			list 0x25F7 'whiteCircle' 1 0 0 1
+		foreach { u frame T L B R } [items-of quarterLineParts] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				local hh : HSwToV : 0.5 * GeometryStroke
+				local hv : GeometryStroke / 2
+				local s    GeometryStroke
+				set-width Geom.Width
+				include : union
+					refer-glyph [MangleName frame]
+					if L [HBar.m (Geom.MidX - Geom.Size + hh) (Geom.MidX + hh) Geom.MidY s] [glyph-proc]
+					if R [HBar.m (Geom.MidX + Geom.Size - hh) (Geom.MidX - hh) Geom.MidY s] [glyph-proc]
+					if T [VBar.m Geom.MidX (Geom.MidY + Geom.Size - hv) (Geom.MidY - hv) s] [glyph-proc]
+					if B [VBar.m Geom.MidX (Geom.MidY - Geom.Size + hv) (Geom.MidY + hv) s] [glyph-proc]
+
+	do "Three-Dimensional Arrow head"
+		define arrowHeadParts : list
+			list 0x27A2 0 1
+			list 0x27A3 1 0
+
+		foreach { u th bh } [items-of arrowHeadParts] : begin
+			create-glyph [MangleName : NameUni u] [MangleUnicode u] : glyph-proc
+				set-width Geom.Width
+				include [refer-glyph : MangleName 'whiteArrowHeadRight']
+				if th : include : intersection [UpperHalfMask] [refer-glyph : MangleName 'blackArrowHeadRight']
+				if bh : include : intersection [LowerHalfMask] [refer-glyph : MangleName 'blackArrowHeadRight']
+
+	do "Diamond minus white X"
+		create-glyph [MangleName "blackDiamondMinusWhiteX"] [MangleUnicode 0x2756] : glyph-proc
+			set-width Geom.Width
+			local gap : Math.max (0.2 * Geom.Size) [UnicodeWeightGrade 400 Geom.Scalar GeometryStroke]
+			include : difference
+				refer-glyph : MangleName "blackDiamond"
+				dispiro
+					flat (Geom.MidX - Geom.Size) (Geom.MidY - Geom.Size) [widths.center gap]
+					curl (Geom.MidX + Geom.Size) (Geom.MidY + Geom.Size)
+				dispiro
+					flat (Geom.MidX + Geom.Size) (Geom.MidY - Geom.Size) [widths.center gap]
+					curl (Geom.MidX - Geom.Size) (Geom.MidY + Geom.Size)
+
+	do "Moon Phases"
+		alias [MangleName 'newMoon'] [MangleUnicode 0x1F311] [MangleName 'blackCircle']
+		alias [MangleName 'firstQuarterMoon'] [MangleUnicode 0x1F313] [MangleName : NameUni 0x25D0]
+		alias [MangleName 'fullMoon'] [MangleUnicode 0x1F315] [MangleName 'whiteCircle']
+		alias [MangleName 'lastQuarterMoon'] [MangleUnicode 0x1F317] [MangleName : NameUni 0x25D1]
+
+		define [WaxingMoonMask] : union
+			MaskLeft Geom.MidX
+			composite-proc
+				refer-glyph [MangleName 'blackCircleO']
+				Ungizmo
+				ScaleAround Geom.MidX Geom.MidY 0.625 (1 - 0.5 * GeometryStroke / Geom.Size)
+				Translate (-[HSwToV GeometryStroke]) 0
+				Regizmo
+
+		create-glyph [MangleName 'waxingCrescentMoon'] [MangleUnicode 0x1F312] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph [MangleName 'whiteCircle']
+			include : intersection
+				refer-glyph [MangleName 'blackCircleO']
+				WaxingMoonMask
+
+		create-glyph [MangleName 'waxingGibbousMoon'] [MangleUnicode 0x1F314] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph [MangleName 'whiteCircle']
+			include : difference
+				refer-glyph [MangleName 'blackCircleO']
+				composite-proc
+					WaxingMoonMask
+					FlipAround Geom.MidX Geom.MidY
+
+		create-glyph [MangleName 'waningGibbousMoon'] [MangleUnicode 0x1F316] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph [MangleName 'whiteCircle']
+			include : difference
+				refer-glyph [MangleName 'blackCircleO']
+				WaxingMoonMask
+
+		create-glyph [MangleName 'waningCrescentMoon'] [MangleUnicode 0x1F318] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph [MangleName 'whiteCircle']
+			include : intersection
+				refer-glyph [MangleName 'blackCircleO']
+				composite-proc
+					WaxingMoonMask
+					FlipAround Geom.MidX Geom.MidY
+
+	do "Partial White Circle"
+		local yOffset : -Geom.Size / 2
+
+		create-glyph [MangleName 'arc'] [MangleUnicode 0x2312] : glyph-proc
+			set-width Geom.Width
+			include : with-transform [ApparentTranslate 0 yOffset] : intersection
+				MaskAbove Geom.MidY
+				refer-glyph [MangleName 'whiteCircle']
+
+		create-glyph [MangleName 'segment'] [MangleUnicode 0x2313] : glyph-proc
+			set-width Geom.Width
+			include : with-transform [ApparentTranslate 0 yOffset] : intersection
+				MaskAbove Geom.MidY
+				union
+					refer-glyph [MangleName 'whiteCircle']
+					intersection
+						refer-glyph [MangleName 'blackCircle']
+						HBar.b Geom.Left Geom.Right Geom.MidY GeometryStroke
+
+		create-glyph [MangleName 'sector'] [MangleUnicode 0x2314] : glyph-proc
+			set-width Geom.Width
+			include : with-transform [ApparentTranslate 0 yOffset] : intersection
+				spiro-outline
+					corner Geom.MidX  Geom.MidY
+					corner Geom.Right Geom.Top
+					corner Geom.Left  Geom.Top
+				union
+					refer-glyph [MangleName 'whiteCircle']
+					intersection
+						refer-glyph [MangleName 'blackCircle']
+						union
+							dispiro [widths.lhs GeometryStroke] [corner Geom.MidX Geom.MidY] [corner Geom.Right Geom.Top]
+							dispiro [widths.rhs GeometryStroke] [corner Geom.MidX Geom.MidY] [corner Geom.Left  Geom.Top]
+
+	do "Miscellaneous"
+		glyph-block-import Symbol-Arrow-Shared : TrigArrowShape
+
+		define fineGeometryStroke : AdviceStroke2 4 4 Geom.Size
+		create-glyph [MangleName 'positionIndicator'] [MangleUnicode 0x2316] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteMediumCircle'
+			include : difference
+				union
+					HBar.m Geom.Left Geom.Right Geom.MidY GeometryStroke
+					VBar.m Geom.MidX Geom.Bot Geom.Top GeometryStroke
+				refer-glyph : MangleName 'blackMediumCircle'
+			include : intersection
+				union
+					HBar.m Geom.Left Geom.Right Geom.MidY fineGeometryStroke
+					VBar.m Geom.MidX Geom.Bot Geom.Top fineGeometryStroke
+				refer-glyph : MangleName 'blackMediumCircle'
+
+		create-glyph [MangleName 'positionIndicatorSquare'] [MangleUnicode 0x2BD0] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteMediumSquare'
+			include : difference
+				union
+					HBar.m Geom.Left Geom.Right Geom.MidY GeometryStroke
+					VBar.m Geom.MidX Geom.Bot Geom.Top GeometryStroke
+				refer-glyph : MangleName 'blackMediumSquare'
+			include : intersection
+				union
+					HBar.m Geom.Left Geom.Right Geom.MidY fineGeometryStroke
+					VBar.m Geom.MidX Geom.Bot Geom.Top fineGeometryStroke
+				refer-glyph : MangleName 'blackMediumSquare'
+
+		create-glyph [MangleName 'cylindricity'] [MangleUnicode 0x232D] : glyph-proc
+			set-width Geom.Width
+			local radius : Geom.Size * Size.Medium.size
+			local x1   Geom.Left
+			local y1 : Geom.Bot + 0.15 * GeometryStroke
+			local y2   Geom.Top
+			local dist : Math.hypot (Geom.MidX - x1) (Geom.MidY - y1)
+			local tan1 : radius / [Math.sqrt : dist ** 2 - radius ** 2]
+			local tan2 : (Geom.MidY - y1) / (Geom.MidX - x1)
+			local tan3 : (tan1 + tan2) / (1 - tan1 * tan2)
+			local x2 : x1 + (y2 - y1) / tan3
+			include : difference
+				union
+					dispiro
+						widths.rhs GeometryStroke
+						flat x1 y1
+						curl x2 y2
+					dispiro
+						widths.rhs GeometryStroke
+						flat [mix x1 Geom.MidX 2] [mix y1 Geom.MidY 2]
+						curl [mix x2 Geom.MidX 2] [mix y2 Geom.MidY 2]
+				refer-glyph : MangleName 'blackMediumCircle'
+			include : refer-glyph : MangleName 'whiteMediumCircle'
+
+		create-glyph [MangleName 'allRoundProfile'] [MangleUnicode 0x232E] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteMediumCircle'
+			local mx : Geom.MidX - Geom.Size * 0.5
+			local my : Geom.MidY - Geom.Size * 0.5
+			include : dispiro
+				disable-contrast
+				flat Geom.Right Geom.MidY [widths.center.heading GeometryStroke Leftward]
+				sharp-corner Geom.MidX Geom.MidY (contrast -- 1)
+				curl mx my [widths.center GeometryStroke]
+			include : TrigArrowShape mx my Geom.Left Geom.Bot (Geom.Size * 0.375 / Math.SQRT1_2) (GeometryStroke / 2)
+
+		create-glyph [MangleName 'dimensionOrigin'] [MangleUnicode 0x2331] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteMediumCircle'
+			local offset : Geom.Size * (1 - Size.Medium.size)
+			include : difference
+				union
+					TrigArrowShape Geom.MidX Geom.MidY (Geom.Right + offset) Geom.MidY (Geom.Size * 0.375 / Math.SQRT1_2) (GeometryStroke / 2)
+					VBar.m Geom.MidX Geom.Bot Geom.Top GeometryStroke
+				refer-glyph : MangleName 'blackMediumCircle'
+			include : intersection
+				union
+					HBar.m Geom.MidX Geom.Right Geom.MidY fineGeometryStroke
+					VBar.m Geom.MidX Geom.Bot Geom.Top fineGeometryStroke
+				refer-glyph : MangleName 'blackMediumCircle'
+
+			include : Translate (-offset) 0
+
+		create-glyph [MangleName 'uni2389'] [MangleUnicode 0x2389] : glyph-proc
+			define shiftUp : ApparentTranslate 0
+				Math.max
+					Math.SQRT1_2 * Size.MediumSmall.sw
+					Geom.Size * (1 - Size.MediumSmall.size)
+
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteCircle'
+			include : intersection
+				refer-glyph : MangleName 'blackCircleO'
+				union
+					difference
+						HBar.m 0 Geom.Width Geom.MidY GeometryStroke
+						with-transform [ApparentTranslate 0 0.01] : with-transform shiftUp : refer-glyph : MangleName 'blackMediumEqualDiamond'
+					intersection
+						MaskBelow (Geom.MidY + GeometryStroke / 2)
+						with-transform shiftUp : refer-glyph : MangleName 'whiteMediumEqualDiamond'
+
+		create-glyph [MangleName 'uni238A'] [MangleUnicode 0x238A] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteCircle'
+			include : intersection
+				refer-glyph : MangleName 'blackCircleO'
+				refer-glyph : MangleName 'whiteEqualTriangleDown'
+
+		create-glyph [MangleName 'enterSymbol'] [MangleUnicode 0x2386] : glyph-proc
+			set-width Geom.Width
+			include : difference
+				refer-glyph : MangleName 'whiteDiamond'
+				intersection [MaskLeftLine Geom.MidX (Geom.MidY - Geom.Size / 3) Geom.MidX (Geom.MidY + Geom.Size / 3)]
+			include : HBar.m Geom.Left Geom.MidX Geom.MidY GeometryStroke
+			local size : Geom.Size * 0.375 / Math.SQRT1_2
+			include : spiro-outline
+				corner Geom.MidX (Geom.MidY + size)
+				corner (Geom.MidX + size) Geom.MidY
+				corner Geom.MidX (Geom.MidY - size)
+
+		create-glyph [MangleName 'uni238B'] [MangleUnicode 0x238B] : glyph-proc
+			set-width Geom.Width
+			include : difference
+				refer-glyph : MangleName 'whiteCircle'
+				intersection [MaskAbove Geom.MidY] [MaskLeft Geom.MidX]
+			include : intersection
+				MaskBelow (Geom.MidY + Geom.Size)
+				MaskRight (Geom.MidX - Geom.Size)
+				dispiro
+					flat Geom.MidX Geom.MidY [widths.center GeometryStroke]
+					curl (Geom.MidX - Geom.Size) (Geom.MidY + Geom.Size)
+			include : spiro-outline
+				corner (Geom.MidX - Geom.Size) (Geom.MidY + Geom.Size)
+				corner (Geom.MidX - 0.375 * Geom.Size) (Geom.MidY + Geom.Size)
+				corner (Geom.MidX - Geom.Size) (Geom.MidY + 0.375 * Geom.Size)
+
+		create-glyph [MangleName 'counterbore'] [MangleUnicode 0x2334] : glyph-proc
+			set-width Geom.Width
+			include : intersection
+				LowerHalfMask
+				refer-glyph : MangleName 'whiteSquare'
+
+		create-glyph [MangleName 'countersink'] [MangleUnicode 0x2335] : glyph-proc
+			set-width Geom.Width
+			include : intersection
+				refer-glyph : MangleName 'blackDiamond'
+				union
+					ExtLineLhs 4 OperatorStroke (Geom.MidX - Geom.Size) Geom.MidY Geom.MidX (Geom.MidY - Geom.Size)
+					ExtLineLhs 4 OperatorStroke Geom.MidX (Geom.MidY - Geom.Size) (Geom.MidX + Geom.Size) Geom.MidY
+
+		create-glyph [MangleName 'eightPointedCircledOpenCenterStar'] [MangleUnicode 0x2742] : glyph-proc
+			set-width Geom.Width
+			include : union
+				difference
+					refer-glyph : MangleName 'blackCircle'
+					refer-glyph : MangleName 'eightPointedStarMask'
+				refer-glyph : MangleName 'whiteSlightlySmallCircle'
+
+	do "Compositions"
+		glyph-block-import Symbol-Punctuation-Bar : BarShape
+
+		create-glyph [MangleName 'compositionSymbol'] [MangleUnicode 0x2384] : glyph-proc
+			set-width Geom.Width
+			local offsetX : Geom.Size * Size.Medium.size / 2 - GeometryStroke / 4
+			include : union
+				with-transform [Translate offsetX 0] : refer-glyph : MangleName 'whiteMediumCircle'
+				with-transform [Translate (-offsetX) 0] : refer-glyph : MangleName 'whiteMediumSquare'
+
+		create-glyph [MangleName 'whiteSquareVertLine'] [MangleUnicode 0x2385] : glyph-proc
+			set-width Geom.Width
+			include : refer-glyph : MangleName 'whiteSquare'
+			include : BarShape Geom.MidX ParenTop ParenBot
+
+		create-glyph [MangleName 'whiteSquareContainingWhiteDiamond'] [MangleUnicode 0x26CB] : glyph-proc
+			set-width Geom.Width
+			include : union
+				refer-glyph : MangleName 'whiteSquare'
+				refer-glyph : MangleName 'whiteDiamond'
+
+		create-glyph [MangleName 'squaredSaltire'] [MangleUnicode 0x26DD] : glyph-proc
+			set-width Geom.Width
+			include : union
+				refer-glyph : MangleName 'whiteSquare'
+				intersection
+					refer-glyph : MangleName 'blackSquare'
+					union
+						dispiro [widths.center GeometryStroke] [flat Geom.Left Geom.Top] [curl Geom.Right Geom.Bot]
+						dispiro [widths.center GeometryStroke] [flat Geom.Left Geom.Bot] [curl Geom.Right Geom.Top]
+
+		create-glyph [MangleName 'uni26DE'] [MangleUnicode 0x26DE] : glyph-proc
+			set-width Geom.Width
+			include : union
+				difference
+					refer-glyph : MangleName 'blackSquare'
+					refer-glyph : MangleName 'blackCircle'
+				intersection
+					refer-glyph : MangleName 'blackSquare'
+					dispiro [widths.center GeometryStroke] [flat Geom.Left Geom.Top] [curl Geom.Right Geom.Bot]
+
+		create-glyph [MangleName 'whiteLozengeBar'] [MangleUnicode 0x27E0] : glyph-proc
+			set-width Geom.Width
+			include : union
+				refer-glyph : MangleName 'whiteLozenge'
+				intersection
+					refer-glyph : MangleName 'blackLozenge'
+					HBar.m 0 MosaicWidth Geom.MidY GeometryStroke
+
+		# Mathematical Triangle Symbols
+		define triangleSideRadius : Geom.Size * 2.1 / [Math.sqrt 3]
+		derive-multi-part-glyphs [MangleName 'whiteTriangleUpDotAbove'] [MangleUnicode 0x29CA] { [MangleName 'whiteTriangleUp'] 'dotAbove' } : lambda [srcs gr] : glyph-proc
+			local { base mark } srcs
+			include : refer-glyph mark
+			include : Translate (Middle + Geom.MidX) (Geom.Top - XH)
+			include [refer-glyph base] AS_BASE ALSO_METRICS
+
+		create-glyph [MangleName 'whiteTriangleUpBarBelow'] [MangleUnicode 0x29CB] : glyph-proc
+			include [refer-glyph : MangleName 'whiteTriangleUp'] AS_BASE ALSO_METRICS
+			include : HBar.t (Geom.MidX - triangleSideRadius) (Geom.MidX + triangleSideRadius) (Geom.Bot - AccentClearance) GeometryStroke
+
+		create-glyph [MangleName 'whiteTriangleUpSerifBottom'] [MangleUnicode 0x29CD] : glyph-proc
+			define jut : clamp 0 (MosaicMiddle - triangleSideRadius) (SideJut * MosaicWidthScalar)
+			include [refer-glyph : MangleName 'whiteTriangleUp'] AS_BASE ALSO_METRICS
+			include : HSerif.lb (Geom.MidX - triangleSideRadius) Geom.Bot jut GeometryStroke
+			include : HSerif.rb (Geom.MidX + triangleSideRadius) Geom.Bot jut GeometryStroke
+
+		# Genealogy Symbols
+		create-glyph [MangleName 'marriageSymbol'] [MangleUnicode 0x26AD] : glyph-proc
+			set-width Geom.Width
+			local radius : Geom.Size * Size.SlightlySmall.size
+			local stroke Size.SlightlySmall.sw
+			local offsetX : radius / 2 - stroke / 4
+			include : union
+				with-transform [Translate offsetX 0] : refer-glyph : MangleName 'whiteSlightlySmallCircle'
+				with-transform [Translate (-offsetX) 0] : refer-glyph : MangleName 'whiteSlightlySmallCircle'
+
+		create-glyph [MangleName 'divorceSymbol'] [MangleUnicode 0x26AE] : glyph-proc
+			set-width Geom.Width
+			local offsetX : Geom.Size * Size.SlightlySmall.size + [HSwToV : Size.SlightlySmall.sw / 2]
+			local offsetY : Geom.Size * Size.MediumSmall.size
+			include : union
+				with-transform [Translate offsetX 0] : refer-glyph : MangleName 'whiteSlightlySmallCircle'
+				with-transform [Translate (-offsetX) 0] : refer-glyph : MangleName 'whiteSlightlySmallCircle'
+				VBar.m Geom.MidX (Geom.MidY - offsetY) (Geom.MidY + offsetY) Size.SlightlySmall.sw
+
+		create-glyph [MangleName 'unmarriedPartnershipSymbol'] [MangleUnicode 0x26AF] : glyph-proc
+			set-width Geom.Width
+			local offsetX : MosaicWidth / 4
+			local offsetBar : offsetX - Geom.Size * Size.SlightlySmall.size + [HSwToV : Size.SlightlySmall.sw / 2]
+			include : union
+				with-transform [Translate offsetX 0] : refer-glyph : MangleName 'whiteSlightlySmallCircle'
+				with-transform [Translate (-offsetX) 0] : refer-glyph : MangleName 'whiteSlightlySmallCircle'
+				HBar.m (Geom.MidX - offsetBar) (Geom.MidX + offsetBar) Geom.MidY Size.SlightlySmall.sw

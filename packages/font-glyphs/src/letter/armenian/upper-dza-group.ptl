@@ -1,0 +1,65 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DependentSelector] from "@iosevka/glyph/relation"
+
+glyph-module
+
+glyph-block Letter-Armenian-Upper-Dza : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared-Shapes : CurlyTail
+
+	# Common Params
+	define barPos : XH / 2
+	define highBarPos XH
+	define jut Jut
+
+	do "Dz'a"
+		create-glyph 'armn/Dza' 0x541 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+			include : dispiro
+				widths.rhs df.mvs
+				g4 df.leftSB (CAP - Hook)
+				hookstart CAP (sw -- df.mvs)
+				flat (df.rightSB - OX) (CAP - ArchDepthB)
+				curl (df.rightSB - OX) (CAP / 2)
+				CurlyTail.n df.mvs 0 df.leftSB df.rightSB 0 (yLoopTop -- ((CAP - Hook) / 2))
+
+	do "Sha"
+		create-glyph 'armn/Sha' 0x547 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+			local junctY : mix XH CAP 0.5
+			include : dispiro
+				widths.rhs df.mvs
+				curl df.leftSB CAP [heading Rightward]
+				flat df.middle (junctY + df.mvs - df.shoulderFine) [heading Rightward]
+				curl df.rightSB (XH + df.mvs) [heading Rightward]
+			include : dispiro
+				widths.rhs df.mvs
+				g4 df.rightSB Hook
+				hookstart 0 (sw -- df.mvs)
+				flatside.lu df.leftSB 0 junctY ArchDepthA ArchDepthB
+				arcvh
+				g4 df.middle junctY [widths.rhs df.shoulderFine]
+
+	do "Cha"
+		create-glyph 'armn/Cha' 0x549 : glyph-proc
+			local df : include : DivFrame 1
+			include : df.markSet.capital
+			local barTop : Hook * 0.8
+			local barBot   O
+			local junctY : [mix barBot barTop 0.5] + df.mvs - df.shoulderFine
+			include : dispiro
+				widths.rhs df.mvs
+				g4 df.leftSB (CAP - Hook)
+				hookstart CAP (sw -- df.mvs)
+				flatside.rd df.rightSB junctY CAP ArchDepthA ArchDepthB
+				arcvh
+				g4 df.middle junctY [widths.rhs df.shoulderFine]
+			include : dispiro
+				widths.lhs df.mvs
+				flat [mix df.leftSB df.rightSB 0.1] barTop [heading Rightward]
+				curl [mix df.leftSB df.rightSB 0.9] barBot [heading Rightward]

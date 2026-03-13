@@ -1,0 +1,36 @@
+$$include '../../meta/macros.ptl'
+
+glyph-module
+
+glyph-block LetterLike-Fraktur-Upper-Z : begin
+	glyph-block-import Common-Derivatives
+	glyph-block-import CommonShapes
+	glyph-block-import LetterLike-Fraktur-Common : UpperDf S F T fraktur-stroke change-pen
+	glyph-block-import LetterLike-Fraktur-Common : DecoSizeX DecoSizeY SlopeA SlopeB
+	glyph-block-import LetterLike-Fraktur-Common : Wave FHook PHexTop PHexBot
+
+	create-glyph "frak/Z" 0x2128 : glyph-proc
+		local df : include : UpperDf 1
+		include : df.markSet.capital
+
+		local zBox : S.box CAP 0 df.leftSB df.rightSB
+
+		# Top Stroke
+		include : lift-@ : fraktur-stroke S
+			g2.ld.start zBox.right  (@yT = zBox.top)
+			~~~ [Wave.h O]
+			g2.ld.mid   zBox.left   (@yT - Wave.DepthY)
+
+		# Bottom Stroke
+		local diag : include : fraktur-stroke S
+			corner       zBox.right       zBox.top
+			corner       [zBox.xp 0.166]  [zBox.yp 0.5]
+
+		include : difference
+			lift-@ : fraktur-stroke S
+				g2.ru.start [diag.last].x     [diag.last].y
+				~~~ [arch.rhs (sw -- S.thick) [zBox.yp 0.55] 0.375]
+				g2.down.mid (zBox.right - OX) (@yB + ArchDepthA)
+				hookend (sw -- S.thick)       (@yB = zBox.bot)
+				g2           zBox.left        (@yB + SHook)
+			MaskAboveLine [diag.first].x [diag.first].y [diag.last].x [diag.last].y 4

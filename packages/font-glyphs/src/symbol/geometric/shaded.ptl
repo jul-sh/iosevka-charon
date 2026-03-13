@@ -1,0 +1,151 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+import [DesignParameters] from "../../meta/aesthetics.mjs"
+
+glyph-module
+
+glyph-block Symbol-Geometric-Shaded : for-width-kinds WideWidth1
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Symbol-Geometric-Shared : GeometricDim GeometricSizes
+
+	define Geom : GeometricDim MosaicUnitWidth MosaicWidth
+	define Size : GeometricSizes Geom
+
+	define boxShadeSw : Math.min GeometryStroke ((Geom.Size * 2 - GeometryStroke * 2) * 1 / 11)
+	define boxBarSw   : Math.min GeometryStroke [AdviceStroke 5 Geom.Scalar]
+	define boxTop     : Geom.MidY + Geom.Size - GeometryStroke + boxShadeSw / 2
+	define boxBot     : Geom.MidY - (boxTop - Geom.MidY)
+	define boxRight   : Geom.MidX + Geom.Size - GeometryStroke + boxShadeSw / 2
+	define boxLeft    : Geom.MidX - (boxRight - Geom.MidX)
+
+	define [HBoxShadeShape] : union
+		dispiro
+			widths.center boxShadeSw
+			flat Geom.Left [mix boxTop boxBot 0.25] [heading Rightward]
+			curl Geom.Right [mix boxTop boxBot 0.25] [heading Rightward]
+		dispiro
+			widths.center boxShadeSw
+			flat Geom.Left [mix boxTop boxBot 0.5] [heading Rightward]
+			curl Geom.Right [mix boxTop boxBot 0.5] [heading Rightward]
+		dispiro
+			widths.center boxShadeSw
+			flat Geom.Left [mix boxTop boxBot 0.75] [heading Rightward]
+			curl Geom.Right [mix boxTop boxBot 0.75] [heading Rightward]
+
+	create-glyph [MangleName 'hShadeSquare'] [MangleUnicode 0x25A4] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'whiteSquare'
+			intersection
+				refer-glyph : MangleName 'blackSquare'
+				HBoxShadeShape
+
+	define [VBoxShadeShape] : union
+		dispiro
+			widths.center boxShadeSw
+			flat [mix boxLeft boxRight 0.25] Geom.Top [heading Downward]
+			curl [mix boxLeft boxRight 0.25] Geom.Bot [heading Downward]
+		dispiro
+			widths.center boxShadeSw
+			flat [mix boxLeft boxRight 0.5] Geom.Top [heading Downward]
+			curl [mix boxLeft boxRight 0.5] Geom.Bot [heading Downward]
+		dispiro
+			widths.center boxShadeSw
+			flat [mix boxLeft boxRight 0.75] Geom.Top [heading Downward]
+			curl [mix boxLeft boxRight 0.75] Geom.Bot [heading Downward]
+
+	define [VBar.mShadeShape] : union
+		dispiro
+			widths.center boxBarSw
+			flat Geom.MidX Geom.Top [heading Downward]
+			curl Geom.MidX Geom.Bot [heading Downward]
+
+	create-glyph [MangleName 'vShadeSquare'] [MangleUnicode 0x25A5] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'whiteSquare'
+			intersection
+				refer-glyph : MangleName 'blackSquare'
+				VBoxShadeShape
+
+	create-glyph [MangleName 'vBarSquare'] [MangleUnicode 0x25EB] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'whiteSquare'
+			intersection
+				refer-glyph : MangleName 'blackSquare'
+				VBar.mShadeShape
+
+	create-glyph [MangleName 'hvShadeSquare'] [MangleUnicode 0x25A6] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'hShadeSquare'
+			refer-glyph : MangleName 'vShadeSquare'
+
+	define [DDiagBoxShadeShape] : glyph-proc
+		foreach [j : range (-10) till 10] : include : dispiro
+			widths.center boxShadeSw
+			flat Geom.Left [mix Geom.Top Geom.Bot (j / 4)] [heading Rightward]
+			curl Geom.Right [mix Geom.Top Geom.Bot (j / 4 + 1)] [heading Rightward]
+
+	define [UDiagBoxShadeShape] : glyph-proc
+		foreach [j : range (-10) till 10] : include : dispiro
+			widths.center boxShadeSw
+			flat Geom.Left [mix Geom.Top Geom.Bot (j / 4)] [heading Rightward]
+			curl Geom.Right [mix Geom.Top Geom.Bot (j / 4 - 1)] [heading Rightward]
+
+	create-glyph [MangleName 'dDiagShadeSquare'] [MangleUnicode 0x25A7] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'whiteSquare'
+			intersection
+				refer-glyph : MangleName 'blackSquare'
+				DDiagBoxShadeShape
+
+	create-glyph [MangleName 'uDiagShadeSquare'] [MangleUnicode 0x25A8] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'whiteSquare'
+			intersection
+				refer-glyph : MangleName 'blackSquare'
+				UDiagBoxShadeShape
+
+	create-glyph [MangleName 'udDiagShadeSquare'] [MangleUnicode 0x25A9] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'dDiagShadeSquare'
+			refer-glyph : MangleName 'uDiagShadeSquare'
+
+	create-glyph [MangleName 'vShadeCircle'] [MangleUnicode 0x25CD] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'whiteCircle'
+			intersection [refer-glyph : MangleName 'blackCircleO'] [VBoxShadeShape]
+
+	create-glyph [MangleName 'vShadeStar'] [MangleUnicode null] : glyph-proc
+		set-width Geom.Width
+		include : union
+			refer-glyph : MangleName 'lightWhiteStar'
+			intersection
+				refer-glyph : MangleName 'blackStar'
+				VBoxShadeShape
+
+glyph-block Symbol-Geometric-Shaded-Narrow : for-width-kinds WideWidth4
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Symbol-Geometric-Shared : GeometricDim
+
+	define Geom : GeometricDim MosaicUnitWidth MosaicWidth
+
+	create-glyph [MangleName 'symbolForDeleteFormTwo'] [MangleUnicode 0x2425] : glyph-proc
+		local sw : UnicodeWeightGrade 300 Geom.Scalar GeometryStroke
+		local gap : 0.75 * sw + [Math.max (Geom.Size * 0.125) (sw / 2)]
+		set-width Geom.Width
+		include : intersection
+			refer-glyph : MangleName 'blackSquare'
+			union
+				ExtLineCenter 4 sw (Geom.MidX - Geom.Size) (Geom.MidY - Geom.Size) (Geom.MidX + Geom.Size) (Geom.MidY + Geom.Size)
+				ExtLineCenter 4 sw (Geom.MidX - Geom.Size + gap) (Geom.MidY - Geom.Size - gap) (Geom.MidX + Geom.Size + gap) (Geom.MidY + Geom.Size - gap)
+				ExtLineCenter 4 sw (Geom.MidX - Geom.Size - gap) (Geom.MidY - Geom.Size + gap) (Geom.MidX + Geom.Size - gap) (Geom.MidY + Geom.Size + gap)

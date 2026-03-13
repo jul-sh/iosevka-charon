@@ -1,0 +1,214 @@
+$$include '../../meta/macros.ptl'
+
+import [mix fallback SuffixCfg] from "@iosevka/util"
+import [MathSansSerif] from "@iosevka/glyph/relation"
+import [bitOr maskBits maskOffBits] from "@iosevka/util/mask-bit"
+
+glyph-module
+
+glyph-block Letter-Latin-Upper-Lambda-Delta : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Letter-Shared : CreateTurnedLetter
+	glyph-block-import Letter-Latin-Upper-A : AShape ASerifs
+	glyph-block-import Letter-Latin-V : VShapeOutline VShape VHookRightShape
+
+	define SLAB-NONE       0
+	define SLAB-TOP        1
+	define SLAB-LEFT       2
+	define SLAB-RIGHT      4
+	define SLAB-SMALL-CYRL 8
+
+	define LambdaConfig : SuffixCfg.weave
+		object
+			straight true
+			curly    false
+
+		object
+			serifless    SLAB-NONE
+			topSerifed   SLAB-TOP
+			baseSerifed  [bitOr SLAB-LEFT SLAB-RIGHT]
+			triSerifed   [bitOr SLAB-TOP SLAB-LEFT SLAB-RIGHT]
+
+	glyph-block-export LambdaShape
+	define [LambdaShape] : with-params [df fBarStraight slabKind top sw] : glyph-proc
+		include : VShape df fBarStraight top sw
+		include : FlipAround df.middle (top / 2)
+		include : ASerifs df top sw slabKind
+
+	define [LambdaMask] : with-params [df fBarStraight top sw] : glyph-proc
+		include : VShapeOutline df fBarStraight top sw
+		include : FlipAround df.middle (top / 2)
+
+	define flex-params [LambdaHookLeftShape] : glyph-proc
+		local-parameter : df
+		local-parameter : fBarStraight
+		local-parameter : slabKind
+		local-parameter : top
+		local-parameter : sw
+		local-parameter : hookWidthOuter -- (TailX / 3)
+		local-parameter : hookWidthInner -- (TailX / 3)
+		include : VHookRightShape
+			df             -- df
+			fBarStraight   -- fBarStraight
+			top            -- top
+			sw             -- sw
+			hookWidthOuter -- hookWidthOuter
+			hookWidthInner -- hookWidthInner
+		include : FlipAround df.middle (top / 2)
+		include : ASerifs df top sw [maskOffBits slabKind SLAB-LEFT]
+
+	foreach { suffix { fStraightBar slabKind } } [Object.entries LambdaConfig] : do
+		create-glyph "grek/Lambda.\(suffix)" : glyph-proc
+			include : MarkSet.capital
+			include : LambdaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fStraightBar
+				slabKind     -- slabKind
+				top          -- CAP
+				sw           -- Stroke
+
+		create-glyph "grek/smcpLambda.\(suffix)" : glyph-proc
+			include : MarkSet.e
+			include : LambdaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fStraightBar
+				slabKind     -- slabKind
+				top          -- XH
+				sw           -- Stroke
+
+		create-glyph "cyrl/el.BGR.\(suffix)" : glyph-proc
+			include : MarkSet.e
+			include : LambdaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fStraightBar
+				slabKind     -- [bitOr slabKind SLAB-SMALL-CYRL]
+				top          -- XH
+				sw           -- Stroke
+
+		create-glyph "cyrl/Yn.\(suffix)" : glyph-proc
+			include : MarkSet.capDesc
+			local df : DivFrame 1 3
+			local vHeight : CAP * 0.875
+			local sw : AdviceStroke 3
+
+			include : with-transform [ApparentTranslate 0 (CAP - vHeight)] : LambdaHookLeftShape
+				df             -- df
+				fBarStraight   -- fStraightBar
+				slabKind       -- slabKind
+				top            -- vHeight
+				sw             -- df.mvs
+				hookWidthInner -- (TailX / 3 - [HSwToV : 0.25 * df.mvs])
+
+			include : dispiro
+				g4.down.start Middle CAP [widths.center.heading [AdviceStroke 6] Downward]
+				flat Middle 0 [widths.center.heading df.mvs Downward]
+				curl Middle Descender [widths.center.heading df.mvs Downward]
+			if [maskBits slabKind SLAB-RIGHT] : begin
+				include : HSerif.mb Middle Descender MidJutCenter
+
+		create-glyph "cyrl/yn.\(suffix)" : glyph-proc
+			include : MarkSet.p
+			local df : DivFrame 1 3
+			local sw : AdviceStroke 3
+
+			include : LambdaHookLeftShape
+				df             -- df
+				fBarStraight   -- fStraightBar
+				slabKind       -- [bitOr slabKind SLAB-SMALL-CYRL]
+				top            -- XH
+				sw             -- df.mvs
+				hookWidthInner -- (TailX / 3 - [HSwToV : 0.25 * df.mvs])
+
+			include : dispiro
+				g4.down.start Middle XH [widths.center.heading [AdviceStroke 6] Downward]
+				flat Middle 0 [widths.center.heading df.mvs Downward]
+				curl Middle Descender [widths.center.heading df.mvs Downward]
+			if [maskBits slabKind SLAB-RIGHT] : begin
+				include : HSerif.mb Middle Descender MidJutCenter
+
+	select-variant 'grek/Lambda' 0x39B
+	link-reduced-variant 'grek/Lambda/sansSerif' 'grek/Lambda' MathSansSerif
+	select-variant 'grek/smcpLambda' 0x1D27 (follow -- 'grek/Lambda')
+
+	alias 'cyrl/El.BGR' null 'grek/Lambda'
+	select-variant 'cyrl/el.BGR' (follow -- 'grek/Lambda')
+
+	select-variant 'cyrl/yn' 0xA65F (follow -- 'grek/Lambda')
+	select-variant 'cyrl/Yn' 0xA65E (follow -- 'grek/Lambda')
+
+	# Delta
+	glyph-block-export DeltaShape
+	define [DeltaShape] : with-params [df top sw fBarStraight] : union
+		LambdaShape
+			df           -- df
+			fBarStraight -- fBarStraight
+			slabKind     -- 0
+			top          -- top
+			sw           -- sw
+		intersection
+			HBar.b 0 df.width 0 sw
+			LambdaMask df fBarStraight top sw
+
+	define DeltaConfig : object
+		straight true
+		curly    false
+
+	foreach { suffix fBarStraight } [pairs-of DeltaConfig] : do
+		create-glyph "grek/Delta.\(suffix)" : glyph-proc
+			include : MarkSet.capital
+			include : DeltaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fBarStraight
+				top          -- CAP
+				sw           -- Stroke
+
+		create-glyph "increment.\(suffix)" : glyph-proc
+			include : MarkSet.capital
+			include : DeltaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fBarStraight
+				top          -- CAP
+				sw           -- OperatorStroke
+
+		create-glyph "increment.aplForm.\(suffix)" : glyph-proc
+			include : MarkSet.oper
+			define shapeHeight : OperTop - OperBot
+			include : DeltaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fBarStraight
+				top          -- shapeHeight
+				sw           -- OperatorStroke
+			include : ApparentTranslate 0 (SymbolMid - shapeHeight / 2)
+
+		create-glyph "increment.aplThin.\(suffix)" : glyph-proc
+			include : MarkSet.oper
+			define shapeHeight : OperTop - OperBot
+			include : DeltaShape
+				df           -- [DivFrame 1]
+				fBarStraight -- fBarStraight
+				top          -- shapeHeight
+				sw           -- [AdviceStroke 3.75]
+			include : ApparentTranslate 0 (SymbolMid - shapeHeight / 2)
+
+	define [CodeNonApl u] : if (para.variantSelector.__enableAplForm === 'enable') null u
+	define [CodeApl    u] : if (para.variantSelector.__enableAplForm === 'enable') u null
+
+	select-variant 'grek/Delta' 0x394
+	select-variant 'increment'      [CodeNonApl 0x2206] (follow -- 'grek/Delta')
+	select-variant 'increment.aplForm' [CodeApl 0x2206] (follow -- 'grek/Delta')
+	select-variant 'increment.aplThin'                  (follow -- 'grek/Delta')
+
+	CreateTurnedLetter 'nabla'      [CodeNonApl 0x2207] 'increment'         HalfAdvance (CAP / 2)
+	CreateTurnedLetter 'nabla.aplForm' [CodeApl 0x2207] 'increment.aplForm' HalfAdvance SymbolMid
+	CreateTurnedLetter 'nabla.aplThin' null             'increment.aplThin' HalfAdvance SymbolMid
+
+	derive-glyphs 'cyrl/De.BGR' null 'grek/Delta' : function [src gr] : glyph-proc
+		include [refer-glyph src] AS_BASE ALSO_METRICS
+		local descenderOverflow : if SLAB SideJut : (RightSB - SB) * 0.075
+		local xCutLeft SB
+		local xCutRight RightSB
+		include : HBar.b (xCutLeft  - descenderOverflow) (xCutRight + descenderOverflow) 0
+		include : VBar.l (xCutLeft  - descenderOverflow) ((-LongVJut) + QuarterStroke) Stroke
+		include : VBar.r (xCutRight + descenderOverflow) ((-LongVJut) + QuarterStroke) Stroke
+

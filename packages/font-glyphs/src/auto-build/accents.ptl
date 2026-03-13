@@ -1,0 +1,124 @@
+###### Automatic builds
+$$include '../meta/macros.ptl'
+
+import [Dotless AnyDerivingCv DotlessOrNot getGrTree CvDecompose LeaningMark LeaningMarkSpacer] from "@iosevka/glyph/relation"
+import [fallback ArrayUtil MatchUtil constant] from "@iosevka/util"
+import as UnicodeKnowledge from "../meta/unicode-knowledge.mjs"
+
+extern Map
+extern Set
+
+glyph-module
+
+glyph-block AutoBuild-Accents : begin
+	glyph-block-import Common-Derivatives : query-glyph refer-glyph
+	glyph-block-import CommonShapes : NameUni
+	glyph-block-import Letter-Accent-Builder : TransformGlyphCompositionSequence
+
+	define [suggestName _name] : begin
+		local name _name
+		if [query-glyph name] : begin
+			local j 2
+			while [query-glyph (name + j)] : inc j
+			set name (name + j)
+		return name
+
+	define [suggestMappedName map key name] : begin
+		if map.(key) : return map.(key)
+		local amended : suggestName name
+		set map.(key) amended
+		return amended
+
+	local foundDecompositions {.}
+
+	local goalCodes : range 0x0000 0x1FFFF
+	foreach code goalCodes : if [not : glyphStore.queryByUnicode code] : do
+		local parts    { }
+		local allFound true
+
+		local customDecomp   UnicodeKnowledge.decompOverrides.(code)
+
+		local str : String.fromCodePoint code
+		local nfd : str.normalize 'NFD'
+
+		if customDecomp
+		: then : begin
+			foreach partName customDecomp : begin
+				local part : glyphStore.queryByName partName
+				if [not part]
+				: then : set allFound false
+				: else : parts.push part
+
+		: else : if (str !== nfd) : begin
+			local nfdChars : Array.from nfd
+			foreach partChar [items-of nfdChars] : begin
+				local part : glyphStore.queryByUnicode [partChar.codePointAt 0]
+				if [not part]
+				: then : set allFound false
+				: else : parts.push part
+
+		if (allFound && parts.length) : begin
+			local glyphName : NameUni code
+			TransformGlyphCompositionSequence parts
+			set foundDecompositions.(glyphName) { glyphName code parts }
+
+	local s_goalName  nothing
+	local s_code      nothing
+	local s_parts     nothing
+
+	define [recursivelyDecompose g sink] : begin
+		local decomposition : CvDecompose.get g
+		if decomposition : foreach gnPart [items-of decomposition] : begin
+			local g : query-glyph gnPart
+			if g : recursivelyDecompose g sink
+		: else : begin
+			sink.push : glyphStore.queryNameOf g
+
+	define construction : glyph-proc
+		include s_parts.0 AS_BASE ALSO_METRICS
+		local nonTrivial : AnyDerivingCv.hasNonDerivingVariants s_parts.0
+		foreach part [items-of : s_parts.slice 1] : if part : begin
+			include part
+			if (part.markAnchors && part.markAnchors.bottomRight) : begin
+				eject-contour 'serifRB'
+				set nonTrivial true
+		if ([not nonTrivial] && [AnyDerivingCv.query s_parts.0]) : begin
+			local decomposeParts { }
+			foreach part [items-of s_parts] : recursivelyDecompose part decomposeParts
+			CvDecompose.set currentGlyph decomposeParts
+
+	define [RootGlyphProc goalName code parts] : begin
+		set s_goalName goalName
+		set s_code   code
+		set s_parts  parts
+		return : create-glyph goalName code construction
+
+	define [NeedBuildMesh glyphName part0Name] : begin
+		define g : query-glyph glyphName
+		define part0 : query-glyph part0Name
+		if [not g] : return false
+		if [not part0] : return false
+		if [not : CvDecompose.get g] : return true
+		if [DotlessOrNot.query part0] : return true
+		return false
+
+	foreach [_id : items-of : Object.keys foundDecompositions] : do
+		local { glyphName code parts } foundDecompositions.(_id)
+		local saved : RootGlyphProc glyphName code parts
+		if saved : begin
+			define part0Name : glyphStore.queryNameOf parts.0
+			if (parts.0 != [query-glyph part0Name]) : throw : new Error "Unreachable"
+
+		if [NeedBuildMesh glyphName part0Name] : begin
+			local dstTree {}
+			local targetNameMap  {.}
+			set targetNameMap.(part0Name) glyphName
+			local tree : getGrTree part0Name { DotlessOrNot AnyDerivingCv } query-glyph
+			foreach [{gr origBase relBase} : items-of tree] : begin
+				local origGN targetNameMap.(origBase)
+				if [not origGN] : throw : new Error 'Unreachable'
+				local relGN  : suggestMappedName targetNameMap relBase [gr.amendName origGN]
+				local parts1 : parts.slice 0
+				set parts1.0 : query-glyph relBase
+				if [not : query-glyph relGN] : RootGlyphProc relGN null parts1
+				if [query-glyph origGN] : gr.set [query-glyph origGN] relGN

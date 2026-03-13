@@ -1,0 +1,58 @@
+$$include '../../meta/macros.ptl'
+
+import [mix slY] from "@iosevka/util"
+
+glyph-module
+
+glyph-block LetterLike-Fraktur-Lower-AQ : begin
+	glyph-block-import Common-Derivatives
+	glyph-block-import CommonShapes
+	glyph-block-import LetterLike-Fraktur-Common : LowerDf S F T fraktur-stroke change-pen
+	glyph-block-import LetterLike-Fraktur-Common : DecoSizeX DecoSizeY SlopeA SlopeB
+	glyph-block-import LetterLike-Fraktur-Common : Wave PHexTop PHexBot RBDecoration
+
+	define [LeftHalfShape mode box] : lift-@ : fraktur-stroke S
+		corner      (@xR = box.right)         [slY @xT @yT @xR SlopeB]
+		corner      (@xT = [box.xp PHexTop])  (@yT = box.top)
+		g2.down.mid (box.left - OX)            box.yMid
+		corner      (@xB = [box.xp PHexBot])  (@yB = box.bot)
+		corner       @xR                      [slY @xB @yB @xR SlopeA]
+
+	create-glyph "frak/a" 0x1D51E : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.e
+
+		local aBox : S.box XH 0 df.leftSB df.rightSB
+
+		local leftStroke : include : LeftHalfShape 'a' aBox
+		local rightStroke : include : fraktur-stroke S
+			flat [leftStroke.first].x [leftStroke.first].y
+			RBDecoration [leftStroke.last].x aBox.bot [leftStroke.last].y
+
+	create-glyph "frak/g" 0x1D524 : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.p
+
+		local aBox : S.box XH 0 df.leftSB df.rightSB
+		local gBox : S.box XH Descender df.leftSB df.rightSB
+
+		local leftStroke : include : LeftHalfShape 'p' aBox
+		local rightStroke : include : lift-@ : fraktur-stroke S
+			corner [leftStroke.first].x        [leftStroke.first].y
+			corner (@xR = [leftStroke.last].x) [leftStroke.last].y
+			g2     (@xR + 0.5 * DecoSizeX)     (@yB + SmallArchDepthA)
+			hookend (sw -- S.thick)            (@yB = gBox.bot)
+			g4      gBox.left                  (@yB + SHook)
+
+
+	create-glyph "frak/q" 0x1D52E : glyph-proc
+		local df : include : LowerDf 1
+		include : df.markSet.p
+
+		local aBox : S.box XH 0 df.leftSB df.rightSB
+		local qBox : S.box XH Descender df.leftSB df.rightSB
+
+		local leftStroke : include : LeftHalfShape 'p' aBox
+		local rightStroke : include : fraktur-stroke S
+			flat [leftStroke.first].x [leftStroke.first].y
+			RBDecoration [leftStroke.last].x qBox.bot [leftStroke.last].y

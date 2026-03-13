@@ -1,0 +1,14 @@
+{
+  "name": "@iosevka/param",
+  "version": "34.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.mjs",
+    "./variant": "./src/variant.mjs",
+    "./ligation": "./src/ligation.mjs",
+    "./metric-override": "./src/metric-override.mjs"
+  },
+  "dependencies": {
+    "@iosevka/util": "34.1.0"
+  }
+}
