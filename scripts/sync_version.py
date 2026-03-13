@@ -45,6 +45,12 @@ def semver_to_gf(semver: str) -> str:
     return f"{int(major)}.{gf_decimal}"
 
 
+def gf_version_key(gf_version: str) -> tuple[int, int]:
+    """Convert a Google Fonts version string into a comparable key."""
+    major, decimal = gf_version.strip().split(".", 1)
+    return int(major), int(decimal)
+
+
 def read_upstream_version() -> str:
     """Read the version field from the upstream Iosevka package.json."""
     if not UPSTREAM_PACKAGE_JSON.exists():
@@ -59,6 +65,23 @@ def read_upstream_version() -> str:
         sys.exit(1)
 
     return version
+
+
+def choose_gf_version(upstream: str, computed_gf_version: str) -> str:
+    """Preserve an explicit local GF version bump for the current upstream version."""
+    if not VERSION_JSON.exists():
+        return computed_gf_version
+
+    existing = json.loads(VERSION_JSON.read_text(encoding="utf-8"))
+    existing_upstream = existing.get("upstream")
+    existing_gf_version = existing.get("gf_version")
+    if existing_upstream != upstream or not existing_gf_version:
+        return computed_gf_version
+
+    if gf_version_key(existing_gf_version) >= gf_version_key(computed_gf_version):
+        return existing_gf_version
+
+    return computed_gf_version
 
 
 def write_version_json(upstream: str, gf_version: str) -> None:
@@ -80,23 +103,31 @@ def write_version_json(upstream: str, gf_version: str) -> None:
 def check_mode() -> None:
     """Verify version.json is up-to-date with upstream. Exit 1 if stale."""
     upstream = read_upstream_version()
-    gf_version = semver_to_gf(upstream)
+    min_gf_version = semver_to_gf(upstream)
 
     if not VERSION_JSON.exists():
         print(f"FAIL: {VERSION_JSON} does not exist. Run sync_version.py first.", file=sys.stderr)
         sys.exit(1)
 
     existing = json.loads(VERSION_JSON.read_text(encoding="utf-8"))
-    if existing.get("upstream") != upstream or existing.get("gf_version") != gf_version:
+    existing_gf_version = existing.get("gf_version")
+    if (
+        existing.get("upstream") != upstream
+        or not existing_gf_version
+        or gf_version_key(existing_gf_version) < gf_version_key(min_gf_version)
+    ):
         print(
-            f"FAIL: version.json is stale.\n"
-            f"  Expected upstream={upstream}, gf_version={gf_version}\n"
-            f"  Got      upstream={existing.get('upstream')}, gf_version={existing.get('gf_version')}",
+            "FAIL: version.json is stale.\n"
+            f"  Expected upstream={upstream}, gf_version>={min_gf_version}\n"
+            f"  Got      upstream={existing.get('upstream')}, gf_version={existing_gf_version}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    print(f"OK: version.json is up-to-date (upstream={upstream}, gf={gf_version})")
+    print(
+        f"OK: version.json is up-to-date "
+        f"(upstream={upstream}, gf={existing_gf_version}, minimum={min_gf_version})"
+    )
 
 
 def main() -> None:
@@ -117,7 +148,7 @@ def main() -> None:
         return
 
     upstream = read_upstream_version()
-    gf_version = semver_to_gf(upstream)
+    gf_version = choose_gf_version(upstream, semver_to_gf(upstream))
     write_version_json(upstream, gf_version)
 
 

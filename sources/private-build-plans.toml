@@ -5,7 +5,10 @@ serifs = "sans"
 noCvSs = true
 exportGlyphNames = true
 buildTextureFeature = true
-noLigation = true
+noLigation = false
+
+[buildPlans.IosevkaCharon.ligations]
+enables = ["kern-bars", "kern-dotty"]
 
 [buildPlans.IosevkaCharon.variants]
 inherits = "ss08"
