@@ -24,10 +24,44 @@
 
 [buildPlans.IosevkaCharon]
 family = "Iosevka Charon"
-spacing = "normal"
+spacing = "quasi-proportional"
 serifs = "sans"
 noCvSs = true
 exportGlyphNames = true
+buildTextureFeature = true
+noLigation = false
+
+[buildPlans.IosevkaCharon.ligations]
+enables = ["kern-bars", "kern-dotty"]
+
+[buildPlans.IosevkaCharon.variants]
+inherits = "ss08"
+
+[buildPlans.IosevkaCharon.variants.design]
+two = "straight-neck-serifless"
+three = "two-arcs"
+five = "oblique-flat-serifless"
+six = "open-contour"
+eight = "crossing"
+nine = "open-contour"
+zero = "oval-slashed"
+capital-q = "crossing"
+capital-a = "curly-serifless"
+capital-v = "curly-serifless"
+capital-w = "curly-asymmetric-serifless"
+capital-y = "curly-serifless"
+w = "curly-almost-flat-top-serifless"
+d = "tailed-serifless"
+e = "rounded"
+i = "serifed-flat-tailed"
+j = "serifed"
+l = "serifed-flat-tailed"
+u = "tailed-serifless"
+v = "curly-serifless"
+y = "curly-turn-serifless"
+ampersand = "closed"
+at = "fourfold"
+dollar = "through"
 
 [buildPlans.IosevkaCharon.weights.Regular]
 shape = 400
