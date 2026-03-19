@@ -123,12 +123,7 @@ clean:
 # Update Iosevka subtree to a new version
 # Usage: make update-subtree [TAG=v34.0.0]
 update-subtree:
-	@set -e; \
-	if ! git diff --quiet || ! git diff --cached --quiet; then \
-		echo "Error: update-subtree requires a clean git worktree"; \
-		exit 1; \
-	fi; \
-	upstream_url="https://github.com/be5invis/Iosevka.git"; \
+	@upstream_url="https://github.com/be5invis/Iosevka.git"; \
 	if git remote get-url iosevka-upstream >/dev/null 2>&1; then \
 		current_url="$$(git remote get-url iosevka-upstream)"; \
 		if [ "$$current_url" != "$$upstream_url" ]; then \
@@ -150,7 +145,7 @@ update-subtree:
 	fi; \
 	echo "==> Updating Iosevka subtree to $$tag..."; \
 	git fetch iosevka-upstream tag "$$tag" --no-tags; \
-	git subtree pull --prefix=sources/iosevka iosevka-upstream "$$tag" --squash -m "Update Iosevka subtree to $$tag"; \
+	git subtree pull --prefix=sources/iosevka iosevka-upstream "$$tag" -m "Update Iosevka subtree to $$tag"; \
 	echo "==> Subtree updated successfully to $$tag"
 
 .PHONY: $(TEST_TARGETS) help clean update-subtree webfonts sync-version
