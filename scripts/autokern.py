@@ -90,7 +90,7 @@ _KERN_RANGES: List[Tuple[int, int]] = [
 # Thin punctuation: suppress positive (loosening) kerns when either side
 # is one of these narrow marks.  Negative (tightening) kerns still apply.
 _THIN_PUNCT: set = {
-    ord(c) for c in ".,:;!¡·…‥"
+    ord(c) for c in ".,:;!¡·…‥'\"''""\u201A\u201B\u201E\u201F`"
 }
 
 
