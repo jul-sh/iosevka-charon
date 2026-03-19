@@ -860,15 +860,13 @@ def normalize_simple_glyphs(font: TTFont) -> bool:
     return changed
 
 
-def fix_panose_proportion(font: TTFont) -> bool:
-    """Ensure PANOSE proportion matches the font's fixed-pitch setting."""
-    if "OS/2" not in font or "post" not in font:
+def fix_panose_monospace(font: TTFont) -> bool:
+    """Ensure PANOSE proportion is set to monospaced."""
+    if "OS/2" not in font:
         return False
-
-    target = 9 if font["post"].isFixedPitch else 0
     panose = font["OS/2"].panose
-    if panose.bProportion != target:
-        panose.bProportion = target
+    if panose.bProportion != 9:
+        panose.bProportion = 9
         return True
     return False
 
@@ -1216,7 +1214,7 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
         fixes_applied.append("gftools_fix_font")
 
         extra_fix_map = [
-            (fix_panose_proportion, "panose_proportion"),
+            (fix_panose_monospace, "panose_monospace"),
             (fix_license_entries, "license_entries"),
             (fix_style_bits, "style_bits"),
             (drop_glyph_names, "stripped_glyph_names"),
