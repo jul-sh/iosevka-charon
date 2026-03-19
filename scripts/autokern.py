@@ -111,7 +111,8 @@ class AutoKernConfig:
     threshold_units: int = 5  # drop kerns smaller than this (font units)
     quantize_step: int = 2  # round kerns to multiples of this (font units)
     class_tolerance: int = 10  # max deviation for class merging (font units)
-    negative_only: bool = True  # only emit tightening (negative) kerns
+    negative_only: bool = False  # only emit tightening (negative) kerns
+    half_positive: bool = True  # halve positive (loosening) kerns for conservative widening
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +220,10 @@ def _compute_all_kerns(
             # Only tightening (negative) kerns if configured
             if config.negative_only and kern_px > 0:
                 continue
+
+            # Halve positive (loosening) kerns for conservative widening
+            if config.half_positive and kern_px > 0:
+                kern_px = kern_px / 2.0
 
             # Convert pixels to font units
             kern_units = round(kern_px * px_to_units)
