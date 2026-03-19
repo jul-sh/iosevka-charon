@@ -24,9 +24,7 @@ from fontTools.ttLib.tables import otTables
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Ensure the vendored halfkern is importable, and that the native libraries
-# (freetype, cairo) are locatable even inside a Nix shell on macOS where
-# DYLD_* env vars are stripped by SIP.
+# Ensure the vendored halfkern is importable.
 # ---------------------------------------------------------------------------
 
 _HALFKERN_DIR = Path(__file__).resolve().parent / "halfkern"
@@ -39,64 +37,6 @@ if str(_HALFKERN_DIR) not in sys.path:
     sys.path.insert(0, str(_HALFKERN_DIR))
 
 
-def _resolve_nix_lib(name: str) -> Optional[str]:
-    """Find the full path to a shared library via NIX_LDFLAGS."""
-    import glob
-    import os
-    import platform
-
-    ext = ".dylib" if platform.system() == "Darwin" else ".so"
-    nix_ldflags = os.environ.get("NIX_LDFLAGS", "")
-    for token in nix_ldflags.split():
-        if token.startswith("-L"):
-            d = token[2:]
-            for candidate in glob.glob(os.path.join(d, f"lib{name}*{ext}")):
-                if os.path.isfile(candidate):
-                    return candidate
-    return None
-
-
-def _patch_cairoft_for_nix() -> None:
-    """Monkey-patch halfkern's cairoft module so it can find libs in Nix.
-
-    cairoft.py calls ``ct.CDLL("libfreetype.dylib")`` which fails on macOS
-    inside Nix because SIP strips DYLD_* variables.  We patch ``ct.CDLL`` to
-    resolve bare library names via NIX_LDFLAGS before the real dlopen.
-    """
-    import ctypes as ct
-    import os
-
-    if not os.environ.get("NIX_LDFLAGS"):
-        return  # Not in a Nix shell, nothing to patch
-
-    _real_CDLL = ct.CDLL
-
-    # Cache of resolved paths so we only search once per name
-    _resolved: Dict[str, str] = {}
-
-    class _NixCDLL(_real_CDLL):  # type: ignore[misc]
-        def __init__(self, name, *args, **kwargs):
-            # If it's a bare library name (no path separator), try to resolve
-            if name and os.sep not in name:
-                if name not in _resolved:
-                    # Strip version suffixes to get the base lib name
-                    # "libfreetype.dylib" -> "freetype"
-                    base = name
-                    for prefix in ("lib",):
-                        if base.startswith(prefix):
-                            base = base[len(prefix):]
-                    for suffix in (".dylib", ".so", ".so.6", ".so.2"):
-                        if base.endswith(suffix):
-                            base = base[: -len(suffix)]
-                    resolved = _resolve_nix_lib(base)
-                    _resolved[name] = resolved if resolved else name
-                name = _resolved[name]
-            super().__init__(name, *args, **kwargs)
-
-    ct.CDLL = _NixCDLL  # type: ignore[misc]
-
-
-_patch_cairoft_for_nix()
 
 
 # ---------------------------------------------------------------------------
