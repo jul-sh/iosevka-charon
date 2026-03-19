@@ -21,9 +21,10 @@ LINE_HEIGHT = 12
 WHITE = (255, 255, 255)
 GRAY = (140, 140, 140)
 
-regular = ImageFont.truetype(FONTS["regular"], FONT_SIZE)
-bold = ImageFont.truetype(FONTS["bold"], FONT_SIZE)
-title = ImageFont.truetype(FONTS["bold"], TITLE_SIZE)
+RAQM = ImageFont.Layout.RAQM
+regular = ImageFont.truetype(FONTS["regular"], FONT_SIZE, layout_engine=RAQM)
+bold = ImageFont.truetype(FONTS["bold"], FONT_SIZE, layout_engine=RAQM)
+title = ImageFont.truetype(FONTS["bold"], TITLE_SIZE, layout_engine=RAQM)
 
 # Multilingual test text
 multilingual_text = [

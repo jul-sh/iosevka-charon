@@ -34,7 +34,7 @@ test_samples = [
 
 def render_text_to_array(text, font_path, size):
     """Render text to a numpy array for pixel-level comparison"""
-    font = ImageFont.truetype(font_path, size)
+    font = ImageFont.truetype(font_path, size, layout_engine=ImageFont.Layout.RAQM)
 
     # Create temporary image to measure text
     temp_img = Image.new("L", (1, 1))
@@ -100,9 +100,9 @@ y = MARGIN
 
 # Title
 try:
-    title_font = ImageFont.truetype(f"{FONT_DIR_1}/IosevkaCharon-Bold.ttf", TITLE_SIZE)
-    subtitle_font = ImageFont.truetype(f"{FONT_DIR_1}/IosevkaCharon-Regular.ttf", SUBTITLE_SIZE)
-    legend_font = ImageFont.truetype(f"{FONT_DIR_1}/IosevkaCharon-Regular.ttf", 18)
+    title_font = ImageFont.truetype(f"{FONT_DIR_1}/IosevkaCharon-Bold.ttf", TITLE_SIZE, layout_engine=ImageFont.Layout.RAQM)
+    subtitle_font = ImageFont.truetype(f"{FONT_DIR_1}/IosevkaCharon-Regular.ttf", SUBTITLE_SIZE, layout_engine=ImageFont.Layout.RAQM)
+    legend_font = ImageFont.truetype(f"{FONT_DIR_1}/IosevkaCharon-Regular.ttf", 18, layout_engine=ImageFont.Layout.RAQM)
 except:
     print("Warning: Could not load title fonts, using default")
     title_font = ImageFont.load_default()

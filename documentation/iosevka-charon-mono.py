@@ -25,9 +25,10 @@ RED = (255, 100, 100)  # brighter red
 ORANGE = (206, 145, 80)  # brighter orange
 TEAL = (78, 201, 162)  # brighter teal
 
-regular = ImageFont.truetype(FONTS["regular"], FONT_SIZE)
-bold = ImageFont.truetype(FONTS["bold"], FONT_SIZE)
-small = ImageFont.truetype(FONTS["regular"], SMALL_SIZE)
+RAQM = ImageFont.Layout.RAQM
+regular = ImageFont.truetype(FONTS["regular"], FONT_SIZE, layout_engine=RAQM)
+bold = ImageFont.truetype(FONTS["bold"], FONT_SIZE, layout_engine=RAQM)
+small = ImageFont.truetype(FONTS["regular"], SMALL_SIZE, layout_engine=RAQM)
 
 
 # Calculate height

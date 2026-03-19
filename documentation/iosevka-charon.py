@@ -21,11 +21,12 @@ LINE_HEIGHT = 18
 WHITE = (255, 255, 255)
 GRAY = (140, 140, 140)
 
-regular = ImageFont.truetype(FONTS["regular"], FONT_SIZE)
-italic = ImageFont.truetype(FONTS["italic"], FONT_SIZE)
-bold = ImageFont.truetype(FONTS["bold"], FONT_SIZE)
-title = ImageFont.truetype(FONTS["regular"], TITLE_SIZE)
-small = ImageFont.truetype(FONTS["regular"], SMALL_SIZE)
+RAQM = ImageFont.Layout.RAQM
+regular = ImageFont.truetype(FONTS["regular"], FONT_SIZE, layout_engine=RAQM)
+italic = ImageFont.truetype(FONTS["italic"], FONT_SIZE, layout_engine=RAQM)
+bold = ImageFont.truetype(FONTS["bold"], FONT_SIZE, layout_engine=RAQM)
+title = ImageFont.truetype(FONTS["regular"], TITLE_SIZE, layout_engine=RAQM)
+small = ImageFont.truetype(FONTS["regular"], SMALL_SIZE, layout_engine=RAQM)
 
 
 # Calculate height
