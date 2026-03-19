@@ -111,7 +111,7 @@ class AutoKernConfig:
     threshold_units: int = 5  # drop kerns smaller than this (font units)
     quantize_step: int = 2  # round kerns to multiples of this (font units)
     class_tolerance: int = 10  # max deviation for class merging (font units)
-    negative_only: bool = True  # only emit tightening (negative) kerns
+    negative_only: bool = False  # emit both tightening and loosening kerns
 
 
 # ---------------------------------------------------------------------------
