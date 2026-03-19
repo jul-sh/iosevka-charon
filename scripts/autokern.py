@@ -223,7 +223,7 @@ def _compute_all_kerns(
 
             # Halve positive (loosening) kerns for conservative widening
             if config.half_positive and kern_px > 0:
-                kern_px = kern_px / 2.0
+                kern_px = kern_px * 0.3
 
             # Convert pixels to font units
             kern_units = round(kern_px * px_to_units)
