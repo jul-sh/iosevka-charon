@@ -415,6 +415,16 @@ def _inject_kern_lookup(
             gpos_table.FeatureList.FeatureRecord
         )
 
+        # Register the new kern feature in every script/language so
+        # HarfBuzz (and other shapers) can discover it.
+        kern_feat_idx = len(gpos_table.FeatureList.FeatureRecord) - 1
+        for script_rec in gpos_table.ScriptList.ScriptRecord:
+            script = script_rec.Script
+            if script.DefaultLangSys is not None:
+                script.DefaultLangSys.FeatureIndex.append(kern_feat_idx)
+            for lang_rec in (script.LangSysRecord or []):
+                lang_rec.LangSys.FeatureIndex.append(kern_feat_idx)
+
     return True
 
 
