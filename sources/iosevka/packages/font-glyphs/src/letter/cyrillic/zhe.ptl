@@ -61,16 +61,16 @@ glyph-block Letter-Cyrillic-Zhe : begin
 
 			local rightHalf : union
 				intersection [MaskRight df.middle]
-					ExtLineRhs (df.rightSB - overshoot) top (df.width - attach1X) attach1Y fine 4
+					ExtLineRhs 4 fine (df.rightSB - overshoot) top (df.width - attach1X) attach1Y
 				intersection [MaskRight df.middle] : difference
-					ExtLineLhs (df.rightSB - overshoot) bot (df.width - attach1X) attach2Y fine 4
+					ExtLineLhs 4 fine (df.rightSB - overshoot) bot (df.width - attach1X) attach2Y
 					mask
 
 			local leftHalf : union
 				intersection [MaskLeft df.middle]
-					ExtLineLhs (df.leftSB  + overshoot) top attach1X attach1Y fine 4
+					ExtLineLhs 4 fine (df.leftSB  + overshoot) top attach1X attach1Y
 				intersection [MaskLeft df.middle] : difference
-					ExtLineRhs (df.leftSB  + overshoot) bot attach1X attach2Y fine 4
+					ExtLineRhs 4 fine (df.leftSB  + overshoot) bot attach1X attach2Y
 					mask
 
 			local fullShape : if fHalf rightHalf : union rightHalf leftHalf
@@ -136,15 +136,15 @@ glyph-block Letter-Cyrillic-Zhe : begin
 
 			local rightHalf : union
 				intersection [MaskBelow midY] [MaskAbove bot]
-					ExtLineLhs (df.rightSB - overshoot) bot (df.width - midX) midY fine 4
+					ExtLineLhs 4 fine (df.rightSB - overshoot) bot (df.width - midX) midY
 				intersection [MaskBelow top] [MaskAbove midY]
-					ExtLineRhs (df.rightSB - overshoot) top (df.width - midX) midY fine 4
+					ExtLineRhs 4 fine (df.rightSB - overshoot) top (df.width - midX) midY
 
 			local leftHalf : union
 				intersection [MaskBelow midY] [MaskAbove bot]
-					ExtLineRhs (df.leftSB + overshoot) bot midX midY fine 4
+					ExtLineRhs 4 fine (df.leftSB + overshoot) bot midX midY
 				intersection [MaskBelow top] [MaskAbove midY]
-					ExtLineLhs (df.leftSB + overshoot) top midX midY fine 4
+					ExtLineLhs 4 fine (df.leftSB + overshoot) top midX midY
 
 			local fullShape : if fHalf rightHalf : union rightHalf leftHalf
 
