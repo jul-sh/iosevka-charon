@@ -131,22 +131,27 @@ glyph-block Letter-Latin-Upper-AE-OE : begin
 				include : VSerif.mr xMidBarRight yBar jutMid swVJut
 
 	do "Ya Half"
-		glyph-block-import Letter-Latin-Upper-R : RevRShape RConfig
+		glyph-block-import Letter-Latin-Upper-P : PShape
+		glyph-block-import Letter-Latin-Upper-R : RevRShape RConfig RBarPos
 
-		foreach { suffix { { legShape revLegShape } fGap fTailed { slabs revSlabs doLegSlab } } } [Object.entries RConfig] : begin
+		foreach { suffix { legShape fOpen fTailed {slabs revSlabs doLegSlab} } } [Object.entries RConfig] : begin
+			define fSlabBot : slabs && slabs !== PShape.SlabMotion
+
 			if [not fTailed] : begin
 				create-glyph "cyrl/YaIe/YaHalf.\(suffix)" : glyph-proc
 					local df : include : DivFrame para.advanceScaleMM 3
 					include : df.markSet.capital
 					local sw : AEOEStroke df CAP
+					local bp : RBarPos CAP fSlabBot
 					local subDf : df.sliceFine 3 2 0.5 [HSwToV : 0.25 * sw]
 					set-base-anchor 'cvDecompose' 0 0
 
-					include : RevRShape revLegShape CAP
+					include : RevRShape legShape CAP
 						df      -- subDf
 						slab    -- revSlabs
 						legSlab -- doLegSlab
-						open    -- fGap
+						bp      -- bp
+						open    -- fOpen
 						sw      -- sw
 
 					eject-contour 'strokeR'
