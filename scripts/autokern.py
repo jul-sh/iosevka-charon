@@ -29,9 +29,14 @@ logger = logging.getLogger(__name__)
 # DYLD_* env vars are stripped by SIP.
 # ---------------------------------------------------------------------------
 
-_HALFKERN_DIR = str(Path(__file__).resolve().parent / "halfkern")
-if _HALFKERN_DIR not in sys.path:
-    sys.path.insert(0, _HALFKERN_DIR)
+_HALFKERN_DIR = Path(__file__).resolve().parent / "halfkern"
+if not (_HALFKERN_DIR / "kern_pair.py").exists():
+    raise RuntimeError(
+        f"HalfKern submodule not initialised ({_HALFKERN_DIR} is empty). "
+        "Run: git submodule update --init scripts/halfkern"
+    )
+if str(_HALFKERN_DIR) not in sys.path:
+    sys.path.insert(0, str(_HALFKERN_DIR))
 
 
 def _resolve_nix_lib(name: str) -> Optional[str]:
@@ -124,11 +129,21 @@ _KERN_RANGES: List[Tuple[int, int]] = [
     (0x00A0, 0x00FF),  # Latin-1 Supplement (À-ÿ, common accented)
     (0x0100, 0x017F),  # Latin Extended-A (Ā-ſ)
     (0x0180, 0x024F),  # Latin Extended-B (ƀ-ɏ)
+    (0x0250, 0x02AF),  # IPA Extensions
+    (0x0370, 0x03FF),  # Greek and Coptic
+    (0x0400, 0x04FF),  # Cyrillic
+    (0x0500, 0x052F),  # Cyrillic Supplement
+    (0x1E00, 0x1EFF),  # Latin Extended Additional (Vietnamese, etc.)
+    (0x1F00, 0x1FFF),  # Greek Extended
     (0x2010, 0x2015),  # Dashes (hyphen, en-dash, em-dash)
     (0x2018, 0x201F),  # Quotation marks
     (0x2026, 0x2026),  # Ellipsis
     (0x2039, 0x203A),  # Single angle quotes
     (0x20AC, 0x20AC),  # Euro sign
+    (0x2C60, 0x2C7F),  # Latin Extended-C
+    (0xA720, 0xA7FF),  # Latin Extended-D
+    (0xAB30, 0xAB6B),  # Latin Extended-E
+    (0xFB00, 0xFB06),  # Alphabetic Presentation Forms (ligatures ff, fi, fl, etc.)
 ]
 
 
