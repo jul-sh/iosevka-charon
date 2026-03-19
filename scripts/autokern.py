@@ -106,11 +106,12 @@ class AutoKernConfig:
     envelope: str = "sdf"  # "sdf" (default, best) or "gaussian"
     reduce: str = "sum"  # "sum" (default) or "max"
     half_negative: bool = True  # halve negative kerns (the "Half" in HalfKern)
-    min_kern_units: int = -150  # clamp: most negative kern allowed (font units)
-    threshold_units: int = 10  # drop kerns smaller than this (font units)
+    min_kern_units: int = -250  # clamp: most negative kern allowed (font units)
+    max_kern_units: int = 100  # clamp: most positive kern allowed (font units)
+    threshold_units: int = 5  # drop kerns smaller than this (font units)
     quantize_step: int = 2  # round kerns to multiples of this (font units)
     class_tolerance: int = 10  # max deviation for class merging (font units)
-    negative_only: bool = True  # only emit tightening kerns (negative values)
+    negative_only: bool = False  # emit both tightening and loosening kerns
 
 
 # ---------------------------------------------------------------------------
@@ -224,6 +225,7 @@ def _compute_all_kerns(
 
             # Clamp
             kern_units = max(kern_units, config.min_kern_units)
+            kern_units = min(kern_units, config.max_kern_units)
 
             # Threshold
             if abs(kern_units) < config.threshold_units:
