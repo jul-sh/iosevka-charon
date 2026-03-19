@@ -105,7 +105,7 @@ class AutoKernConfig:
 
     envelope: str = "sdf"  # "sdf" (default, best) or "gaussian"
     reduce: str = "sum"  # "sum" (default) or "max"
-    half_negative: bool = True  # halve negative kerns (the "Half" in HalfKern)
+    half_negative: bool = False  # use full computed kerns (not halved)
     min_kern_units: int = -250  # clamp: most negative kern allowed (font units)
     max_kern_units: int = 100  # clamp: most positive kern allowed (font units)
     threshold_units: int = 5  # drop kerns smaller than this (font units)
