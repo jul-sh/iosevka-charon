@@ -87,6 +87,13 @@ _KERN_RANGES: List[Tuple[int, int]] = [
 ]
 
 
+# Thin punctuation: suppress positive (loosening) kerns when either side
+# is one of these narrow marks.  Negative (tightening) kerns still apply.
+_THIN_PUNCT: set = {
+    ord(c) for c in ".,:;!¡·…‥"
+}
+
+
 def _is_kern_candidate(cp: int) -> bool:
     if unicodedata.combining(chr(cp)):
         return False
@@ -174,6 +181,12 @@ def _compute_all_kerns(
 
             # Only tightening (negative) kerns if configured
             if config.negative_only and kern_px > 0:
+                continue
+
+            # Suppress positive kerns for thin punctuation — these glyphs
+            # have lots of whitespace so HalfKern wants to widen them, but
+            # that looks wrong for narrow marks like . , ; : ! etc.
+            if kern_px > 0 and (left_cp in _THIN_PUNCT or right_cp in _THIN_PUNCT):
                 continue
 
             # Halve positive (loosening) kerns for conservative widening
