@@ -35,6 +35,8 @@ jobs:
     needs: validate-environment
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v14
       - name: Nix cache
