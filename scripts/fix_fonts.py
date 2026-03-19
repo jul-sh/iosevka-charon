@@ -19,11 +19,8 @@ import os
 import shutil
 import sys
 import unicodedata
-from collections import Counter, defaultdict
-from dataclasses import dataclass
-from enum import Enum, auto
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import List, Optional, Tuple
 
 import trio
 import trio_parallel
@@ -55,34 +52,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)],
 )
 logger = logging.getLogger(__name__)
-
-
-class GlyphCompactionKind(Enum):
-    NONE = auto()
-    LOWERCASE_LETTER = auto()
-    UPPERCASE_LETTER = auto()
-    OTHER_LETTER = auto()
-    PUNCTUATION = auto()
-    BRACKET = auto()
-    DASH = auto()
-
-
-@dataclass(frozen=True)
-class GlyphCompactionRule:
-    total_sidebearing_factor: float
-    min_right_sidebearing: int
-    min_saved_units: int
-
-
-GLYPH_COMPACTION_RULES: Dict[GlyphCompactionKind, GlyphCompactionRule] = {
-    GlyphCompactionKind.NONE: GlyphCompactionRule(1.0, 0, 0),
-    GlyphCompactionKind.LOWERCASE_LETTER: GlyphCompactionRule(0.55, -20, 10),
-    GlyphCompactionKind.UPPERCASE_LETTER: GlyphCompactionRule(0.62, -12, 10),
-    GlyphCompactionKind.OTHER_LETTER: GlyphCompactionRule(0.58, -16, 10),
-    GlyphCompactionKind.PUNCTUATION: GlyphCompactionRule(0.50, -12, 8),
-    GlyphCompactionKind.BRACKET: GlyphCompactionRule(0.45, -12, 8),
-    GlyphCompactionKind.DASH: GlyphCompactionRule(0.60, -8, 8),
-}
 
 
 # Version loading
@@ -363,200 +332,6 @@ def fix_zero_width_glyphs(font: TTFont) -> bool:
             logger.info(f"  ✓ Updated hhea.advanceWidthMax to {max_width}")
         return True
     return False
-
-
-def _classify_glyph_compaction_kind(codepoints: Iterable[int]) -> GlyphCompactionKind:
-    """Infer spacing behavior from Unicode semantics instead of glyph names."""
-    categories = {unicodedata.category(chr(cp)) for cp in codepoints}
-    east_asian_widths = {unicodedata.east_asian_width(chr(cp)) for cp in codepoints}
-
-    if not categories:
-        return GlyphCompactionKind.NONE
-
-    if any(unicodedata.combining(chr(cp)) for cp in codepoints):
-        return GlyphCompactionKind.NONE
-
-    if east_asian_widths & {"W", "F"}:
-        return GlyphCompactionKind.NONE
-
-    if categories & {"Cc", "Cf", "Cs", "Co", "Cn", "Zl", "Zp", "Zs"}:
-        return GlyphCompactionKind.NONE
-
-    if categories & {"Ps", "Pe"}:
-        return GlyphCompactionKind.BRACKET
-    if "Pd" in categories:
-        return GlyphCompactionKind.DASH
-    if any(cat.startswith("P") for cat in categories):
-        return GlyphCompactionKind.PUNCTUATION
-    if categories & {"Lu", "Lt"}:
-        return GlyphCompactionKind.UPPERCASE_LETTER
-    if "Ll" in categories:
-        return GlyphCompactionKind.LOWERCASE_LETTER
-    if any(cat.startswith("L") for cat in categories):
-        return GlyphCompactionKind.OTHER_LETTER
-    return GlyphCompactionKind.NONE
-
-
-def _resolve_nominal_advance_widths(font: TTFont, glyph_codepoints: Dict[str, Set[int]]) -> Set[int]:
-    """Find the default monospaced-derived cell widths that still need compaction."""
-    hmtx = font["hmtx"]
-    width_counts: Counter[int] = Counter()
-    for glyph_name, codepoints in glyph_codepoints.items():
-        kind = _classify_glyph_compaction_kind(codepoints)
-        if kind is GlyphCompactionKind.NONE or glyph_name not in hmtx.metrics:
-            continue
-        advance, _ = hmtx[glyph_name]
-        if advance > 0:
-            width_counts[advance] += 1
-
-    if not width_counts:
-        return set()
-
-    base_width = width_counts.most_common(1)[0][0]
-    nominal_widths = {base_width}
-
-    double_width = base_width * 2
-    for width in width_counts:
-        if abs(width - double_width) <= 2:
-            nominal_widths.add(width)
-            break
-
-    return nominal_widths
-
-
-def _recalculate_horizontal_metrics(font: TTFont) -> None:
-    """Keep hhea and OS/2 width metrics aligned after advance changes."""
-    if "hmtx" not in font or "glyf" not in font:
-        return
-
-    hmtx = font["hmtx"]
-    glyf = font["glyf"]
-
-    advance_width_max = 0
-    min_left_sidebearing = None
-    min_right_sidebearing = None
-    x_max_extent = None
-    average_widths = []
-
-    for glyph_name in font.getGlyphOrder():
-        if glyph_name not in hmtx.metrics:
-            continue
-
-        advance, _ = hmtx[glyph_name]
-        advance_width_max = max(advance_width_max, advance)
-        if advance > 0:
-            average_widths.append(advance)
-
-        glyph = glyf.get(glyph_name)
-        if glyph is None:
-            continue
-
-        try:
-            if not hasattr(glyph, "xMax") or glyph.xMax is None:
-                glyph.recalcBounds(glyf)
-        except Exception:
-            continue
-
-        x_min = getattr(glyph, "xMin", None)
-        x_max = getattr(glyph, "xMax", None)
-        if x_min is None or x_max is None:
-            continue
-
-        min_left_sidebearing = x_min if min_left_sidebearing is None else min(min_left_sidebearing, x_min)
-        min_right = advance - x_max
-        min_right_sidebearing = min_right if min_right_sidebearing is None else min(min_right_sidebearing, min_right)
-        x_max_extent = x_max if x_max_extent is None else max(x_max_extent, x_max)
-
-    font["hhea"].advanceWidthMax = advance_width_max
-    font["hhea"].minLeftSideBearing = 0 if min_left_sidebearing is None else min_left_sidebearing
-    font["hhea"].minRightSideBearing = 0 if min_right_sidebearing is None else min_right_sidebearing
-    font["hhea"].xMaxExtent = 0 if x_max_extent is None else x_max_extent
-
-    if average_widths and "OS/2" in font:
-        font["OS/2"].xAvgCharWidth = round(sum(average_widths) / len(average_widths))
-
-
-def compact_quasi_proportional_widths(font: TTFont) -> bool:
-    """Reduce monospaced leftover sidebearings using Unicode semantics and glyph bounds."""
-    if "post" not in font or font["post"].isFixedPitch:
-        return False
-    if "glyf" not in font or "hmtx" not in font or "cmap" not in font:
-        return False
-
-    cmap = font.getBestCmap()
-    glyf = font["glyf"]
-    hmtx = font["hmtx"]
-    glyph_codepoints: Dict[str, Set[int]] = defaultdict(set)
-
-    for cp, glyph_name in cmap.items():
-        glyph_codepoints[glyph_name].add(cp)
-
-    nominal_widths = _resolve_nominal_advance_widths(font, glyph_codepoints)
-    if not nominal_widths:
-        return False
-
-    compacted = []
-    compacted_by_kind: Counter[GlyphCompactionKind] = Counter()
-
-    for glyph_name, codepoints in glyph_codepoints.items():
-        if glyph_name not in glyf or glyph_name not in hmtx.metrics:
-            continue
-
-        kind = _classify_glyph_compaction_kind(codepoints)
-        if kind is GlyphCompactionKind.NONE:
-            continue
-
-        advance, lsb = hmtx[glyph_name]
-        if advance not in nominal_widths:
-            continue
-
-        glyph = glyf[glyph_name]
-        try:
-            if not hasattr(glyph, "xMax") or glyph.xMax is None:
-                glyph.recalcBounds(glyf)
-        except Exception:
-            continue
-
-        x_min = getattr(glyph, "xMin", None)
-        x_max = getattr(glyph, "xMax", None)
-        if x_min is None or x_max is None or x_max <= x_min:
-            continue
-
-        left_sidebearing = x_min
-        right_sidebearing = advance - x_max
-        total_sidebearings = left_sidebearing + right_sidebearing
-        if total_sidebearings <= 0:
-            continue
-
-        rule = GLYPH_COMPACTION_RULES[kind]
-        target_total_sidebearings = round(total_sidebearings * rule.total_sidebearing_factor)
-        target_right_sidebearing = target_total_sidebearings - left_sidebearing
-        new_right_sidebearing = max(
-            rule.min_right_sidebearing,
-            min(right_sidebearing, target_right_sidebearing),
-        )
-        new_advance = x_max + new_right_sidebearing
-
-        if advance - new_advance < rule.min_saved_units:
-            continue
-
-        hmtx[glyph_name] = (new_advance, lsb)
-        compacted.append((glyph_name, advance, new_advance))
-        compacted_by_kind[kind] += 1
-
-    if not compacted:
-        return False
-
-    _recalculate_horizontal_metrics(font)
-
-    category_summary = ", ".join(
-        f"{kind.name.lower()}={count}"
-        for kind, count in sorted(compacted_by_kind.items(), key=lambda item: item[0].name)
-    )
-    logger.info(
-        f"  ✓ Compacted quasi-proportional advances: {len(compacted)} glyphs ({category_summary})"
-    )
-    return True
 
 
 def fix_font_names(font: TTFont) -> bool:
@@ -1441,7 +1216,6 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
         fixes_applied.append("gftools_fix_font")
 
         extra_fix_map = [
-            (compact_quasi_proportional_widths, "compact_quasi_proportional_widths"),
             (fix_panose_proportion, "panose_proportion"),
             (fix_license_entries, "license_entries"),
             (fix_style_bits, "style_bits"),
