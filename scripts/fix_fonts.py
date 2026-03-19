@@ -862,15 +862,27 @@ def normalize_simple_glyphs(font: TTFont) -> bool:
     return changed
 
 
-def fix_panose_monospace(font: TTFont) -> bool:
-    """Ensure PANOSE proportion is set to monospaced."""
-    if "OS/2" not in font:
-        return False
-    panose = font["OS/2"].panose
-    if panose.bProportion != 9:
-        panose.bProportion = 9
-        return True
-    return False
+def fix_spacing_metadata(font: TTFont, font_path: Path) -> bool:
+    """Set monospace metadata correctly: Mono fonts are fixed-pitch, others are proportional."""
+    changed = False
+    is_mono = "Mono" in font_path.stem
+
+    # Fix PANOSE proportion: 9 = monospaced, 2 = proportional
+    if "OS/2" in font:
+        panose = font["OS/2"].panose
+        target = 9 if is_mono else 2
+        if panose.bProportion != target:
+            panose.bProportion = target
+            changed = True
+
+    # Fix post.isFixedPitch: 1 = monospaced, 0 = proportional
+    if "post" in font:
+        target = 1 if is_mono else 0
+        if font["post"].isFixedPitch != target:
+            font["post"].isFixedPitch = target
+            changed = True
+
+    return changed
 
 
 def fix_license_entries(font: TTFont) -> bool:
@@ -993,8 +1005,10 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
         font = gftools_fix_font(font, include_source_fixes=False)
         fixes_applied.append("gftools_fix_font")
 
+        if fix_spacing_metadata(font, font_path):
+            fixes_applied.append("spacing_metadata")
+
         extra_fix_map = [
-            (fix_panose_monospace, "panose_monospace"),
             (fix_license_entries, "license_entries"),
             (fix_style_bits, "style_bits"),
             (drop_glyph_names, "stripped_glyph_names"),
