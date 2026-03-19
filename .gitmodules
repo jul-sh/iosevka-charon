@@ -1,0 +1,3 @@
+[submodule "scripts/halfkern"]
+	path = scripts/halfkern
+	url = https://github.com/behdad/halfkern.git

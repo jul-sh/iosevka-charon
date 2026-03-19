@@ -79,6 +79,12 @@
           unicodedata2
           uharfbuzz
 
+          # Auto-kerning (HalfKern) dependencies
+          pycairo
+          numpy
+          scipy
+          scikit-fmm
+
           # Async concurrency
           trio
           outcome
@@ -153,6 +159,10 @@
             # Python environment with all font tools
             pythonEnv
 
+            # System libraries needed by HalfKern (cairoft.py dlopen)
+            cairo
+            freetype
+
             # Other useful tools
             git
             which
@@ -161,6 +171,9 @@
 
           shellHook = ''
             export PYTHONPATH="${pythonEnv}/${pythonEnv.sitePackages}"
+            # Make native libs findable by HalfKern's cairoft.py (ctypes.CDLL)
+            export DYLD_FALLBACK_LIBRARY_PATH="${pkgs.cairo}/lib:${pkgs.freetype}/lib:''${DYLD_FALLBACK_LIBRARY_PATH:-}"
+            export LD_LIBRARY_PATH="${pkgs.cairo}/lib:${pkgs.freetype}/lib:''${LD_LIBRARY_PATH:-}"
             # Workaround for protobuf compatibility with gflanguages
             export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
             # Install trio-parallel (not available in nixpkgs)
