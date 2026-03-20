@@ -37,6 +37,9 @@ v = "curly-serifless"
 y = "curly-turn-serifless"
 ampersand = "closed"
 at = "fourfold"
+f = "narrow-serifless"
+t = "narrow-bent-hook"
+r = "narrow-hook-serifless"
 dollar = "through"
 
 # one width
