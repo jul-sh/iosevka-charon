@@ -30,7 +30,7 @@ w = "curly-almost-flat-top-serifless"
 d = "tailed-serifless"
 e = "rounded"
 i = "serifed-flat-tailed"
-j = "serifed"
+j = "narrow-serifed"
 l = "serifed-flat-tailed"
 u = "tailed-serifless"
 v = "curly-serifless"
@@ -41,6 +41,7 @@ f = "narrow-serifless"
 t = "narrow-bent-hook"
 r = "narrow-hook-serifless"
 dollar = "through"
+ellipsis-density = "dense"
 
 # one width
 [buildPlans.IosevkaCharon.widths.Normal]
