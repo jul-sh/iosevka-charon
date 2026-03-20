@@ -83,7 +83,7 @@ glyph-block Letter-Latin-Lower-T : begin
 
 		define [xCrossBarPos df sym] : begin
 			local pAdaptive : if (para.advanceScaleF < 1) ((1 - df.adws) / (1 - para.advanceScaleF)) 0
-			local narrowScaleLeft : mix 0.75 0.80 pAdaptive
+			local narrowScaleLeft : mix 0.82 0.87 pAdaptive
 			local narrowScaleRight : mix 0.75 0.875 pAdaptive
 			return : match sym
 				([Just SYM-LEFT] || [Just SYM-PR-LEFT]) {([BarLeftPos df sym] + TanSlope * Stroke) ([xSmallTCrossRefT df] + LongJut * narrowScaleRight * [Math.sqrt df.adws])}
@@ -100,12 +100,14 @@ glyph-block Letter-Latin-Lower-T : begin
 			local xHook : XHookTerminal df sym
 			local xTurn : arch.adjust-x.bot [mix xLeft xHook 0.5]
 			local adb : clamp Hook ((xTurn - xLeft) * 1.2) ArchDepthB
+			local pAdaptive : if (para.advanceScaleF < 1) ((1 - df.adws) / (1 - para.advanceScaleF)) 0
+			local swTerminal : mix sw [AdviceStroke 2.75 df.adws] [mix 0.35 0.1 pAdaptive]
 
 			return : sink
 				widths.lhs sw
 				[if (sink == spiro-outline) corner flat] (offset + xLeft) top [heading Downward]
 				curl (offset + xLeft) (bot + adb)
-				hookend (bot + offset) (sw -- sw)
+				hookend (bot + offset) (sw -- sw) (swTerminal -- swTerminal)
 				g4 (xHook - offset) (bot + Hook)
 				if (sink == spiro-outline) {[corner (xHook - offset) top]} {}
 
