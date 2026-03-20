@@ -885,6 +885,22 @@ def fix_spacing_metadata(font: TTFont, font_path: Path) -> bool:
     return changed
 
 
+def reduce_word_spacing(font: TTFont) -> bool:
+    """Reduce word spacing by 5% for non-mono (proportional) fonts."""
+    if "post" in font and font["post"].isFixedPitch:
+        return False
+
+    hmtx = font["hmtx"]
+    space_width, space_lsb = hmtx["space"]
+    new_width = round(space_width * 0.95)
+    if new_width == space_width:
+        return False
+
+    hmtx["space"] = (new_width, space_lsb)
+    logger.info(f"  ✓ Reduced word spacing: {space_width} → {new_width} ({new_width - space_width})")
+    return True
+
+
 def fix_license_entries(font: TTFont) -> bool:
     """Force OFL license description and URL to the exact expected strings."""
     name_table = font["name"]
@@ -1007,6 +1023,9 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
 
         if fix_spacing_metadata(font, font_path):
             fixes_applied.append("spacing_metadata")
+
+        if reduce_word_spacing(font):
+            fixes_applied.append("reduced_word_spacing")
 
         extra_fix_map = [
             (fix_license_entries, "license_entries"),
