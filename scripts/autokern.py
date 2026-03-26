@@ -100,6 +100,9 @@ def _is_kern_candidate(cp: int) -> bool:
     cat = unicodedata.category(chr(cp))
     if cat.startswith("C"):
         return False
+    # Exclude digits — they must stay tabular (no kerning) for column alignment
+    if 0x0030 <= cp <= 0x0039:
+        return False
     return any(lo <= cp <= hi for lo, hi in _KERN_RANGES)
 
 

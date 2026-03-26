@@ -90,10 +90,15 @@ test: postprocess.stamp
 	which fontspector || (echo "fontspector not found. Please install it with \"cargo install fontspector\"." && exit 1)
 	mkdir -p out/fontspector
 	fontspector --profile googlefonts -l warn --full-lists --succinct \
+		--skip-network \
+		-x fontdata_namecheck \
 		--html out/fontspector/fontspector-report.html \
 		--ghmarkdown out/fontspector/fontspector-report.md \
 		--badges out/badges $$(find fonts -type f -name "*.ttf") || \
 		echo "::warning file=sources/config.yaml,title=fontspector failures::The fontspector QA check reported errors in your font. Please check the generated report."
+# Excluded checks:
+# - fontdata_namecheck: requires network access to namecheck.fontdata.com which is
+#   unreliable and errors in sandboxed/CI environments.
 
 test-harfbuzz: postprocess.stamp
 	@echo "===> Running HarfBuzz mark positioning tests..."

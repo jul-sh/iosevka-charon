@@ -898,6 +898,20 @@ def reduce_word_spacing(font: TTFont) -> bool:
 
     hmtx["space"] = (new_width, space_lsb)
     logger.info(f"  ✓ Reduced word spacing: {space_width} → {new_width} ({new_width - space_width})")
+
+    # Keep non-breaking space in sync so they have the same width
+    nbsp_name = None
+    if "cmap" in font:
+        for table in font["cmap"].tables:
+            if 0x00A0 in table.cmap:
+                nbsp_name = table.cmap[0x00A0]
+                break
+    if nbsp_name and nbsp_name in hmtx.metrics:
+        nbsp_width, nbsp_lsb = hmtx[nbsp_name]
+        if nbsp_width != new_width:
+            hmtx[nbsp_name] = (new_width, nbsp_lsb)
+            logger.info(f"  ✓ Synced nbsp width: {nbsp_width} → {new_width}")
+
     return True
 
 
