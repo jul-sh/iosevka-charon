@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   # Validate Nix environment
@@ -326,3 +328,33 @@ jobs:
       - name: Update release notes
         run: |
           gh release edit ${{ github.event.release.tag_name }} -F release-notes.md
+
+  # Deploy webfonts to GitHub Pages
+  deploy-web:
+    name: Deploy webfonts to GitHub Pages
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.test.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download webfonts
+        uses: actions/download-artifact@v4
+        with:
+          name: webfonts
+          path: _site/webfonts/
+      - name: Download specimen image
+        uses: actions/download-artifact@v4
+        with:
+          name: specimen-image
+          path: _site/
+        continue-on-error: true
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site/
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
