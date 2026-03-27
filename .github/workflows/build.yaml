@@ -1,9 +1,6 @@
 name: Build font and specimen
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
   release:
     types: [published]
@@ -11,8 +8,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
   # Validate Nix environment
@@ -151,66 +146,6 @@ jobs:
       zip_name: ${{ env.ZIP_NAME }}
       validation_failed: ${{ needs.test.outputs.tests.failed }}
 
-  # Release job runs only when a release is published via the GitHub UI.
-  # This uploads the built fonts as a single release asset with QA summary in the description.
-
-  # Pre-release every push with built artifacts
-  prerelease:
-    name: Publish prerelease artifacts
-    needs: package
-    if: github.event_name == 'push' && needs.package.result == 'success'
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ github.token }}
-      ZIP_NAME: ${{ needs.package.outputs.zip_name }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download packaged artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.ZIP_NAME }}
-          path: release
-      - name: Create prerelease bundles
-        run: |
-          TAG="pre-${GITHUB_SHA}"
-          TITLE="Pre-release ${GITHUB_SHA::7}"
-
-          # Create three separate zip files
-          GENERAL_ZIP="iosevka-charon.zip"
-          WEBFONTS_ZIP="iosevka-charon-webfonts.zip"
-          QA_ZIP="iosevka-charon-google-fonts-qa-report.zip"
-
-          # Package general use fonts (processed fonts)
-          if [ -d "release/fonts" ]; then
-            cd release/fonts && zip -r "../../${GENERAL_ZIP}" . && cd ../..
-          fi
-
-          # Package QA report
-          if [ -d "release/out/fontspector" ]; then
-            cd release/out/fontspector && zip -r "../../../${QA_ZIP}" . && cd ../../..
-          fi
-
-          # Package webfonts
-          if [ -d "release/webfonts" ]; then
-            cd release/webfonts && zip -r "../../${WEBFONTS_ZIP}" . && cd ../..
-          fi
-
-          printf -v NOTES "Automated prerelease for commit %s.\n\nThis prerelease includes three archives:\n- **\`iosevka-charon.zip\`**: General use fonts (processed TrueType fonts)\n- **\`iosevka-charon-webfonts.zip\`**: WOFF2 webfonts with three subsets (full, latin-ext, latin)\n- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report" "${GITHUB_SHA}"
-
-          gh release delete "$TAG" -y 2>/dev/null || true
-          gh release create "$TAG" \
-            --title "$TITLE" \
-            --notes "$NOTES" \
-            --prerelease \
-            --latest=false \
-            --target "$GITHUB_SHA"
-
-          # Upload the zip files
-          [ -f "${GENERAL_ZIP}" ] && gh release upload "$TAG" "${GENERAL_ZIP}" --clobber
-          [ -f "${QA_ZIP}" ] && gh release upload "$TAG" "${QA_ZIP}" --clobber
-          [ -f "${WEBFONTS_ZIP}" ] && gh release upload "$TAG" "${WEBFONTS_ZIP}" --clobber
-          [ -f "release/documentation/iosevka-charon.png" ] && gh release upload "$TAG" "release/documentation/iosevka-charon.png" --clobber
-
   release:
     name: Release bundle
     if: github.event_name == 'release'
@@ -328,33 +263,3 @@ jobs:
       - name: Update release notes
         run: |
           gh release edit ${{ github.event.release.tag_name }} -F release-notes.md
-
-  # Deploy webfonts to GitHub Pages
-  deploy-web:
-    name: Deploy webfonts to GitHub Pages
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.test.result == 'success'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download webfonts
-        uses: actions/download-artifact@v4
-        with:
-          name: webfonts
-          path: _site/webfonts/
-      - name: Download specimen image
-        uses: actions/download-artifact@v4
-        with:
-          name: specimen-image
-          path: _site/
-        continue-on-error: true
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site/
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
