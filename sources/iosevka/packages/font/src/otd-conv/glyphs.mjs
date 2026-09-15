@@ -1,9 +1,12 @@
-import * as Geom from "@iosevka/geometry";
-import { Point } from "@iosevka/geometry/point";
 import { Glyph } from "@iosevka/glyph";
 import * as Gr from "@iosevka/glyph/relation";
 import { Ot } from "ot-builder";
 
+import {
+	TrueTypeContourSetProxy,
+	TrueTypeGeometryProxy,
+	TrueTypeReferenceProxy,
+} from "./geometry.mjs";
 import * as GlyphName from "./glyph-name.mjs";
 
 export function convertGlyphs(gsOrig) {
@@ -17,7 +20,7 @@ export function convertGlyphs(gsOrig) {
 		const us = gsOrig.queryUnicodeOf(gSrc);
 		if (us) {
 			for (const u of us) {
-				if (!(isFinite(u - 0) && u)) continue;
+				if (!(Number.isFinite(u - 0) && u)) continue;
 				cmap.unicode.set(u, gs.queryBySourceGlyph(gSrc));
 				gs.setPrimaryUnicode(gSrc, u);
 			}
@@ -69,7 +72,7 @@ class MappedGlyphStore {
 		const gs = Ot.ListGlyphStoreFactory.createStoreFromList([...this.m_mapping.values()]);
 		return gs.decideOrder();
 	}
-	fill(name, source) {
+	fill(_name, source) {
 		const g = this.queryBySourceGlyph(source);
 		if (!g) throw new Error("Unreachable");
 
@@ -77,23 +80,22 @@ class MappedGlyphStore {
 		g.horizontal = { start: 0, end: source.advanceWidth };
 
 		// Fill Geometry
-		if (source.geometry.measureComplexity() & Geom.CPLX_NON_EMPTY) {
-			const rs = source.geometry.toReferences();
-			if (rs) {
-				this.fillReferences(g, rs);
-			} else {
-				this.fillContours(g, source.geometry.toContours());
-			}
+		if (source.geometry instanceof TrueTypeContourSetProxy) {
+			this.fillContours(g, source.geometry);
+		} else if (source.geometry instanceof TrueTypeReferenceProxy) {
+			this.fillReferences(g, source.geometry);
+		} else if (!(source.geometry instanceof TrueTypeGeometryProxy)) {
+			throw new TypeError("Unreachable: geometry is not a proxy");
 		}
 	}
 	fillOtGlyphNames() {
-		let conflictSet = new Set();
-		let rev = new Map();
+		const conflictSet = new Set();
+		const rev = new Map();
 		for (const [u, g] of this.m_primaryUnicodeMapping) rev.set(g, u);
 		const glyphsInBuildOrder = Array.from(this.m_mapping).sort(
 			([a], [b]) => a.subRank - b.subRank,
 		);
-		for (const [gSrc, gOt] of glyphsInBuildOrder) gOt.name = undefined;
+		for (const [_gSrc, gOt] of glyphsInBuildOrder) gOt.name = undefined;
 
 		// Name by Unicode
 		for (const [gSrc, gOt] of glyphsInBuildOrder) {
@@ -142,16 +144,16 @@ class MappedGlyphStore {
 
 		// validate
 		{
-			let gnSet = new Set();
-			for (const [gSrc, gOt] of this.m_mapping) {
-				if (gnSet.has(gOt.name)) throw new Error("Unreachable! duplicate name " + gOt.name);
+			const gnSet = new Set();
+			for (const [_gSrc, gOt] of this.m_mapping) {
+				if (gnSet.has(gOt.name)) throw new Error(`Unreachable! duplicate name ${gOt.name}`);
 				gnSet.add(gOt.name);
 			}
 		}
 	}
-	fillReferences(g, rs) {
+	fillReferences(g, proxy) {
 		const gl = new Ot.Glyph.GeometryList();
-		for (const ref of rs) {
+		for (const ref of proxy.refs) {
 			const target = this.queryBySourceGlyph(ref.glyph);
 			if (!target) throw new Error("Unreachable: glyph not found");
 			const tfm = Ot.Glyph.Transform2X3.Translate(ref.x, ref.y);
@@ -159,24 +161,8 @@ class MappedGlyphStore {
 		}
 		g.geometry = gl;
 	}
-	fillContours(g, contours) {
-		const cs = new Ot.Glyph.ContourSet();
-		for (const c of contours) {
-			const c1 = [];
-			for (const z of c) {
-				c1.push(
-					Ot.Glyph.Point.create(
-						z.x,
-						z.y,
-						z.type === Point.Type.Quadratic
-							? Ot.Glyph.PointType.Quad
-							: Ot.Glyph.PointType.Corner,
-					),
-				);
-			}
-			cs.contours.push(c1);
-		}
-		g.geometry = cs;
+	fillContours(g, proxy) {
+		g.geometry = proxy.contourSet;
 	}
 }
 
@@ -195,17 +181,12 @@ function addVsLinks(gsOrig, gs, cmap, gr, vs) {
 		if (!gDstLinked) continue;
 
 		for (const u of us) {
-			if (!(isFinite(u - 0) && u)) continue;
+			if (!(Number.isFinite(u - 0) && u)) continue;
 			cmap.vs.set(u, vs, gDstLinked);
 		}
 	}
 }
 
-function byRank([gna, a], [gnb, b]) {
-	return (
-		b.glyphRank - a.glyphRank ||
-		a.grRank - b.grRank ||
-		a.codeRank - b.codeRank ||
-		a.subRank - b.subRank
-	);
+function byRank([_gna, a], [_gnb, b]) {
+	return Glyph.compareByRank(a, b);
 }

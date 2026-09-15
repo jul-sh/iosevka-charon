@@ -1,3 +1,5 @@
+import * as Timers from "node:timers/promises";
+
 export function mix(a, b, p) {
 	return a + (b - a) * p;
 }
@@ -10,8 +12,8 @@ export function linreg(x0, y0, x1, y1, x) {
 export function clamp(l, h, x) {
 	return x < l ? l : x > h ? h : x;
 }
-export function quantize(x, step) {
-	return step * Math.round(x / step);
+export function quantize(x, stepSize) {
+	return stepSize * Math.round(x / stepSize);
 }
 export function fallback(...args) {
 	for (const item of args) if (item !== void 0) return item;
@@ -58,6 +60,24 @@ export function distP(x0, y0, x1, y1, dist) {
 	return dist / Math.hypot(x1 - x0, y1 - y0);
 }
 
+function mod(n, d) {
+	return ((n % d) + d) % d;
+}
+export const Waveform = {
+	sine: function (x) {
+		return Math.sin(Math.PI / 2 * x);
+	},
+	square: function (x) {
+		return Math.sign((mod(x - 1, 4) || 2) - 2);
+	},
+	triangle: function (x) {
+		return Math.abs(mod(x - 1, 4) - 2) - 1;
+	},
+	sawtooth: function (x) {
+		return (mod(x - 1, 2) || 1) - 1;
+	},
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 export function joinCamel(a, b) {
@@ -65,8 +85,12 @@ export function joinCamel(a, b) {
 	if (!b) return a;
 	return a + b[0].toUpperCase() + b.slice(1);
 }
-
-function joinSuffixListImpl(sink, k, v, telescope, configs) {
+function joinDot(a, b) {
+	if (!a) return b;
+	if (!b) return a;
+	return `${a}.${b}`;
+}
+function joinSuffixListImpl(sink, joiner, k, v, telescope, configs) {
 	if (!configs.length) {
 		sink[k] = v;
 		return;
@@ -77,21 +101,26 @@ function joinSuffixListImpl(sink, k, v, telescope, configs) {
 	if (!item) return;
 
 	for (const [keySuffix, valueSuffix] of Object.entries(item)) {
-		const k1 = joinCamel(k, keySuffix);
+		const k1 = joiner(k, keySuffix);
 		const v1 = [...v, valueSuffix];
 		const telescope1 = [...telescope, keySuffix];
-		joinSuffixListImpl(sink, k1, v1, telescope1, rest);
+		joinSuffixListImpl(sink, joiner, k1, v1, telescope1, rest);
 	}
 }
 
 export const SuffixCfg = {
-	weave: function (...configs) {
-		let ans = {};
-		joinSuffixListImpl(ans, "", [], [], configs);
+	weave: (...configs) => {
+		const ans = {};
+		joinSuffixListImpl(ans, joinCamel, "", [], [], configs);
 		return ans;
 	},
-	combine: function (...configs) {
-		let ans = {};
+	dotWeave: (...configs) => {
+		const ans = {};
+		joinSuffixListImpl(ans, joinDot, "", [], [], configs);
+		return ans;
+	},
+	combine: (...configs) => {
+		const ans = {};
 		for (const item of configs) for (const [k, v] of Object.entries(item)) ans[k] = v;
 		return ans;
 	},
@@ -133,7 +162,7 @@ export function constant(x) {
 
 export const ArrayUtil = {
 	mapIndexToItems(a, indexes) {
-		let answer = [];
+		const answer = [];
 		for (const item of indexes) answer.push(a[item]);
 		return answer;
 	},
@@ -163,3 +192,9 @@ export const ArrayUtil = {
 		return ranges;
 	},
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+export async function TaskYield() {
+	await Timers.setTimeout(16);
+}

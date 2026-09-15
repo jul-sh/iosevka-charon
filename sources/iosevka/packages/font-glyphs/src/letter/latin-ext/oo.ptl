@@ -1,0 +1,104 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Letter-Latin-OO : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+	glyph-block-import Mark-Overlay : InnerDot
+	glyph-block-import Letter-Shared-Shapes : OBarLeft OBarRight
+
+	define [OOShape df top ad] : begin
+		local subDf : df.slice 3 2 OX
+		local ada : subDf.archDepthAOf ad df.mvs
+		local adb : subDf.archDepthBOf ad df.mvs
+		return : union
+			OBarRight.shape
+				top   -- top
+				left  -- df.leftSB
+				right -- (df.middle + [HSwToV : 0.5 * df.mvs])
+				sw    -- df.mvs
+				fine  -- (df.mvs * CThin)
+				ada   -- ada
+				adb   -- adb
+			OBarLeft.shape
+				top   -- top
+				left  -- (df.middle - [HSwToV : 0.5 * df.mvs])
+				right -- df.rightSB
+				sw    -- df.mvs
+				fine  -- (df.mvs * CThin)
+				ada   -- ada
+				adb   -- adb
+
+	create-glyph 'OO' 0xA74E : glyph-proc
+		local df : include : DivFrame para.advanceScaleMM 3
+		include : df.markSet.capital
+		include : OOShape df CAP ArchDepth
+
+	create-glyph 'oo' 0xA74F : glyph-proc
+		local df : include : DivFrame para.advanceScaleMM 3
+		include : df.markSet.e
+		include : OOShape df XH SmallArchDepth
+
+	alias 'cyrl/OO' 0xA698 'OO'
+	alias 'cyrl/oo' 0xA699 'oo'
+
+	create-glyph 'turnooOpen' 0xAB43 : glyph-proc
+		local df : include : DivFrame para.advanceScaleMM 3
+		include : df.markSet.e
+		set-base-anchor 'cvDecompose' 0 0
+		local subDf : df.slice 3 2 OX
+		include : dispiro
+			widths.lhs df.mvs
+			g4.left.start [Math.min (df.leftSB + HookX + [HSwToV : 0.5 * df.mvs]) : Arch.adjust-x.top subDf.middle (sw -- df.mvs)] (XH - O)
+			archv
+			flatside.ld df.leftSB 0 XH subDf.smallArchDepthA subDf.smallArchDepthB
+			OBarRight.arcEnd
+				bot       -- 0
+				left      -- df.leftSB
+				right     -- (df.middle + [HSwToV : 0.5 * df.mvs])
+				sw        -- df.mvs
+				fine      -- (df.mvs * CThin)
+				ada       -- subDf.smallArchDepthA
+				adb       -- subDf.smallArchDepthB
+				yend      -- (XH - [ArchDepthAClamped XH 0 subDf.smallArchDepthA subDf.smallArchDepthB] + O)
+		include : OBarLeft.earlessRounded
+			top       -- XH
+			left      -- (df.middle - [HSwToV : 0.5 * df.mvs])
+			right     -- df.rightSB
+			yTerminal -- (XH / 2)
+			sw        -- df.mvs
+			fine      -- (df.mvs * CThin)
+			ada       -- subDf.smallArchDepthA
+			adb       -- subDf.smallArchDepthB
+			yend      -- (XH - [ArchDepthAClamped XH 0 subDf.smallArchDepthA subDf.smallArchDepthB] + O)
+
+	derive-composites 'turnooOpenSlash' 0xAB44 'turnooOpen' 'turnoeSlash/oSlash/overlay'
+
+	define [CyrBinocularOODots df kHeight fRound kdr] : glyph-proc
+		local space  : InnerDot.spaceOfDf [df.slice 3 2 OX]
+		local spaceN : InnerDot.spaceOfDf [DivFrame 1]
+		local kHeight2 : kHeight * [Math.sqrt : spaceN / space]
+		local offset : 0.5 * (space - 0) + [HSwToV : 0.5 * df.mvs]
+		include : InnerDot (-offset) 0 kHeight2 fRound kdr space 3
+		include : InnerDot (+offset) 0 kHeight2 fRound kdr space 3
+
+	foreach { suffix { DrawAt kdr } } [Object.entries DotVariants] : do
+		create-glyph "cyrl/OOBinocular/dots.\(suffix)" : glyph-proc
+			set-width 0
+			set-mark-anchor 'slash' 0 0 0 0
+			local df : DivFrame para.advanceScaleMM 3
+			include : CyrBinocularOODots df 2 (DrawAt === DotAt) kdr
+		create-glyph "cyrl/ooBinocular/dots.\(suffix)" : glyph-proc
+			set-width 0
+			set-mark-anchor 'slash' 0 0 0 0
+			local df : DivFrame para.advanceScaleMM 3
+			include : CyrBinocularOODots df 1.5 (DrawAt === DotAt) kdr
+
+	select-variant 'cyrl/OOBinocular/dots' (follow -- 'diacriticDot')
+	select-variant 'cyrl/ooBinocular/dots' (follow -- 'diacriticDot')
+
+	derive-composites 'cyrl/OOBinocular' 0xA66C 'cyrl/OO' 'cyrl/OOBinocular/dots'
+	derive-composites 'cyrl/ooBinocular' 0xA66D 'cyrl/oo' 'cyrl/ooBinocular/dots'

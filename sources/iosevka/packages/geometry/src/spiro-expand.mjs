@@ -1,6 +1,10 @@
 import { linreg, mix } from "@iosevka/util";
 import * as SpiroJs from "spiro";
 
+import {
+	derivativeFromFiniteDifferenceBwd,
+	derivativeFromFiniteDifferenceFwd,
+} from "./curve-util.mjs";
 import { Vec2 } from "./point.mjs";
 import { MonoKnot } from "./spiro-to-outline.mjs";
 
@@ -70,7 +74,7 @@ export class BiKnotCollector {
 	}
 
 	getMonoKnots() {
-		let a = [];
+		const a = [];
 		for (const c of this.knots) {
 			a.push(c.toMono());
 		}
@@ -235,9 +239,9 @@ export class SpiroExpander {
 	}
 
 	interpolateUnimportantKnotsRg(lhsT, rhsT, lhsU, rhsU, jBefore, jAfter) {
-		let count = jAfter > jBefore ? jAfter - jBefore : lhsT.length - jBefore + jAfter;
+		const count = jAfter > jBefore ? jAfter - jBefore : lhsT.length - jBefore + jAfter;
 		for (let offset = 1; offset < count; offset++) {
-			let j = (jBefore + offset) % lhsT.length;
+			const j = (jBefore + offset) % lhsT.length;
 
 			const knotUBefore = this.m_biKnotsU[jBefore],
 				knotU = this.m_biKnotsU[j],
@@ -267,30 +271,47 @@ class NormalRectifier {
 	}
 	beginShape() {}
 	endShape() {}
-	moveTo(x, y) {
+	moveTo(_x, _y) {
 		this.nKnotsProcessed += 1;
 	}
-	arcTo(arc, x, y) {
+	arcTo(arc, _x, _y) {
 		if (this.nKnotsProcessed === 1) {
-			const d = new Vec2(arc.deriveX0, arc.deriveY0);
-			if (isTangentValid(d)) {
-				this.updateKnotTangent(this.m_biKnots[0], d);
-			} else {
-				throw new Error("NaN angle detected.");
-			}
+			this.#updateKnotTangent(this.m_biKnots[0], this.#fetchStartTangent(arc));
 		}
 		if (this.m_biKnots[this.nKnotsProcessed]) {
-			const d = new Vec2(arc.deriveX1, arc.deriveY1);
-			if (isTangentValid(d)) {
-				this.updateKnotTangent(this.m_biKnots[this.nKnotsProcessed], d);
-			} else {
-				throw new Error("NaN angle detected.");
-			}
+			this.#updateKnotTangent(
+				this.m_biKnots[this.nKnotsProcessed],
+				this.#fetchEndTangent(arc),
+			);
 		}
 		this.nKnotsProcessed += 1;
 	}
 
-	updateKnotTangent(knot, d) {
+	#fetchStartTangent(arc) {
+		const d = new Vec2(arc.deriveX0, arc.deriveY0);
+		if (isTangentValid(d)) return d;
+		const d1 = derivativeFromFiniteDifferenceFwd(arc, 0);
+		if (isTangentValid(d1)) return d1;
+		return this.#chordAsTangent(arc);
+	}
+	#fetchEndTangent(arc) {
+		const d = new Vec2(arc.deriveX1, arc.deriveY1);
+		if (isTangentValid(d)) return d;
+		const d1 = derivativeFromFiniteDifferenceBwd(arc, 1);
+		if (isTangentValid(d1)) return d1;
+		return this.#chordAsTangent(arc);
+	}
+	#chordAsTangent(arc) {
+		// Use arc(1) - arc(0) as a mock
+		const c0 = arc.eval(0);
+		const c1 = arc.eval(1);
+		const dMock = new Vec2(c1.x - c0.x, c1.y - c0.y);
+		if (isTangentValid(dMock)) return dMock;
+		// Use (1, 0) as a last resort
+		return new Vec2(arc.arcLength || 1, 0);
+	}
+
+	#updateKnotTangent(knot, d) {
 		if (isTangentValid(knot.origTangent)) {
 			this.totalDelta +=
 				(d.x - knot.origTangent.x) * (d.x - knot.origTangent.x) +
@@ -303,7 +324,7 @@ class NormalRectifier {
 }
 
 function isTangentValid(d) {
-	return d && isFinite(d.x) && isFinite(d.y);
+	return d && Number.isFinite(d.x) && Number.isFinite(d.y);
 }
 
 function normalX(tangent, contrast) {
@@ -313,6 +334,6 @@ function normalY(tangent) {
 	return tangent.x / Math.hypot(tangent.x, tangent.y);
 }
 
-function cyNth(a, j) {
+function _cyNth(a, j) {
 	return a[j % a.length];
 }

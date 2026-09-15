@@ -11,15 +11,16 @@ glyph-block Letter-Greek-Phi : begin
 	glyph-block-import Mark-Adjustment : ExtendAboveBaseAnchors ExtendBelowBaseAnchors
 	glyph-block-import Letter-Shared-Metrics : BowlXDepth
 	glyph-block-import Letter-Shared-Shapes : FlatHookDepth DiagTail OBarLeft OBarRight
+	glyph-block-import Letter-Latin-Lower-T : yShortNeck1 yShortNeck2
 	glyph-block-import Letter-Latin-Upper-Thorn : ThornShapeImpl
 
 	define [PhiRing fFlatTB] : function [df y2 y3 ada adb] : glyph-proc
 		include : VBar.m df.middle y2 y3 df.mvs
 		if fFlatTB
 		: then : begin
-			local mul : 1 - 0.75 * (df.adws % 0.5)
-			local l : mix 0        df.leftSB  mul
-			local r : mix df.width df.rightSB mul
+			local sbMul : 1 - 0.75 * (df.adws % 0.5)
+			local l : mix 0        df.leftSB  sbMul
+			local r : mix df.width df.rightSB sbMul
 			local turnRadius : BowlXDepth y3 y2 l (df.middle + [HSwToV HalfStroke]) df.mvs
 			include : OShapeFlatTB y3 y2 l r df.mvs ada adb : Math.max
 				(r - l) - 2 * turnRadius
@@ -58,7 +59,7 @@ glyph-block Letter-Greek-Phi : begin
 			widths.lhs df.mvs
 			g4 [mix df.leftSB df.rightSB 0.1] y3
 			g4 l [mix y2 y3 0.55]
-			arch.lhs y2 (sw -- df.mvs)
+			Arch.lhs y2 (sw -- df.mvs)
 			g4 r [mix y2 y3 0.55]
 			arcvh 8
 			g4.left.mid [mix r (df.middle - [HSwToV : 0.5 * df.mvs]) 0.525] y3 [heading Leftward]
@@ -71,14 +72,15 @@ glyph-block Letter-Greek-Phi : begin
 		include : VBar.m df.middle y1 (y2 + HalfStroke) sw
 		include : VBar.m df.middle (y3 - HalfStroke) y4 sw
 
-	define [CursiveBar df y1 y2 y3 y4 sw] : glyph-proc
+	define [CursiveBar fDiag] : function [df y1 y2 y3 y4 sw] : glyph-proc
 		local adwsHook : quantize [mix 1 (1 / df.adws) 0.5] (1 / 6)
-		local dfHook : DivFrame adwsHook
-		local hd : FlatHookDepth dfHook
+		local mulHook  : mix 1 adwsHook 1.5
 
-		local mul : mix 1 adwsHook 1.5
-		local xCrossLeft  : [mix 0            dfHook.leftSB  mul] + (df.middle - dfHook.middle)
-		local xCrossRight : [mix dfHook.width dfHook.rightSB mul] + (df.middle - dfHook.middle)
+		local dfHook : DivFrame adwsHook 1 mulHook
+		local hd     : FlatHookDepth dfHook
+
+		local xCrossLeft  : [mix 0            dfHook.leftSB  mulHook] + (df.middle - dfHook.middle)
+		local xCrossRight : [mix dfHook.width dfHook.rightSB mulHook] + (df.middle - dfHook.middle)
 
 		local xBarLeft    : df.middle - [HSwToV : 0.5 * sw]
 		local xBarRight   : df.middle + [HSwToV : 0.5 * sw]
@@ -91,35 +93,18 @@ glyph-block Letter-Greek-Phi : begin
 			flat xBarLeft [Math.max y3 (y4 - hd.y)]
 			curl xBarLeft (y3 + O)
 
-		include : dispiro
-			widths.lhs sw
-			flat xCrossLeft y1
-			curl [Math.max (xBarRight - hd.x) (xCrossLeft + TINY)] y1
-			archv
-			flat xBarRight [Math.min y2 (y1 + hd.y)]
-			curl xBarRight (y2 - O)
-
-	define [DiagonalTailCursiveBar df y1 y2 y3 y4 sw] : glyph-proc
-		local adwsHook : quantize [mix 1 (1 / df.adws) 0.5] (1 / 6)
-		local dfHook : DivFrame adwsHook
-		local hd : FlatHookDepth dfHook
-
-		local mul : mix 1 adwsHook 1.5
-		local xCrossRight : [mix dfHook.width dfHook.rightSB mul] + (df.middle - dfHook.middle)
-		local xBarLeft    : df.middle - [HSwToV : 0.5 * sw]
-
-		include : dispiro
-			widths.lhs sw
-			flat xCrossRight y4
-			curl [Math.min (xBarLeft + hd.x) (xCrossRight - TINY)] y4
-			archv
-			flat xBarLeft [Math.max y3 (y4 - hd.y)]
-			curl xBarLeft (y3 + O)
-
-		include : dispiro
-			widths.center sw
-			flat df.middle (y2 - O) [heading Downward]
-			DiagTail.L df.middle y1 [DiagTail.StdDepth dfHook sw] sw
+		include : if fDiag
+			dispiro
+				widths.center sw
+				flat df.middle (y2 - O) [heading Downward]
+				DiagTail.L df.middle y1 ([DiagTail.StdDepth dfHook sw] - 0.5 * sw) sw
+			dispiro
+				widths.lhs sw
+				flat xCrossLeft y1
+				curl [Math.max (xBarRight - hd.x) (xCrossLeft + TINY)] y1
+				archv
+				flat xBarRight [Math.min y2 (y1 + hd.y)]
+				curl xBarRight (y2 - O)
 
 	define [MtSerif df y4 sw] : tagged 'serifMT' : HSerif.lt df.middle y4 (Jut          - [HSwToV : 0.5 * (Stroke - sw)]) sw
 	define [MbSerif df y1 sw] : tagged 'serifMB' : HSerif.mb df.middle y1 (MidJutCenter - [HSwToV : 0.5 * (Stroke - sw)]) sw
@@ -199,11 +184,13 @@ glyph-block Letter-Greek-Phi : begin
 		local dim : include : LowerPhiCursiveRing df 0 XH df.smallArchDepthA df.smallArchDepthB
 		include : VBar.m df.middle Descender (0.2 * df.mvs) dim.swBar
 
-	create-glyph 'grek/phi.straight' : glyph-proc
+	create-glyph : glyph-proc
 		local df : include : DivFrame para.advanceScaleM 3
 		include : df.markSet.bp
 		local dim : include : [PhiRing false] df 0 XH df.smallArchDepthA df.smallArchDepthB
-		include : StraightBar df Descender 0 XH Ascender dim.swBar
+		create-forked-glyph 'grek/phi.straight'           : StraightBar df Descender 0 XH Ascender    dim.swBar
+		create-forked-glyph 'grek/phi.straightShortNeck'  : StraightBar df Descender 0 XH yShortNeck1 dim.swBar
+		create-forked-glyph 'grek/phi.straightShortNeck2' : StraightBar df Descender 0 XH yShortNeck2 dim.swBar
 
 	create-glyph 'grek/phi.neohellenic' : glyph-proc
 		local df : include : DivFrame para.advanceScaleM 3
@@ -211,12 +198,12 @@ glyph-block Letter-Greek-Phi : begin
 		local dim : include : [PhiRing false] df 0 XH df.smallArchDepthA df.smallArchDepthB
 		include : VBar.m df.middle Descender (0.2 * df.mvs) dim.swBar
 
-	select-variant 'grek/phi' 0x3C6
-	alias 'grek/phiSymbol' 0x3D5 'grek/phi.straight'
+	select-variant 'grek/phi'       0x3C6
+	select-variant 'grek/phiSymbol' 0x3D5 (shapeFrom -- 'grek/phi')
 
 	create-glyph 'latn/phi' 0x278 : glyph-proc
 		local df : include : DivFrame para.advanceScaleM 3
-		include [refer-glyph 'grek/phiSymbol'] AS_BASE ALSO_METRICS
+		include [refer-glyph 'grek/phi.straight'] AS_BASE ALSO_METRICS
 
 		if SLAB : begin
 			include : tagged 'serifMT' : HSerif.mt df.middle Ascender  MidJutCenter
@@ -227,11 +214,11 @@ glyph-block Letter-Greek-Phi : begin
 			""                    { [PhiRing true] para.advanceScaleM  }
 			splitBowl             { CyrEfSplitRing para.advanceScaleMM }
 		object # bar
-			serifless             { StraightBar null    null    }
-			topSerifed            { StraightBar MtSerif null    }
-			serifed               { StraightBar MtSerif MbSerif }
-			cursive               { CursiveBar  null    null    }
-			diagonalTailedCursive { DiagonalTailCursiveBar null null }
+			serifless             { StraightBar        null    null    }
+			topSerifed            { StraightBar        MtSerif null    }
+			serifed               { StraightBar        MtSerif MbSerif }
+			cursive               { [CursiveBar false] null    null    }
+			diagonalTailedCursive { [CursiveBar true]  null    null    }
 
 	foreach { suffix { { Bowl adws } { Bar sMT sMB } } } [Object.entries CyrlLowerEfConfig] : do
 		create-glyph "cyrl/ef.\(suffix)" : glyph-proc

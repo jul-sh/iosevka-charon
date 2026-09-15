@@ -10,18 +10,28 @@ jobs:
 
     strategy:
       matrix:
-        fontName: ["Iosevka", "IosevkaFixed", "IosevkaSlab", "IosevkaAile", "IosevkaEtoile", "IosevkaNoVarTest"]
+        fontName:
+          [
+            "Iosevka",
+            "IosevkaFixed",
+            "IosevkaSlab",
+            "IosevkaAile",
+            "IosevkaEtoile",
+            "IosevkaNoVarTest",
+          ]
 
     steps:
       # Checkout repository into `iosevka` sub directory
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: iosevka
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          cache: npm
+          cache-dependency-path: iosevka/package-lock.json
 
       - name: Install ttfautohint
         shell: bash

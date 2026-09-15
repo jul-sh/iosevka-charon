@@ -9,7 +9,7 @@ glyph-block Digits-Three : begin
 	glyph-block-import CommonShapes
 	glyph-block-import Common-Derivatives
 	glyph-block-import Digits-Shared : OnumHeight OnumMarks ShiftDown CodeLnum CodeOnum
-	glyph-block-import Letter-Latin-Ezh : EzhShape
+	glyph-block-import Letter-Latin-Ezh : Ezh
 
 	define [ThreeShapeT sink offset sw top] : glyph-proc
 		local barcenter : mix 0 top HBarPos
@@ -19,7 +19,7 @@ glyph-block Digits-Three : begin
 		include : sink
 			widths.rhs sw
 			g4 (SB + offset - O) (top - Hook)
-			hookstart (top - offset) (sw -- sw)
+			HookStart (top - offset) (sw -- sw)
 			g4 (RightSB - offset) [YSmoothMidR (top - offset - O) (barcenter - sw / 2) ArchDepthA ArchDepthB]
 			flat (xMid + TINY) (barcenter - (fine - sw / 2)) [widths.rhs.heading fine Leftward]
 			curl xMid (barcenter - (fine - sw / 2)) [heading Leftward]
@@ -28,7 +28,7 @@ glyph-block Digits-Three : begin
 			flat xMid (barcenter + (fine - sw / 2)) [heading Rightward]
 			curl (xMid + TINY) (barcenter + (fine - sw / 2)) [heading Rightward]
 			g4 (RightSB - offset - O * 2) [YSmoothMidR (barcenter + sw / 2) (offset + O) ArchDepthA ArchDepthB] [widths.rhs sw]
-			hookend offset (sw -- sw)
+			HookEnd offset (sw -- sw)
 			g4 (SB + offset + O) Hook
 
 	define [ThreeShape top] : ThreeShapeT dispiro 0 Stroke top
@@ -38,27 +38,31 @@ glyph-block Digits-Three : begin
 		include : ThreeShape CAP
 	create-glyph 'three.lnum.flatTopSerifless' : glyph-proc
 		include : MarkSet.capital
-		include : EzhShape [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- false)
+		define ezh : Ezh [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- false)
+		include : ezh.Shape
 	create-glyph 'three.lnum.flatTopSerifed' : glyph-proc
 		include : MarkSet.capital
-		include : EzhShape [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- true)
+		define ezh : Ezh [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- true)
+		include : ezh.Shape
 	create-glyph 'three.onum.twoArcs' : glyph-proc
 		include : OnumMarks.p
 		include : ThreeShape CAP
 		include : ShiftDown
 	create-glyph 'three.onum.flatTopSerifless' : glyph-proc
 		include : OnumMarks.p
-		include : EzhShape [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- false)
+		define ezh : Ezh [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- false)
+		include : ezh.Shape
 		include : ShiftDown
 	create-glyph 'three.onum.flatTopSerifed' : glyph-proc
 		include : OnumMarks.p
-		include : EzhShape [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- true)
+		define ezh : Ezh [DivFrame 1] CAP 0 (pxMidLeft -- 0.25) (pxTopRight -- 0.975) (fSerifed -- true)
+		include : ezh.Shape
 		include : ShiftDown
 
 	select-variant 'three.lnum' [CodeLnum '3'] (follow -- 'three')
 	select-variant 'three.onum' [CodeOnum '3'] (follow -- 'three')
 
-	turned 'turnDigitThree' 0x218B 'three.lnum' Middle (CAP / 2)
+	turned 'turnThree' 0x218B 'three.lnum' Middle (CAP / 2)
 
 	link-reduced-variant 'three/sansSerif.lnum' 'three.lnum' MathSansSerif (follow -- 'three/sansSerif')
 	link-reduced-variant 'three/sansSerif.onum' 'three.onum' MathSansSerif (follow -- 'three/sansSerif')

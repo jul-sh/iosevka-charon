@@ -27,8 +27,19 @@ glyph-block Letter-Latin-Lower-P : begin
 			adb   -- adb
 		include : tagged 'stemLeft' : VBar.l left Descender XH sw
 
+	define [FlatTopBody] : with-params [[left SB] [right RightSB] [sw Stroke] [ada SmallArchDepthA] [adb SmallArchDepthB]] : glyph-proc
+		include : tagged 'bowl' : OBarLeft.earlessCorner
+			left  -- left
+			right -- right
+			sw    -- sw
+			fine  -- (ShoulderFine * (sw / Stroke))
+			ada   -- ada
+			adb   -- adb
+			rise  -- 0
+		include : tagged 'stemLeft' : VBar.l left Descender XH sw
+
 	define [EarlessCornerBody] : with-params [[left SB] [right RightSB] [sw Stroke] [ada SmallArchDepthA] [adb SmallArchDepthB]] : glyph-proc
-		include : tagged 'bowl' : OBarLeft.earlessCorner (rise -- DToothlessRise) (mBlend -- DMBlend)
+		include : tagged 'bowl' : OBarLeft.earlessCorner
 			left  -- left
 			right -- right
 			sw    -- sw
@@ -57,6 +68,7 @@ glyph-block Letter-Latin-Lower-P : begin
 	define PConfig : SuffixCfg.weave
 		object # body
 			eared                EaredBody
+			flatTop              FlatTopBody
 			earlessCorner        EarlessCornerBody
 			earlessRounded       EarlessRoundedBody
 		object # serifs
@@ -112,7 +124,7 @@ glyph-block Letter-Latin-Lower-P : begin
 				SB + [HSwToV HalfStroke] + MidJutSide + tinyGap
 
 			include : PalatalHook.r
-				x -- [mix [arch.adjust-x.bot Middle] RightSB 0.75]
+				x -- [mix [Arch.adjust-x.bot Middle] RightSB 0.75]
 				y -- 0
 				yAttach -- [mix O SmallArchDepthA : archv.yFromX 0.75]
 				maskOut -- [intersection [MaskBelow 0] [MaskLeft xMask]]
