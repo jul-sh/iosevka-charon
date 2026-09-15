@@ -8,6 +8,7 @@ glyph-block Letter-Cyrillic-De : begin
 	glyph-block-import CommonShapes
 	glyph-block-import Common-Derivatives
 	glyph-block-import Mark-Adjustment : ExtendAboveBaseAnchors ExtendBelowBaseAnchors
+	glyph-block-import Letter-Shared : CreateAccentedComposition
 	glyph-block-import Letter-Cyrillic-Ze : CyrZe ZeConfig
 
 	glyph-block-export BottomExtension
@@ -16,66 +17,52 @@ glyph-block Letter-Cyrillic-De : begin
 	glyph-block-export CyrDeBottom
 	define [CyrDeBottom left right _sw _desc] : glyph-proc
 		local descenderOverflow : if SLAB SideJut : (right - left) * 0.075
-		local xTopLeft  : mix left right : StrokeWidthBlend 0.15 0.1
+		local xTopLeft  : mix left right : StrokeWidthBlend 0.15 0.10
 		local xTopRight : mix left right : StrokeWidthBlend 0.95 0.96
 		local swOuter : fallback _sw Stroke
+		local swVJut  : VJutStroke * (swOuter / Stroke)
 		local desc : fallback _desc BottomExtension
 
 		include : HBar.b xTopLeft xTopRight 0 swOuter
 		include : tagged 'footL' : union
 			HBar.b (left - descenderOverflow) xTopLeft 0 swOuter
-			VBar.l (left - descenderOverflow) desc 0.1 swOuter
+			VBar.l (left - descenderOverflow) desc TINY swVJut
 		include : tagged 'footR' : union
 			HBar.b xTopRight (right + descenderOverflow) 0 swOuter
-			VBar.r (right + descenderOverflow) desc 0.1 swOuter
+			VBar.r (right + descenderOverflow) desc TINY swVJut
 
 	glyph-block-export CyrDeShape
 	define [CyrDeShape fCapital top left right _sw _desc] : glyph-proc
 		local descenderOverflow : if SLAB SideJut : (right - left) * 0.075
-		local xTopLeft  : mix left right : StrokeWidthBlend 0.15 0.1
+		local xTopLeft  : mix left right : StrokeWidthBlend 0.15 0.10
 		local xTopRight : mix left right : StrokeWidthBlend 0.95 0.96
 		local swOuter : fallback _sw Stroke
-		local swInner : [AdviceStroke 2.75] * (swOuter / Stroke)
+		local swInner : Math.min
+			[AdviceStroke 2.75] * (swOuter / Stroke)
+			VSwToH : 0.375 * (xTopRight - xTopLeft)
 		local desc : fallback _desc BottomExtension
 
-		include : CyrDeBottom left right _sw _desc
+		include : CyrDeBottom left right swOuter desc
 
 		include : VBar.r xTopRight 0 top swInner
 		include : dispiro
 			widths.lhs swInner
-			flat xTopLeft top
-			curl xTopLeft [mix 0 top 0.625]
-			g4   left  swOuter
+			flat xTopLeft top [heading Downward]
+			curl xTopLeft [mix top (0 + swOuter + TailY - swInner / 2) 0.75]
+			g4   left     (0 + swOuter)
 
 		include : if SLAB
-			then : dispiro
+			dispiro
 				widths.rhs swOuter
-				flat (xTopLeft - descenderOverflow) top
-				if (!fCapital && para.isItalic)
-					then : list : curl xTopRight top [heading Rightward]
-					else : list : curl (xTopRight + descenderOverflow) top
-			else : HBar.t xTopLeft xTopRight top swOuter
+				flat (xTopLeft - descenderOverflow - swOuter * SerifShiftX) top
+				if (fCapital || !para.isItalic)
+					list
+						curl (xTopRight + descenderOverflow - swOuter * SerifShiftX) top
+					list
+						curl xTopRight top [heading Rightward]
+			HBar.t xTopLeft xTopRight top swOuter
 
-		return : object desc xTopLeft xTopRight swInner
-
-	define [CyrSoftDeShape fCapital df top _sw _desc vSlab] : glyph-proc
-		local descenderOverflow : if SLAB SideJut : (df.rightSB - df.leftSB) * 0.075
-		local sw : fallback _sw Stroke
-		local xm : if SLAB
-			[mix df.leftSB df.rightSB 0.625] + [HSwToV : 0.25 * sw]
-			mix df.leftSB df.rightSB : if (df.adws > 1) (2 / 3) (3 / 4)
-		local xTopRight : mix df.leftSB xm : StrokeWidthBlend 0.95 0.96
-		local xTopBarRightEnd : mix df.width df.rightSB : if vSlab 0.25 0.375
-
-		include : CyrDeShape fCapital top df.leftSB xm sw _desc
-
-		include : if (SLAB && !(!fCapital && para.isItalic))
-			then : HBar.t (xTopRight + descenderOverflow) xTopBarRightEnd top sw
-			else : HBar.t xTopRight xTopBarRightEnd top sw
-
-		if vSlab : begin
-			local swVJut : Math.min (VJutStroke * (sw / Stroke)) : VSwToH : 0.625 * (xTopBarRightEnd - xTopRight)
-			include : VSerif.dr xTopBarRightEnd top VJut swVJut
+		return : object xTopLeft xTopRight swOuter swInner desc
 
 	create-glyph 'cyrl/De' 0x414 : glyph-proc
 		include : MarkSet.capital
@@ -87,89 +74,93 @@ glyph-block Letter-Cyrillic-De : begin
 		include : ExtendBelowBaseAnchors BottomExtension
 		include : CyrDeShape false XH SB RightSB
 
-	create-glyph 'cyrl/deLongLeg' 0x1C81 : glyph-proc
+	create-glyph 'cyrl/deLongLeg.upright' : glyph-proc
 		include : MarkSet.p
 		include : CyrDeShape false XH SB RightSB nothing Descender
 
-	create-glyph 'cyrl/DeSoft.serifless' : glyph-proc
+	define [CyrSoftDeShape vSlab] : function [fCapital df top _sw _desc] : glyph-proc
+		local sw : fallback _sw Stroke
+		local xm : if SLAB
+			[mix df.leftSB df.rightSB 0.625] + [HSwToV : 0.25 * sw]
+			mix df.leftSB df.rightSB : if (df.adws > 1) (2 / 3) (3 / 4)
+
+		local [object xTopRight] : include : CyrDeShape fCapital top df.leftSB xm sw _desc
+		local xTopBarRightEnd : mix df.width df.rightSB : if vSlab 0.250 0.375
+
+		include : HBar.t (xTopRight + O) xTopBarRightEnd top sw
+		if vSlab : begin
+			local swVJut : Math.min (VJutStroke * (sw / Stroke)) : VSwToH : 0.625 * (xTopBarRightEnd - xTopRight)
+			include : VSerif.dr xTopBarRightEnd top VJut swVJut
+
+	create-glyph : glyph-proc
 		local df : include : DivFrame para.advanceScaleM 3
 		include : df.markSet.capital
 		include : ExtendBelowBaseAnchors BottomExtension
-		include : CyrSoftDeShape true df CAP df.mvs nothing false
+		create-forked-glyph "cyrl/DeSoft.serifless"       : [CyrSoftDeShape false] true df CAP df.mvs
+		create-forked-glyph "cyrl/DeSoft.topRightSerifed" : [CyrSoftDeShape true]  true df CAP df.mvs
 
-	create-glyph 'cyrl/DeSoft.topRightSerifed' : glyph-proc
-		local df : include : DivFrame para.advanceScaleM 3
-		include : df.markSet.capital
-		include : ExtendBelowBaseAnchors BottomExtension
-		include : CyrSoftDeShape true df CAP df.mvs nothing true
-
-	select-variant 'cyrl/DeSoft' 0xA662 (follow -- 'cyrl/EnGhe/GhePart')
-
-	create-glyph 'cyrl/deSoft.serifless' : glyph-proc
+	create-glyph : glyph-proc
 		local df : include : DivFrame para.advanceScaleM 3
 		include : df.markSet.e
 		include : ExtendBelowBaseAnchors BottomExtension
-		include : CyrSoftDeShape false df XH df.mvs nothing false
+		create-forked-glyph "cyrl/deSoft.serifless"       : [CyrSoftDeShape false] false df XH df.mvs
+		create-forked-glyph "cyrl/deSoft.topRightSerifed" : [CyrSoftDeShape true]  false df XH df.mvs
 
-	create-glyph 'cyrl/deSoft.topRightSerifed' : glyph-proc
-		local df : include : DivFrame para.advanceScaleM 3
-		include : df.markSet.e
-		include : ExtendBelowBaseAnchors BottomExtension
-		include : CyrSoftDeShape false df XH df.mvs nothing true
+	select-variant 'cyrl/DeSoft' 0xA662 (follow -- 'cyrl/EnGhe/Ghe')
+	select-variant 'cyrl/deSoft' 0xA663 (follow -- 'cyrl/enghe/ghe')
 
-	select-variant 'cyrl/deSoft' 0xA663 (follow -- 'cyrl/enghe/ghePart')
-
-	foreach { suffix { st sb }} [Object.entries ZeConfig] : do
-		define [DzzeDescendershape de ada adb] : begin
-			local sr : [mix RightSB Width 0.5] - O * 2
-			local sl : mix sr de.xTopRight 2
-			local sw : AdviceStroke 2.5 : ((sr - sl) + 2 * SB) / Width
-			local shapeBot : de.desc - 0.5 * sw
-			local hook : Hook * (0 - shapeBot) / CAP
-			local ze : CyrZe 3 sb sw shapeBot
-				left   -- sl
-				right  -- sr
-				hook   -- hook
+	foreach { suffix { { desc } { styTop styBot } } } [Object.entries ZeConfig] : do
+		define [DzzeDescenderShape de ada adb] : begin
+			local zeRight : [mix RightSB Width 0.5] - O * 2
+			local zeLeft : mix zeRight de.xTopRight 2
+			local sw : AdviceStroke 2.5 (((zeRight - zeLeft) + 2 * SB) / Width)
+			local zeTop : 0 + sw
+			local zeBot : de.desc - 0.5 * sw
+			local p : (zeTop - zeBot) / (CAP - 0)
+			local ze : CyrZe 3 styBot zeTop zeBot
+				left   -- zeLeft
+				right  -- zeRight
+				hook   -- (Hook * p)
 				stroke -- sw
 				xo     -- (0.5 * O)
 				barPos -- 0.5
-				ada    -- ada
-				adb    -- adb
+				ada    -- (ada * p)
+				adb    -- (adb * p)
 			return : union [ze.Shape] [ze.AutoEndSerifL]
 
-		create-glyph "cyrl/Dzze.\(suffix)" : glyph-proc
-			include : MarkSet.capital
-			include : ExtendBelowBaseAnchors BottomExtension
-			local de : include : CyrDeShape true CAP SB RightSB
-			eject-contour 'footR'
-			include : DzzeDescendershape de ArchDepthA ArchDepthB
+		if (!desc && !styTop) : begin
+			create-glyph "cyrl/Dzze.\(suffix)" : glyph-proc
+				include : MarkSet.capital
+				include : ExtendBelowBaseAnchors BottomExtension
+				local de : include : CyrDeShape true CAP SB RightSB
+				eject-contour 'footR'
+				include : DzzeDescenderShape de ArchDepthA ArchDepthB
 
-		create-glyph "cyrl/dzze.upright.\(suffix)" : glyph-proc
-			include : MarkSet.e
-			include : ExtendBelowBaseAnchors BottomExtension
-			local de : include : CyrDeShape false XH SB RightSB
-			eject-contour 'footR'
-			include : DzzeDescendershape de SmallArchDepthA SmallArchDepthB
+			create-glyph "cyrl/dzze.upright.\(suffix)" : glyph-proc
+				include : MarkSet.e
+				include : ExtendBelowBaseAnchors BottomExtension
+				local de : include : CyrDeShape false XH SB RightSB
+				eject-contour 'footR'
+				include : DzzeDescenderShape de SmallArchDepthA SmallArchDepthB
 
-	create-glyph "cyrl/Dwe" 0xA680 : glyph-proc
+	create-glyph 'cyrl/Dwe' 0xA680 : glyph-proc
 		include : MarkSet.capital
 		local asc : CAP + LongVJut - QuarterStroke
 		include : ExtendAboveBaseAnchors asc
 		include : ExtendBelowBaseAnchors BottomExtension
 		local de : include : CyrDeShape true CAP SB RightSB
-		include : VBar.l de.xTopLeft CAP asc de.swInner
+		include : VBar.l de.xTopLeft (CAP + O) asc [Math.min de.swInner : VJutStroke * (de.swOuter / Stroke)]
 
-	create-glyph "cyrl/dwe" 0xA681 : glyph-proc
+	create-glyph 'cyrl/dwe.upright' : glyph-proc
 		include : MarkSet.e
 		local asc : XH + LongVJut - QuarterStroke
 		include : ExtendAboveBaseAnchors asc
 		include : ExtendBelowBaseAnchors BottomExtension
 		local de : include : CyrDeShape false XH SB RightSB
-		include : VBar.l de.xTopLeft XH asc de.swInner
+		include : VBar.l de.xTopLeft (XH + O) asc [Math.min de.swInner : VJutStroke * (de.swOuter / Stroke)]
 
 	## Italic
-	glyph-block-export CyrDeItalicShapeT
-	define [CyrDeItalicShapeT sink df _sw] : begin
+	define [CyrDeItalicKnots df _sw] : begin
 		local sw : fallback _sw df.mvs
 		local fine : ShoulderFine * (sw / Stroke)
 
@@ -177,41 +168,56 @@ glyph-block Letter-Cyrillic-De : begin
 		local ada : df.archDepthAOf (SmallArchDepth * (yRingTop / XH)) sw
 		local adb : df.archDepthBOf (SmallArchDepth * (yRingTop / XH)) sw
 
-		return : sink
-			widths.lhs fine
-			straight.up.start ((df.rightSB - OX) - [HSwToV : sw - fine]) (yRingTop - adb)
-			arch.lhs yRingTop (sw -- sw) (swBefore -- fine)
+		return : list
+			straight.up.start ((df.rightSB - OX) - [HSwToV : sw - fine]) (yRingTop - adb) [widths.lhs fine]
+			Arch.lhs yRingTop (sw -- sw) (swBefore -- fine)
 			flatside.ld df.leftSB  0 yRingTop ada adb
-			arch.lhs 0 (sw -- sw)
+			Arch.lhs 0 (sw -- sw)
 			flatside.ru df.rightSB 0 yRingTop ada adb
 			quadControls 0 0.8
 			g4 (df.leftSB + sw * 1.1) Ascender
 
+	glyph-block-export CyrDeItalicShape
+	define [CyrDeItalicShape df _sw] : dispiro
+		CyrDeItalicKnots df _sw
+
+	glyph-block-export CyrDeItalicMask
+	define [CyrDeItalicMask df _sw] : spiro-outline
+		CyrDeItalicKnots df _sw
+
 	create-glyph 'cyrl/de.italic' : glyph-proc
-		local df : include : DivFrame 1
-		include : df.markSet.b
-		include : CyrDeItalicShapeT dispiro df
+		include : MarkSet.b
+		include : CyrDeItalicShape [DivFrame 1]
 
-	foreach { suffix { st sb }} [Object.entries ZeConfig] : do
-		create-glyph "cyrl/dzze.italic.\(suffix)" : glyph-proc
-			local df : include : DivFrame para.advanceScaleMM 3
-			include : df.markSet.bp
+	create-glyph 'cyrl/dwe.italic/base' : glyph-proc
+		include : MarkSet.b
+		include : CyrDeItalicShape [DivFrame 0.95]
+		set-base-anchor 'topRight' (RightSB - DotRadius) XH
 
-			local subDf : df.slice 3 2 OX
-			include : CyrDeItalicShapeT dispiro subDf df.mvs
+	CreateAccentedComposition 'cyrl/dwe.italic' null 'cyrl/dwe.italic/base' 'commaTR'
 
-			local shift : df.width - subDf.width
-			local ze : CyrZe 1 sb XH Descender
-				left      -- ((subDf.leftSB  + OX) + shift)
-				right     -- ((subDf.rightSB - OX) + shift)
-				blend     -- 0.7
-				hook      -- SHook
-				xOverflow -- 0
-				stroke    -- df.mvs
-				ada       -- SmallArchDepthA
-				adb       -- SmallArchDepthB
-			include : union [ze.Shape] [ze.AutoEndSerifL]
+	foreach { suffix { { desc } { styTop styBot } } } [Object.entries ZeConfig] : do
+		if (desc && !styTop) : begin
+			create-glyph "cyrl/dzze.italic.\(suffix)" : glyph-proc
+				local df : include : DivFrame para.advanceScaleMM 3
+				include : df.markSet.bp
 
-	select-variant 'cyrl/Dzze' 0xA688  (follow -- 'cyrl/ZeBottomSerifOnly')
-	select-variant 'cyrl/dzze.upright' (follow -- 'cyrl/zeBottomSerifOnly')
-	select-variant 'cyrl/dzze.italic'  (follow -- 'cyrl/zeBottomSerifOnly')
+				local subDf : df.slice 3 2 OX
+				include : CyrDeItalicShape subDf df.mvs
+
+				local shift : df.width - subDf.width
+				local ze : CyrZe 1 styBot XH Descender
+					left      -- ((subDf.leftSB  + OX) + shift)
+					right     -- ((subDf.rightSB - OX) + shift)
+					blend     -- 0.7
+					hook      -- SHook
+					stroke    -- df.mvs
+					xOverflow -- 0
+					barPos    -- 0.55
+					ada       -- SmallArchDepthA
+					adb       -- SmallArchDepthB
+				include : union [ze.Shape] [ze.AutoEndSerifL]
+
+	select-variant 'cyrl/Dzze' 0xA688  (follow -- 'cyrl/Dzze/Ze')
+	select-variant 'cyrl/dzze.upright' (follow -- 'cyrl/dzze.upright/ze')
+	select-variant 'cyrl/dzze.italic'  (follow -- 'cyrl/dzze.italic/ze')

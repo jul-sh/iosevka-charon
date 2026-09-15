@@ -2,7 +2,7 @@
 <svg height="160" viewBox="0 0 256 160" width="256" xmlns="http://www.w3.org/2000/svg">
 <defs>
 <path d="M 839 -163 L 150 -388 L 150 -458 L 839 -684 L 861 -621 L 257 -423 L 861 -226 Z " id="path1"/>
-<path d="M 350 5 L -350 5 L -350 -61 L 350 -61 Z " id="path2"/>
+<path d="M -350 5 L -350 -61 L 350 -61 L 350 5 Z " id="path2"/>
 <path d="M 161 -163 L 139 -226 L 743 -423 L 139 -621 L 161 -684 L 850 -458 L 850 -388 Z " id="path3"/>
 </defs>
 <g>

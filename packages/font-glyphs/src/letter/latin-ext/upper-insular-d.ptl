@@ -1,0 +1,24 @@
+$$include '../../meta/macros.ptl'
+
+import [mix linreg clamp fallback] from "@iosevka/util"
+
+glyph-module
+
+glyph-block Letter-Latin-Upper-Insular-D : begin
+	glyph-block-import CommonShapes
+	glyph-block-import Common-Derivatives
+
+	define fine : Stroke * CThinB
+
+	create-glyph 'DInsular' 0xA779 : glyph-proc
+		include : MarkSet.capital
+		include : dispiro
+			widths.lhs fine
+			straight.left.start [Arch.adjust-x.top Middle] (CAP - Stroke + fine)
+			archv
+			flatside.ld SB      0 CAP ArchDepthA ArchDepthB 0 [widths.lhs]
+			Arch.lhs 0
+			flatside.ru RightSB 0 CAP ArchDepthA ArchDepthB
+			arcvh
+			flat [Arch.adjust-x.top Middle]     CAP
+			curl ([mix SB 0 0.7] - SerifShiftS) CAP

@@ -14,7 +14,7 @@ glyph-block Letter-Cyrillic-Tse : begin
 		include : VBar.r RightSB 0 top
 		include : HBar.b SB RightSB 0
 		include : if fRev
-			CyrDescender.lSideJut SB 0
+			CyrDescender.lSideJut SB      0
 			CyrDescender.rSideJut RightSB 0
 		if SLAB : let [sf : SerifFrame.fromDf [DivFrame 1] top 0] : begin
 			include sf.lt.full
@@ -30,11 +30,11 @@ glyph-block Letter-Cyrillic-Tse : begin
 		include : MarkSet.e
 		include : CyrTseShape XH false
 
-	create-glyph 'cyrl/TseRev' 0xA660 : glyph-proc
+	create-glyph 'cyrl/revTse' 0xA660 : glyph-proc
 		include : MarkSet.capital
 		include : CyrTseShape CAP true
 
-	create-glyph 'cyrl/tseRev.upright' : glyph-proc
+	create-glyph 'cyrl/revtse.upright' : glyph-proc
 		include : MarkSet.e
 		include : CyrTseShape XH true
 
@@ -83,8 +83,8 @@ glyph-block Letter-Cyrillic-Tse : begin
 			include : df.markSet.e
 			include : CyrTeTseShape df XH doST
 
-	select-variant 'cyrl/TeTse' 0x4B4 (follow -- 'T/rtailBase')
-	select-variant 'cyrl/tetse.upright' (follow -- 'T/rtailBase')
+	select-variant 'cyrl/TeTse' 0x4B4 (follow -- 'T/rTailBase')
+	select-variant 'cyrl/tetse.upright' (follow -- 'T/rTailBase')
 
 	define [CyrTsweShape top] : glyph-proc
 		include : VBar.l SB 0 top

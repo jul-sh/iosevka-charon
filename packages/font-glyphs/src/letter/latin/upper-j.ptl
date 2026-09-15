@@ -19,8 +19,8 @@ glyph-block Letter-Latin-Upper-J : begin
 
 		local xBarRight : df.rightSB - JBalance2
 
-		set-base-anchor 'above'   (xBarRight - [HSwToV : 0.75 * Stroke])  top
-		set-base-anchor 'overlay' (xBarRight - [HSwToV : 0.75 * Stroke]) (top * OverlayPos)
+		set-base-anchor 'above'   (xBarRight - [HSwToV : 0.75 * Stroke])        top
+		set-base-anchor 'overlay' (xBarRight - [HSwToV : 0.75 * Stroke]) [mix 0 top OverlayPos]
 		set-base-anchor 'jTopSerifAttach' (xBarRight - [HSwToV HalfStroke]) top
 
 		local sw : Math.min Stroke : 0.4 * (xBarRight - df.leftSB)
@@ -30,7 +30,7 @@ glyph-block Letter-Latin-Upper-J : begin
 			widths.rhs sw
 			flat xBarRight top [heading Downward]
 			curl xBarRight ArchDepthB
-			hookend 0 (sw -- sw)
+			HookEnd 0 (sw -- sw)
 			g4 hookx Hook
 
 	define [JFlatHookBase df dfHook top] : glyph-proc
@@ -64,34 +64,37 @@ glyph-block Letter-Latin-Upper-J : begin
 		set-base-anchor 'jTopSerifAttach' (center - [HSwToV HalfStroke]) top
 
 		local hookx : center - (df.width * 0.5) - [HSwToV Stroke] + OXHook
-		local turn : arch.adjust-x.bot [mix center hookx 0.5]
+		local turn : Arch.adjust-x.bot [mix center hookx 0.5]
 		include : dispiro
 			widths.rhs
 			flat center top [heading Downward]
 			curl center (Descender + ArchDepthA)
-			hookend Descender
+			HookEnd Descender
 			g4 hookx (Descender + JHook)
 
-	set JBentHookBase.WithCurlyTail           : function [df top] : JCurlyTailBaseT df (df.rightSB - [HSwToV HalfStroke] - JBalance2) (df.leftSB)                    top 0         'capital'
-	set JDescendingBentHookBase.WithCurlyTail : function [df top] : JCurlyTailBaseT df (df.middle + JBalance) (df.middle + JBalance - LongJut - [HSwToV HalfStroke]) top Descender 'capDesc'
-	define [JCurlyTailBaseT df xc xCo top bottom markClass] : glyph-proc
+	set JBentHookBase.WithCurlyTail : function [df top] : JCurlyTailBaseT df 'capital' top 0
+		df.leftSB  + 0
+		df.rightSB - JBalance2
+	set JDescendingBentHookBase.WithCurlyTail : function [df top] : JCurlyTailBaseT df 'capDesc' top Descender
+		df.middle - [HSwToV HalfStroke] + JBalance - LongJut
+		df.middle + [HSwToV HalfStroke] + JBalance
+	define [JCurlyTailBaseT df mk top bottom left right] : glyph-proc
 		set-width df.width
-		include : df.markSet.(markClass)
+		include : df.markSet.(mk)
 
-		set-base-anchor 'above'   xc  top
-		set-base-anchor 'overlay' xc (top / 2)
-		set-base-anchor 'jTopSerifAttach' xc top
+		set-base-anchor 'above'   (right - [HSwToV HalfStroke])  top
+		set-base-anchor 'overlay' (right - [HSwToV HalfStroke]) (top / 2)
+		set-base-anchor 'jTopSerifAttach' (right - [HSwToV HalfStroke]) top
 
 		local fine : AdviceStroke 3.5
-		local rinner : LongJut / 2 - fine / 2
 		include : dispiro
 			widths.rhs
-			flat (xc + [HSwToV HalfStroke]) top [heading Downward]
-			curl (xc + [HSwToV HalfStroke]) (bottom + fine + rinner * 2)
-			CurlyTail.n fine bottom xCo
-				x2 -- df.width
-				y2 -- (bottom + 0.5 * fine)
-				yLoopTop -- (bottom + 2 * fine + 2 * rinner)
+			flat right top [heading Downward]
+			curl right (bottom + LongVJut)
+			CurlyTail.n fine bottom left
+				x2       -- df.width
+				y2       -- (bottom + 0.5 * fine)
+				yLoopTop -- (bottom + 1.0 * fine + LongVJut)
 
 	define [JDescendingFlatHookSeriflessBase df dfHook top] : glyph-proc
 		set-width df.width
@@ -111,7 +114,7 @@ glyph-block Letter-Latin-Upper-J : begin
 
 	define [JLeftwardSerif  df x top] : HSerif.lt x top LongJut
 	define [JBothSidesSerif df x top] : union [HSerif.lt x top LongJut] [HSerif.rt x top Jut]
-	define [JSymmetricSerif df x top] : HSerif.mt (x + OX) top MidJutCenter
+	define [JSymmetricSerif df x top] : HSerif.mt (x - [IBalance df]) top MidJutCenter
 
 	define JConfig : SuffixCfg.weave
 		object # height and hook
@@ -166,7 +169,7 @@ glyph-block Letter-Latin-Upper-J : begin
 			widths.rhs BBS
 			flat (RightSB - JBalance2) CAP [heading Downward]
 			curl (RightSB - JBalance2) ArchDepthB
-			hookend 0 (sw -- BBS)
+			HookEnd 0 (sw -- BBS)
 			g4 hookx Hook
 		include : HBar.t (RightSB - JBalance2 - BBD) (RightSB - JBalance2) CAP BBS
 		include : intersection
@@ -174,6 +177,6 @@ glyph-block Letter-Latin-Upper-J : begin
 			spiro-outline
 				corner (RightSB - JBalance2 - 1) CAP [heading Downward]
 				curl (RightSB - JBalance2 - 1) ArchDepthB
-				hookend 1 (sw -- BBS)
+				HookEnd 1 (sw -- BBS)
 				g4 (hookx + 1) Hook
 				corner (hookx + 1) CAP

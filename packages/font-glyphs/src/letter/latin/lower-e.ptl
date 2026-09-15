@@ -12,11 +12,11 @@ glyph-block Letter-Latin-Lower-E : begin
 	glyph-block-import Letter-Shared-Shapes : FlatHookDepth RetroflexHook RhoticHookShape
 	glyph-block-import Letter-Shared-Shapes : SerifedArcEnd InwardSlabArcEnd ArcEndSerif
 	glyph-block-import Mark-Shared-Metrics : markExtend markStroke markStress markFine
-	glyph-block-import Mark-Above : aboveMarkTop aboveMarkBot aboveMarkMid aboveMarkStack
 	glyph-block-import Mark-Adjustment : ExtendBelowBaseAnchors
 	glyph-block-import Letter-Latin-C : CConfig
 
-	define [SmallEHook top stroke hook doSwash] : Math.min hook : if doSwash top : mix stroke ([mix 0 top DesignParameters.eBarPos] - stroke / 2) 0.554
+	define [SmallEHook top stroke hook doSwash] : Math.min hook : if doSwash VERY-FAR
+		mix stroke ([mix 0 top DesignParameters.eBarPos] - stroke / 2) 0.554
 
 	define SLAB-NONE       0
 	define SLAB-CLASSICAL  1
@@ -28,8 +28,13 @@ glyph-block Letter-Latin-Lower-E : begin
 			[Just SLAB-CLASSICAL] : SerifedArcEnd.LtrLhs df.rightSB 0 stroke hook
 			[Just SLAB-INWARD] : InwardSlabArcEnd.LtrLhs df.rightSB 0 stroke hook
 			__ : list
-				hookend 0 (sw -- stroke) (suppressSwash -- isClockwise)
+				HookEnd 0 (sw -- stroke) (suppressSwash -- isClockwise)
 				g4 (df.rightSB - [if doSwash 0 0.5] * OX) [SmallEHook top stroke hook doSwash]
+
+	define [SmallETerminalSerif df top stroke hook tailSlab isClockwise] : match tailSlab
+		[Just SLAB-CLASSICAL] : ArcEndSerif.R       df.rightSB 0 stroke hook
+		[Just SLAB-INWARD]    : ArcEndSerif.InwardR df.rightSB 0 stroke hook
+		__                    : no-shape
 
 	define [RevSmallESerifedTerminalShape df top stroke hook tailSlab isCounterClockwise] : begin
 		local doSwash : !isCounterClockwise && para.isItalic && (para.slopeAngle < 0)
@@ -37,13 +42,8 @@ glyph-block Letter-Latin-Lower-E : begin
 			[Just SLAB-CLASSICAL] : SerifedArcEnd.RtlRhs df.leftSB 0 stroke hook
 			[Just SLAB-INWARD] : InwardSlabArcEnd.RtlRhs df.leftSB 0 stroke hook
 			__ : list
-				hookend 0 (sw -- stroke) (suppressSwash -- isCounterClockwise)
+				HookEnd 0 (sw -- stroke) (suppressSwash -- isCounterClockwise)
 				g4 (df.leftSB + [if doSwash 0 0.5] * OX) [SmallEHook top stroke hook doSwash]
-
-	define [SmallETerminalSerif df top stroke hook tailSlab isClockwise] : match tailSlab
-		[Just SLAB-CLASSICAL] : ArcEndSerif.R       df.rightSB 0 stroke hook
-		[Just SLAB-INWARD]    : ArcEndSerif.InwardR df.rightSB 0 stroke hook
-		__                    : no-shape
 
 	define [RevSmallETerminalSerif df top stroke hook tailSlab isCounterClockwise] : match tailSlab
 		[Just SLAB-CLASSICAL] : ArcEndSerif.L       df.leftSB 0 stroke hook
@@ -72,7 +72,7 @@ glyph-block Letter-Latin-Lower-E : begin
 			widths.lhs stroke
 			flat (df.rightSB - OX) yBarBottom [heading Upward]
 			curl (df.rightSB - OX) [Math.max (top - adb) (yBarBottom + TINY)]
-			arch.lhs top (sw -- stroke)
+			Arch.lhs top (sw -- stroke)
 			flatside.ld df.leftSB 0 top ada adb
 			SmallESerifedTerminalShape df top stroke hook tailSlab cw
 
@@ -103,7 +103,7 @@ glyph-block Letter-Latin-Lower-E : begin
 			widths.rhs stroke
 			flat (df.leftSB + OX) yBarBottom [heading Upward]
 			curl (df.leftSB + OX) [Math.max (top - ada) (yBarBottom + TINY)]
-			arch.rhs top (sw -- stroke)
+			Arch.rhs top (sw -- stroke)
 			flatside.rd df.rightSB 0 top ada adb
 			RevSmallESerifedTerminalShape df top stroke hook tailSlab ccw
 
@@ -136,7 +136,7 @@ glyph-block Letter-Latin-Lower-E : begin
 			[if para.isItalic virt curl] [mix xStart df.rightSB (0.475 + 0.1 * TanSlope)] yBarBottom [if para.isItalic nothing [heading Rightward]]
 			archv
 			g4 ((df.rightSB - OX) - 0.5 * (df.width / HalfUPM) * extraCurliness) [YSmoothMidR top yBarBottom ada2 adb2]
-			arch.lhs top (sw -- stroke)
+			Arch.lhs top (sw -- stroke)
 			flatside.ld df.leftSB 0 top ada adb
 			SmallESerifedTerminalShape df top stroke hook tailSlab cw
 
@@ -171,7 +171,7 @@ glyph-block Letter-Latin-Lower-E : begin
 			[if para.isItalic g2.left.mid curl] [mix xStart df.leftSB (0.475 - 0.1 * TanSlope)] (yBarBottom - (1/3) * extraCurliness) [heading Leftward]
 			archv
 			g4 (df.leftSB + OX) [YSmoothMidL top yBarBottom ada2 adb2]
-			arch.rhs top (sw -- stroke)
+			Arch.rhs top (sw -- stroke)
 			flatside.rd df.rightSB 0 top ada adb
 			RevSmallESerifedTerminalShape df top stroke hook tailSlab ccw
 
@@ -184,7 +184,7 @@ glyph-block Letter-Latin-Lower-E : begin
 		local-parameter : Body
 		local-parameter : df
 		local-parameter : top
-		local-parameter : stroke   -- [Math.min df.mvs : AdviceStroke2 2 3 top (0.75 * df.adws)]
+		local-parameter : stroke   -- [df.adviceThinnerStroke2 2 3 top 0.75]
 		local-parameter : hook     -- AHook
 		local-parameter : ada      -- SmallArchDepthA
 		local-parameter : adb      -- SmallArchDepthB
@@ -325,110 +325,112 @@ glyph-block Letter-Latin-Lower-E : begin
 		DefineSelectorGlyph "cyrl/abk/cheDescender" suffix abkCheDf 'p'
 
 		foreach { suffixSerif { styTop styBot } } [Object.entries CConfig] : do
-			create-glyph "Schwa.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				include : Body [DivFrame 1] CAP
-					hook   -- Hook
-					ada    -- ArchDepthA
-					adb    -- ArchDepthB
-					turned -- true
-					styTop -- styTop
-					styBot -- styBot
-			create-glyph "schwa.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				include : Body [DivFrame 1] XH
-					hook   -- AHook
-					ada    -- SmallArchDepthA
-					adb    -- SmallArchDepthB
-					turned -- true
-					styTop -- styTop
-					styBot -- styBot
+			if (!styBot) : begin
+				create-glyph "Schwa.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					include : Body [DivFrame 1] CAP
+						hook   -- Hook
+						ada    -- ArchDepthA
+						adb    -- ArchDepthB
+						turned -- true
+						styTop -- styTop
+						styBot -- styBot
+				create-glyph "schwa.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					include : Body [DivFrame 1] XH
+						hook   -- AHook
+						ada    -- SmallArchDepthA
+						adb    -- SmallArchDepthB
+						turned -- true
+						styTop -- styTop
+						styBot -- styBot
 
-			create-glyph "schwaRhoticHook.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				local dfSub : DivFrame (0.75 * para.advanceScaleM) 2
-				local stroke : dfSub.adviceStroke2 2 3 XH
-				include : Body dfSub XH
-					stroke -- stroke
-					hook   -- AHook
-					ada    -- [dfSub.archDepthAOf SmallArchDepth stroke]
-					adb    -- [dfSub.archDepthBOf SmallArchDepth stroke]
-					turned -- true
-					styTop -- styTop
-					styBot -- styBot
-				include : RhoticHookShape (dfSub.rightSB - [HSwToV : 1.25 * markFine]) rhoticDf.width [mix 0 XH DesignParameters.eBarPos] [mix 0 XH 0.2]
+				create-glyph "schwaRhoticHook.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					local subDf : DivFrame (0.75 * para.advanceScaleM) 2
+					local stroke : subDf.adviceStroke2 2 3 XH
+					include : Body subDf XH
+						stroke -- stroke
+						hook   -- AHook
+						ada    -- [subDf.archDepthAOf SmallArchDepth stroke]
+						adb    -- [subDf.archDepthBOf SmallArchDepth stroke]
+						turned -- true
+						styTop -- styTop
+						styBot -- styBot
+					include : RhoticHookShape (subDf.rightSB - [HSwToV : 1.25 * markFine]) rhoticDf.width [mix 0 XH DesignParameters.eBarPos] [mix 0 XH 0.2]
 
-			create-glyph "schwaRetroflexHook.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				local dfSub : DivFrame (0.75 * para.advanceScaleM) 2
-				local stroke : dfSub.adviceStroke2 2 3 XH
-				include : Body dfSub XH
-					stroke -- stroke
-					hook   -- AHook
-					ada    -- [dfSub.archDepthAOf SmallArchDepth stroke]
-					adb    -- [dfSub.archDepthBOf SmallArchDepth stroke]
-					turned -- true
-					styTop -- styTop
-					styBot -- styBot
-				include : RetroflexHook.r
-					x       -- [mix RightSB rhoticDf.width 0.5]
-					y       -- 0
-					yAttach -- ([mix 0 XH DesignParameters.eBarPos] - HalfStroke)
-					xLink   -- (dfSub.rightSB - [HSwToV : 0.5 * stroke])
-					refSw   -- [AdviceStroke 4]
+				create-glyph "schwaRetroflexHook.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					local subDf : DivFrame (0.75 * para.advanceScaleM) 2
+					local stroke : subDf.adviceStroke2 2 3 XH
+					include : Body subDf XH
+						stroke -- stroke
+						hook   -- AHook
+						ada    -- [subDf.archDepthAOf SmallArchDepth stroke]
+						adb    -- [subDf.archDepthBOf SmallArchDepth stroke]
+						turned -- true
+						styTop -- styTop
+						styBot -- styBot
+					include : RetroflexHook.r
+						x       -- [mix RightSB rhoticDf.width 0.5]
+						y       -- 0
+						yAttach -- ([mix 0 XH DesignParameters.eBarPos] - HalfStroke)
+						xLink   -- (subDf.rightSB - [HSwToV : 0.5 * stroke])
+						refSw   -- [AdviceStroke 4]
 
-			create-glyph "cyrl/abk/Che.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				include : AbkCheShape false Body abkCheDf CAP
-					hook   -- Hook
-					ada    -- ArchDepthA
-					adb    -- ArchDepthB
-					styTop -- styTop
-					styBot -- styBot
-			create-glyph "cyrl/abk/che.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				include : AbkCheShape false Body abkCheDf XH
-					hook   -- AHook
-					ada    -- SmallArchDepthA
-					adb    -- SmallArchDepthB
-					styTop -- styTop
-					styBot -- styBot
-			create-glyph "cyrl/abk/CheDescender.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				include : AbkCheShape true Body abkCheDf CAP
-					hook   -- Hook
-					ada    -- ArchDepthA
-					adb    -- ArchDepthB
-					styTop -- styTop
-					styBot -- styBot
-			create-glyph "cyrl/abk/cheDescender.\(suffix).\(suffixSerif)" : glyph-proc
-				set-width 0
-				set-mark-anchor 'cvDecompose' 0 0
-				include : AbkCheShape true Body abkCheDf XH
-					hook   -- AHook
-					ada    -- SmallArchDepthA
-					adb    -- SmallArchDepthB
-					styTop -- styTop
-					styBot -- styBot
+			if (!styTop) : begin
+				create-glyph "cyrl/abk/Che.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					include : AbkCheShape false Body abkCheDf CAP
+						hook   -- Hook
+						ada    -- ArchDepthA
+						adb    -- ArchDepthB
+						styTop -- styTop
+						styBot -- styBot
+				create-glyph "cyrl/abk/che.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					include : AbkCheShape false Body abkCheDf XH
+						hook   -- AHook
+						ada    -- SmallArchDepthA
+						adb    -- SmallArchDepthB
+						styTop -- styTop
+						styBot -- styBot
+				create-glyph "cyrl/abk/CheDescender.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					include : AbkCheShape true Body abkCheDf CAP
+						hook   -- Hook
+						ada    -- ArchDepthA
+						adb    -- ArchDepthB
+						styTop -- styTop
+						styBot -- styBot
+				create-glyph "cyrl/abk/cheDescender.\(suffix).\(suffixSerif)" : glyph-proc
+					set-width 0
+					set-mark-anchor 'cvDecompose' 0 0
+					include : AbkCheShape true Body abkCheDf XH
+						hook   -- AHook
+						ada    -- SmallArchDepthA
+						adb    -- SmallArchDepthB
+						styTop -- styTop
+						styBot -- styBot
 
-		select-variant "Schwa.\(suffix)" (follow -- 'cyrl/ETopSerifOnly')
-		select-variant "schwa.\(suffix)" (follow -- 'cyrl/eTopSerifOnly')
+		select-variant "Schwa.\(suffix)" (follow -- 'cyrl/E/topSerif')
+		select-variant "schwa.\(suffix)" (follow -- 'cyrl/e/topSerif')
 
-		select-variant "schwaRhoticHook.\(suffix)"    (follow -- 'cyrl/eTopSerifOnly')
-		select-variant "schwaRetroflexHook.\(suffix)" (follow -- 'cyrl/eTopSerifOnly')
+		select-variant "schwaRhoticHook.\(suffix)"    (follow -- 'cyrl/e/topSerif')
+		select-variant "schwaRetroflexHook.\(suffix)" (follow -- 'cyrl/e/topSerif')
 
-		select-variant "cyrl/abk/Che.\(suffix)" (follow -- 'CBottomSerifOnly')
-		select-variant "cyrl/abk/che.\(suffix)" (follow -- 'cBottomSerifOnly')
+		select-variant "cyrl/abk/Che.\(suffix)" (follow -- 'C/bottomSerif')
+		select-variant "cyrl/abk/che.\(suffix)" (follow -- 'c/bottomSerif')
 
-		select-variant "cyrl/abk/CheDescender.\(suffix)" (follow -- 'CBottomSerifOnly')
-		select-variant "cyrl/abk/cheDescender.\(suffix)" (follow -- 'cBottomSerifOnly')
+		select-variant "cyrl/abk/CheDescender.\(suffix)" (follow -- 'C/bottomSerif')
+		select-variant "cyrl/abk/cheDescender.\(suffix)" (follow -- 'c/bottomSerif')
 
 	select-variant 'e' 'e'
 
@@ -446,7 +448,7 @@ glyph-block Letter-Latin-Lower-E : begin
 	CreateSelectorVariants 'schwaRhoticHook'    0x25A  [Object.keys SmallEConfig] (follow -- 'e')
 	CreateSelectorVariants 'schwaRetroflexHook' 0x1D95 [Object.keys SmallEConfig] (follow -- 'e')
 
-	alias 'cyrl/ie' 0x435 'e'
+	alias 'cyrl/ye' 0x435 'e'
 
 	alias 'cyrl/Schwa' 0x4D8 'Schwa'
 	alias 'cyrl/schwa' 0x4D9 'schwa'

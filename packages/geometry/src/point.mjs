@@ -24,6 +24,13 @@ export class Vec2 {
 	round(d) {
 		return new Vec2(Math.round(d * this.x) / d, Math.round(d * this.y) / d);
 	}
+	norm() {
+		return new Vec2(this.x, this.y);
+	}
+	normalized() {
+		const n = Math.hypot(this.x, this.y);
+		return new Vec2(this.x / n, this.y / n);
+	}
 
 	static from(z) {
 		return new Vec2(z.x, z.y);

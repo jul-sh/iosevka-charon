@@ -1,0 +1,75 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"packages/*/src/**/*.mjs",
+			"tools/*/src/**/*.mjs",
+			"verdafile.mjs",
+
+			"!packages/font-glyphs/**/*.mjs",
+			"!packages/font-otl/**/*.mjs",
+			"!packages/font/src/generated/ttfa-ranges.mjs"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"indentWidth": 4,
+		"lineEnding": "lf",
+		"lineWidth": 100
+	},
+	"javascript": {
+		"formatter": {
+			"arrowParentheses": "asNeeded"
+		}
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"complexity": {
+				"noExcessiveCognitiveComplexity": "off"
+			},
+			"style": {
+				"useConst": "error"
+			}
+		}
+	},
+	"overrides": [
+		{
+			"includes": [".vscode/**/*.json"],
+			"json": {
+				"parser": {
+					"allowComments": true,
+					"allowTrailingCommas": true
+				}
+			}
+		}
+	],
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on",
+					"options": {
+						"groups": [
+							[":NODE:"],
+							":BLANK_LINE:",
+							[":PACKAGE:"],
+							":BLANK_LINE:",
+							"../**",
+							":BLANK_LINE:",
+							"./**"
+						]
+					}
+				}
+			}
+		}
+	}
+}
