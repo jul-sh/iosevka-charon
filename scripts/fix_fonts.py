@@ -123,7 +123,7 @@ def fix_font_revision(font: TTFont) -> bool:
 def fix_copyright_notice(font: TTFont) -> bool:
     """Fix copyright notice to match Google Fonts canonical format."""
     name_table = font["name"]
-    copyright_notice = "Copyright 2015-2025 The Iosevka Project Authors (https://github.com/be5invis/Iosevka)"
+    copyright_notice = "Copyright 2015-2026 The Iosevka Project Authors (https://github.com/be5invis/Iosevka)"
 
     name_table.setName(copyright_notice, 0, 3, 1, 0x409)
     name_table.setName(copyright_notice, 0, 1, 0, 0)

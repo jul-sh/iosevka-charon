@@ -12,7 +12,81 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs {
+
+        # crates.io's bot protection answers requests that carry no User-Agent
+        # with HTTP 403, and nixpkgs' fetch-cargo-vendor-util builds a bare
+        # requests.Session that sets none, so every buildRustPackage vendor
+        # fetch fails. The util is constructed inline inside
+        # fetch-cargo-vendor.nix rather than exposed as a package, so it cannot
+        # be reached from an overlay; patch the nixpkgs source instead.
+        # Remove once nixpkgs sends a User-Agent itself.
+        # A module-level helper, emitted with explicit "\n" joins so neither
+        # Nix's indented-string stripping nor bash quoting can disturb the
+        # Python indentation.
+        userAgentHelper = builtins.concatStringsSep "\n" [
+          "def _session_with_user_agent() -> requests.Session:"
+          "    session = requests.Session()"
+          "    session.headers.update("
+          "        {'User-Agent': 'nix-fetch-cargo-vendor (+https://github.com/NixOS/nixpkgs)'}"
+          "    )"
+          "    return session"
+          ""
+          ""
+          ""
+        ];
+
+        # Split across lines to stay within flake8's 79-column limit (E501).
+        retryPolicy = builtins.concatStringsSep "\n" [
+          "        status_forcelist=[429, 500, 502, 503, 504],"
+          "        respect_retry_after_header=True,"
+        ];
+
+        patchedNixpkgs = pkgsBootstrap.applyPatches {
+          name = "nixpkgs-crates-io-user-agent";
+          src = nixpkgs;
+          # Substitute the Session constructor for one that carries a
+          # User-Agent. It has to stay a single statement on a single line:
+          # a multi-line replacement would have to survive both Nix's
+          # indented-string stripping and bash quoting (losing the leading
+          # spaces gives a Python IndentationError), and writePython3Bin
+          # lints the result with flake8, which rejects a semicolon (E702).
+          # requests.Session accepts no headers argument, so build it with a
+          # dict literal merge inside a helper expression instead.
+          postPatch = ''
+            substituteInPlace pkgs/build-support/rust/fetch-cargo-vendor-util.py \
+              --replace-fail \
+                "    session = requests.Session()" \
+                "    session = _session_with_user_agent()"
+
+            substituteInPlace pkgs/build-support/rust/fetch-cargo-vendor-util.py \
+              --replace-fail \
+                "def create_http_session() -> requests.Session:" \
+                "${userAgentHelper}def create_http_session() -> requests.Session:"
+
+            # crates.io also throttles the fetcher's parallel download pool
+            # with HTTP 429, which upstream's retry policy does not cover
+            # (it retries 5xx only), so a large vendor fetch fails outright.
+            # Retry on 429 as well, and back off harder.
+            substituteInPlace pkgs/build-support/rust/fetch-cargo-vendor-util.py \
+              --replace-fail \
+                "        status_forcelist=[500, 502, 503, 504]" \
+                "${retryPolicy}"
+
+            substituteInPlace pkgs/build-support/rust/fetch-cargo-vendor-util.py \
+              --replace-fail \
+                "        backoff_factor=0.5," \
+                "        backoff_factor=2.0,"
+
+            substituteInPlace pkgs/build-support/rust/fetch-cargo-vendor-util.py \
+              --replace-fail \
+                "        total=5," \
+                "        total=10,"
+          '';
+        };
+
+        pkgsBootstrap = import nixpkgs { inherit system; };
+
+        pkgs = import patchedNixpkgs {
           inherit system overlays;
         };
 
