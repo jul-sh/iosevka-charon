@@ -14,10 +14,16 @@ Google Fonts versioning (from gf-guide/requirements.html#font-versioning):
     Example: 33.3.5  →  33.305
              33.3.15 →  33.315
               2.0.0  →   2.000
+
+Local revisions: a gf_version above the upstream-derived one (e.g. 34.802 on
+Iosevka 34.8.1, for a release that changes the design but not the subtree) is
+kept until the upstream version changes. A new upstream version never repeats
+or goes below a version already in version.json: it moves on by 0.001 instead.
 """
 
 import json
 import sys
+from decimal import Decimal
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -61,6 +67,26 @@ def read_upstream_version() -> str:
     return version
 
 
+def read_version_json() -> dict:
+    """The current sources/version.json, or {} if it does not exist."""
+    if not VERSION_JSON.exists():
+        return {}
+    return json.loads(VERSION_JSON.read_text(encoding="utf-8"))
+
+
+def resolve_gf_version(upstream: str, existing: dict) -> str:
+    """GF version for an upstream version, honouring local revisions (see module docstring)."""
+    computed = semver_to_gf(upstream)
+    current = existing.get("gf_version")
+    if not current:
+        return computed
+    if existing.get("upstream") == upstream:
+        return max(computed, current, key=Decimal)
+    if Decimal(computed) <= Decimal(current):
+        return f"{Decimal(current) + Decimal('0.001'):.3f}"
+    return computed
+
+
 def write_version_json(upstream: str, gf_version: str) -> None:
     """Write the version constants to sources/version.json (only if they changed).
 
@@ -92,17 +118,18 @@ def check_mode() -> None:
         print(f"FAIL: {VERSION_JSON} does not exist. Run sync_version.py first.", file=sys.stderr)
         sys.exit(1)
 
-    existing = json.loads(VERSION_JSON.read_text(encoding="utf-8"))
-    if existing.get("upstream") != upstream or existing.get("gf_version") != gf_version:
+    existing = read_version_json()
+    current = existing.get("gf_version") or "0"
+    if existing.get("upstream") != upstream or Decimal(current) < Decimal(gf_version):
         print(
             f"FAIL: version.json is stale.\n"
-            f"  Expected upstream={upstream}, gf_version={gf_version}\n"
+            f"  Expected upstream={upstream}, gf_version>={gf_version}\n"
             f"  Got      upstream={existing.get('upstream')}, gf_version={existing.get('gf_version')}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    print(f"OK: version.json is up-to-date (upstream={upstream}, gf={gf_version})")
+    print(f"OK: version.json is up-to-date (upstream={upstream}, gf={current})")
 
 
 def main() -> None:
@@ -123,7 +150,7 @@ def main() -> None:
         return
 
     upstream = read_upstream_version()
-    gf_version = semver_to_gf(upstream)
+    gf_version = resolve_gf_version(upstream, read_version_json())
     write_version_json(upstream, gf_version)
 
 
