@@ -32,6 +32,9 @@ REPO_DIR = Path("sources/iosevka")  # Git subtree containing Iosevka sources
 # Build plan file (can be overridden via command-line argument)
 PRIVATE_TOML = Path("sources/private-build-plans.toml")
 
+# At most this many plans build at once (see get_worker_count)
+MAX_PARALLEL_PLANS = 2
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -175,7 +178,12 @@ async def build_one_plan(plan_name: str) -> None:
 
 
 def get_worker_count(plan_total: int) -> int:
-    """Determine how many workers to use when building plans in parallel."""
+    """Determine how many workers to use when building plans in parallel.
+
+    Each plan's build already runs one job per CPU, and every job can take more
+    than 1 GB of memory, so more than two plans at once multiplies peak memory
+    without speeding anything up on a CPU-bound runner.
+    """
     env_value = os.environ.get("IOSEVKA_BUILD_WORKERS")
     if env_value:
         try:
@@ -187,7 +195,7 @@ def get_worker_count(plan_total: int) -> int:
             logger.warning("Ignoring non-numeric IOSEVKA_BUILD_WORKERS value.")
 
     cpu_total = os.cpu_count() or 1
-    return max(1, min(plan_total, cpu_total))
+    return max(1, min(plan_total, cpu_total, MAX_PARALLEL_PLANS))
 
 
 # Main Entry Point

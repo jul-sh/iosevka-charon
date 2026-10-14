@@ -45,7 +45,10 @@ sync-version:
 	python3 scripts/sync_version.py
 
 # Stage 1: Build raw fonts from Iosevka, into unprocessed_fonts/
-fonts.stamp: sync-version $(BUILD_SOURCES)
+# sync-version is order-only: it always runs first, but being phony it must not
+# mark the fonts out of date, or every target would rebuild and re-post-process
+# everything (a version change still re-runs post-processing via version.json).
+fonts.stamp: $(BUILD_SOURCES) | sync-version
 	@echo "==> Stage 1: Building raw fonts from Iosevka sources..."
 	@echo "Using build plan: $(PLAN)"
 	rm -rf unprocessed_fonts

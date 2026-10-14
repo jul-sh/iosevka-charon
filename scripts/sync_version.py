@@ -62,15 +62,21 @@ def read_upstream_version() -> str:
 
 
 def write_version_json(upstream: str, gf_version: str) -> None:
-    """Write the version constants to sources/version.json."""
+    """Write the version constants to sources/version.json (only if they changed).
+
+    Leaving an up-to-date file untouched keeps its mtime, so Make does not
+    re-run post-processing, which depends on this file.
+    """
     payload = {
         "upstream": upstream,
         "gf_version": gf_version,
         "gf_version_string": f"Version {gf_version}",
     }
-    VERSION_JSON.write_text(
-        json.dumps(payload, indent=2) + "\n", encoding="utf-8"
-    )
+    content = json.dumps(payload, indent=2) + "\n"
+    if VERSION_JSON.exists() and VERSION_JSON.read_text(encoding="utf-8") == content:
+        print(f"{VERSION_JSON} is up to date (gf_version {gf_version})")
+        return
+    VERSION_JSON.write_text(content, encoding="utf-8")
     print(f"Wrote {VERSION_JSON}")
     print(f"  upstream:          {upstream}")
     print(f"  gf_version:        {gf_version}")
