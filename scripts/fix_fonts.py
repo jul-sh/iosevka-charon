@@ -40,7 +40,7 @@ from autokern import add_auto_kerning
 # Constants
 # ----------------------------------------------------------------------------
 
-# Keep family-wide vertical metrics consistent to satisfy FontBakery family checks.
+# Iosevka Charon Mono's vertical metrics, kept family-wide to satisfy FontBakery family checks.
 # Win metrics must cover glyph bounds (for clipping prevention)
 # but hhea metrics control line spacing (keep tighter like original Iosevka)
 TARGET_WIN_ASCENT = 1198  # Fontspector requires this to cover all glyphs
@@ -53,7 +53,7 @@ TARGET_HHEA_LINE_GAP = 0  # Keep gap at zero for GF compliance
 # Families
 # ----------------------------------------------------------------------------
 # Keyed by build-plan name, which Iosevka uses as the file-name prefix
-# (e.g. "IosevkaCaleuche-BoldItalic.ttf").
+# (e.g. "IosevkaCharonMono-BoldItalic.ttf").
 
 
 @dataclass(frozen=True)
@@ -70,16 +70,17 @@ class FamilySpec:
     reduce_word_spacing: bool = True
 
 
-_CHARON = dict(
+_MONO = dict(
     hhea_ascender=TARGET_HHEA_ASCENDER,
     hhea_descender=TARGET_HHEA_DESCENDER,
     win_ascent=TARGET_WIN_ASCENT,
     win_descent=TARGET_WIN_DESCENT,
 )
-# Iosevka Caleuche pairs with Kerberos, so it takes Kerberos's line metrics, underline
-# and strikeout: the same default line height (1.361), one continuous underline across
-# text and code. Its word space is set in the build plan (advanceScaleSp), not here.
-_CALEUCHE = dict(
+# The proportional Iosevka Charon pairs with Kerberos, so it takes Kerberos's line
+# metrics, underline and strikeout: the same default line height (1.361), one
+# continuous underline across both. Its word space is set in the build plan
+# (advanceScaleSp), not here.
+_KERBEROS_PAIRED = dict(
     hhea_ascender=1016,
     hhea_descender=-345,
     underline=(-120, 75),
@@ -88,10 +89,8 @@ _CALEUCHE = dict(
 )
 
 FAMILIES = {
-    "IosevkaCharon": FamilySpec("Iosevka Charon", **_CHARON),
-    "IosevkaCharonMono": FamilySpec("Iosevka Charon Mono", **_CHARON),
-    "IosevkaCaleuche": FamilySpec("Iosevka Caleuche", **_CALEUCHE),
-    "IosevkaCaleucheMono": FamilySpec("Iosevka Caleuche Mono", **_CALEUCHE),
+    "IosevkaCharon": FamilySpec("Iosevka Charon", **_KERBEROS_PAIRED),
+    "IosevkaCharonMono": FamilySpec("Iosevka Charon Mono", **_MONO),
 }
 
 

@@ -2,21 +2,11 @@
 
 Iosevka Charon is a quasi-proportional font excellent for technical writing and dense UI. Iosevka Charon Mono is a true monospace font tuned for coding and terminal use. These font families are unique derivatives of [Iosevka](https://github.com/be5invis/Iosevka) (an open source font project) by [be5invis](https://github.com/be5invis); built in a manner that makes them Google Fonts compliant.
 
+Iosevka Charon is drawn to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. At the same font size the two share one x-height, cap height, ascender and descender, the same default line height (1.361) and the same underline, and Charon's italic leans 15° to sit with Kerberos's steep italic. Iosevka Charon Mono keeps Iosevka's own proportions.
+
 ![Iosevka Charon specimen](documentation/iosevka-charon.png)
 
 ![Iosevka Charon Mono specimen](documentation/iosevka-charon-mono.png)
-
-## Iosevka Caleuche
-
-Iosevka Caleuche and Iosevka Caleuche Mono are Iosevka Charon re-proportioned to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. The letterforms are Charon's; the proportions are Kerberos's. At the same font size, code and running text share one x-height, cap height, ascender and descender, the same default line height (1.361) and the same underline, and each weight stays just under Kerberos's colour. Italics lean 15° to sit with Kerberos's steep italic. No `font-size` adjustment is needed:
-
-```css
-code, pre { font-family: "Iosevka Caleuche Mono", monospace; }
-```
-
-The name comes from Caleuche Chasma, a canyon on Pluto's moon Charon named after the ghost ship of Chiloé.
-
-![Iosevka Caleuche specimen](documentation/iosevka-caleuche.png)
 
 241 Supported Languages:
 
