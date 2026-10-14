@@ -136,6 +136,20 @@ def _compute_all_kerns(
     hk.FONT_FACE = halfkern_cairoft.create_cairo_font_face_for_file(font_path, 0)
     hk.HB_FONT = hk.create_hb_font(font_path)
 
+    # Two glyphs whose ink does not reach each other give a zero-width overlap
+    # surface, and HalfKern's max-reduction fails on the empty array. No overlap
+    # is an overlap of 0, which makes kern_pair tighten the pair as usual.
+    if not getattr(hk.surface_sum, "_handles_empty", False):
+        halfkern_surface_sum = hk.surface_sum
+
+        def surface_sum(surface, func=sum):
+            if surface.get_width() == 0 or surface.get_height() == 0:
+                return 0
+            return halfkern_surface_sum(surface, func=func)
+
+        surface_sum._handles_empty = True
+        hk.surface_sum = surface_sum
+
     reduce_fn = getattr(builtins, config.reduce)
     envelope = config.envelope
     px_to_units = upem / hk.FONT_SIZE
