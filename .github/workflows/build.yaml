@@ -82,7 +82,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: specimen-image
-          path: documentation/iosevka-charon.png
+          path: |
+            documentation/iosevka-charon.png
+            documentation/iosevka-caleuche.png
           retention-days: 7
       - name: Upload webfonts
         if: always()
@@ -141,6 +143,7 @@ jobs:
             webfonts
             out
             documentation/iosevka-charon.png
+            documentation/iosevka-caleuche.png
           retention-days: 90
     outputs:
       zip_name: ${{ env.ZIP_NAME }}
@@ -229,11 +232,15 @@ jobs:
           if [ "${VALIDATION_FAILED}" = "true" ]; then
             STATUS="Failed"
           fi
+          TAG="${{ github.event.release.tag_name }}"
+          # Keep the notes written when the release was created; replace any earlier CI section.
+          gh release view "$TAG" --json body -q .body | sed '/<!-- ci-notes -->/,$d' > release-notes.md
           {
-            echo "## ${{ github.event.release.tag_name }}"
+            echo "<!-- ci-notes -->"
+            echo "## ${TAG}"
             echo ""
             echo "This release includes three archives:"
-            echo "- **\`iosevka-charon.zip\`**: General use fonts (processed TrueType fonts)"
+            echo "- **\`iosevka-charon.zip\`**: General use fonts (processed TrueType fonts): Iosevka Charon, Iosevka Charon Mono, Iosevka Caleuche and Iosevka Caleuche Mono"
             echo "- **\`iosevka-charon-webfonts.zip\`**: WOFF2 webfonts with three subsets (full, latin-ext, latin)"
             echo "- **\`iosevka-charon-google-fonts-qa-report.zip\`**: Quality assurance report"
             echo ""
@@ -246,7 +253,7 @@ jobs:
               echo ""
               cat fontspector-summary.md
             fi
-          } > release-notes.md
+          } >> release-notes.md
       - name: Upload release bundles
         run: |
           GENERAL_ZIP="iosevka-charon.zip"
@@ -257,6 +264,8 @@ jobs:
           [ -f "${QA_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${QA_ZIP}" --clobber
           [ -f "${WEBFONTS_ZIP}" ] && gh release upload ${{ github.event.release.tag_name }} "${WEBFONTS_ZIP}" --clobber
           [ -f "${{ env.ZIP_NAME }}/documentation/iosevka-charon.png" ] && gh release upload ${{ github.event.release.tag_name }} "${{ env.ZIP_NAME }}/documentation/iosevka-charon.png" --clobber
+          [ -f "${{ env.ZIP_NAME }}/documentation/iosevka-caleuche.png" ] && gh release upload ${{ github.event.release.tag_name }} "${{ env.ZIP_NAME }}/documentation/iosevka-caleuche.png" --clobber
+          true
       - name: Upload fontspector HTML report
         if: ${{ steps.fontspector.outputs.has_html == 'true' }}
         run: gh release upload ${{ github.event.release.tag_name }} fontspector-report.html --clobber

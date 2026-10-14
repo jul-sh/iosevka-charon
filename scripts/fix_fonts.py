@@ -13,12 +13,14 @@ Fixes:
 """
 
 import argparse
+import functools
 import json
 import logging
 import os
 import shutil
 import sys
 import unicodedata
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -46,6 +48,73 @@ TARGET_WIN_DESCENT = 604  # Fontspector requires this to cover all descenders
 TARGET_HHEA_ASCENDER = 1015  # Mildly increase total height for looser leading
 TARGET_HHEA_DESCENDER = -265  # Mildly increase total height for looser leading
 TARGET_HHEA_LINE_GAP = 0  # Keep gap at zero for GF compliance
+
+
+# Families
+# ----------------------------------------------------------------------------
+# Keyed by build-plan name, which Iosevka uses as the file-name prefix
+# (e.g. "IosevkaCaleuche-BoldItalic.ttf").
+
+
+@dataclass(frozen=True)
+class FamilySpec:
+    """Per-family naming, vertical metrics and spacing policy."""
+
+    name: str
+    hhea_ascender: int
+    hhea_descender: int
+    win_ascent: Optional[int] = None  # None: cover the family's glyph bounds
+    win_descent: Optional[int] = None
+    underline: Optional[Tuple[int, int]] = None  # (post position, thickness); None keeps Iosevka's
+    strikeout: Optional[Tuple[int, int]] = None  # (OS/2 position, size); None keeps Iosevka's
+    reduce_word_spacing: bool = True
+
+
+_CHARON = dict(
+    hhea_ascender=TARGET_HHEA_ASCENDER,
+    hhea_descender=TARGET_HHEA_DESCENDER,
+    win_ascent=TARGET_WIN_ASCENT,
+    win_descent=TARGET_WIN_DESCENT,
+)
+# Iosevka Caleuche pairs with Kerberos, so it takes Kerberos's line metrics, underline
+# and strikeout: the same default line height (1.361), one continuous underline across
+# text and code. Its word space is set in the build plan (advanceScaleSp), not here.
+_CALEUCHE = dict(
+    hhea_ascender=1016,
+    hhea_descender=-345,
+    underline=(-120, 75),
+    strikeout=(277, 75),
+    reduce_word_spacing=False,
+)
+
+FAMILIES = {
+    "IosevkaCharon": FamilySpec("Iosevka Charon", **_CHARON),
+    "IosevkaCharonMono": FamilySpec("Iosevka Charon Mono", **_CHARON),
+    "IosevkaCaleuche": FamilySpec("Iosevka Caleuche", **_CALEUCHE),
+    "IosevkaCaleucheMono": FamilySpec("Iosevka Caleuche Mono", **_CALEUCHE),
+}
+
+
+def family_key(font_path: Path) -> str:
+    """Build-plan name of a font file: the part of the file name before the first '-'."""
+    return font_path.stem.split("-")[0]
+
+
+def family_spec(font_path: Path) -> FamilySpec:
+    key = family_key(font_path)
+    if key not in FAMILIES:
+        raise ValueError(f"Unknown family '{key}' ({font_path.name}); add it to FAMILIES in fix_fonts.py")
+    return FAMILIES[key]
+
+
+@functools.lru_cache(maxsize=None)
+def family_y_bounds(family_dir: Path, key: str) -> Tuple[int, int]:
+    """Highest yMax and lowest yMin over every font of one family in a directory."""
+    y_max, y_min = 0, 0
+    for path in sorted(family_dir.glob(f"{key}-*.ttf")):
+        head = TTFont(path, lazy=True)["head"]
+        y_max, y_min = max(y_max, head.yMax), min(y_min, head.yMin)
+    return y_max, y_min
 
 # Configure logging
 logging.basicConfig(
@@ -132,24 +201,29 @@ def fix_copyright_notice(font: TTFont) -> bool:
     return True
 
 
-def fix_windows_metrics(font: TTFont) -> bool:
+def fix_windows_metrics(font: TTFont, spec: FamilySpec, font_path: Path) -> bool:
     """Fix Windows ascent/descent to proper values for Google Fonts"""
-    font["OS/2"].usWinAscent = TARGET_WIN_ASCENT
-    font["OS/2"].usWinDescent = TARGET_WIN_DESCENT
+    ascent, descent = spec.win_ascent, spec.win_descent
+    if ascent is None or descent is None:
+        # Cover the whole family's glyphs, one value for every member (family checks).
+        y_max, y_min = family_y_bounds(font_path.parent, family_key(font_path))
+        ascent, descent = y_max, -y_min
+    font["OS/2"].usWinAscent = ascent
+    font["OS/2"].usWinDescent = descent
 
-    logger.info(f"  ✓ Fixed Windows metrics: usWinAscent={TARGET_WIN_ASCENT}, usWinDescent={TARGET_WIN_DESCENT}")
+    logger.info(f"  ✓ Fixed Windows metrics: usWinAscent={ascent}, usWinDescent={descent}")
     return True
 
 
-def fix_vertical_metrics(font: TTFont) -> bool:
+def fix_vertical_metrics(font: TTFont, spec: FamilySpec) -> bool:
     """Fix hhea vertical metrics for Google Fonts"""
-    font["hhea"].ascender = TARGET_HHEA_ASCENDER
-    font["hhea"].descender = TARGET_HHEA_DESCENDER
+    font["hhea"].ascender = spec.hhea_ascender
+    font["hhea"].descender = spec.hhea_descender
     font["hhea"].lineGap = TARGET_HHEA_LINE_GAP
 
     # Typo metrics should match hhea for consistency
-    font["OS/2"].sTypoAscender = TARGET_HHEA_ASCENDER
-    font["OS/2"].sTypoDescender = TARGET_HHEA_DESCENDER
+    font["OS/2"].sTypoAscender = spec.hhea_ascender
+    font["OS/2"].sTypoDescender = spec.hhea_descender
     font["OS/2"].sTypoLineGap = TARGET_HHEA_LINE_GAP
 
     # Enable USE_TYPO_METRICS flag (bit 7)
@@ -161,6 +235,18 @@ def fix_vertical_metrics(font: TTFont) -> bool:
         f"descender={font['hhea'].descender}, lineGap={font['hhea'].lineGap}, total={total_height}"
     )
     logger.info("  ✓ Fixed Typo metrics to match hhea (USE_TYPO_METRICS enabled)")
+    return True
+
+
+def fix_line_decorations(font: TTFont, spec: FamilySpec) -> bool:
+    """Set underline and strikeout metrics when the family defines its own."""
+    if spec.underline is None and spec.strikeout is None:
+        return False
+    if spec.underline is not None:
+        font["post"].underlinePosition, font["post"].underlineThickness = spec.underline
+    if spec.strikeout is not None:
+        font["OS/2"].yStrikeoutPosition, font["OS/2"].yStrikeoutSize = spec.strikeout
+    logger.info(f"  ✓ Set underline {spec.underline} and strikeout {spec.strikeout}")
     return True
 
 
@@ -336,18 +422,14 @@ def fix_zero_width_glyphs(font: TTFont) -> bool:
     return False
 
 
-def fix_font_names(font: TTFont) -> bool:
+def fix_font_names(font: TTFont, spec: FamilySpec) -> bool:
     """Fix font names to match Google Fonts requirements."""
     name_table = font["name"]
     is_italic = bool(font["head"].macStyle & 2) or (font["OS/2"].fsSelection & 1)
 
-    existing_family = name_table.getName(1, 3, 1, 0x409)
-    family_hint = existing_family.toUnicode() if existing_family else ""
-
     # Get file name safely from the reader
     file_path = Path(font.reader.file.name)
-    is_mono = "Mono" in family_hint or "Mono" in file_path.name
-    base_family = "Iosevka Charon Mono" if is_mono else "Iosevka Charon"
+    base_family = spec.name
 
     # Detect weight from file name (more reliable than current OS/2 weight class)
     file_stem = file_path.stem
@@ -1011,17 +1093,19 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
     logger.info(f"\nProcessing: {font_path.name}")
 
     try:
+        spec = family_spec(font_path)
         font = TTFont(font_path)
         fixes_applied = []
 
         fix_map = [
             (fix_font_revision, "font_revision"),
             (fix_copyright_notice, "copyright_notice"),
-            (fix_windows_metrics, "windows_metrics"),
-            (fix_vertical_metrics, "vertical_metrics"),
+            (functools.partial(fix_windows_metrics, spec=spec, font_path=font_path), "windows_metrics"),
+            (functools.partial(fix_vertical_metrics, spec=spec), "vertical_metrics"),
+            (functools.partial(fix_line_decorations, spec=spec), "line_decorations"),
             (fix_fontbakery_version, "fontbakery_metadata"),
             (fix_zero_width_glyphs, "zero_width_glyphs"),
-            (fix_font_names, "font_names"),
+            (functools.partial(fix_font_names, spec=spec), "font_names"),
             (fix_dotted_circle, "dotted_circle"),
             (flatten_nested_components, "flattened_components"),
             (normalize_simple_glyphs, "normalized_glyf_flags"),
@@ -1038,7 +1122,7 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
         if fix_spacing_metadata(font, font_path):
             fixes_applied.append("spacing_metadata")
 
-        if reduce_word_spacing(font):
+        if spec.reduce_word_spacing and reduce_word_spacing(font):
             fixes_applied.append("reduced_word_spacing")
 
         extra_fix_map = [

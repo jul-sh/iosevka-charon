@@ -162,3 +162,200 @@ angle = 9.4
 shape = "italic"
 menu = "italic"
 css  = "italic"
+
+
+# ------------------------------------------------------------------
+# Iosevka Caleuche: Iosevka Charon re-proportioned to pair with Kerberos
+# (https://github.com/jul-sh/Kerberos). Same letterforms as Charon; Kerberos's
+# vertical zones, a matching narrower width, a steeper italic, and weights
+# that stay at or just under Kerberos's colour (no stroke contrast).
+
+[buildPlans.IosevkaCaleuche]
+family = "Iosevka Caleuche"
+spacing = "quasi-proportional"
+serifs = "sans"
+noCvSs = true
+exportGlyphNames = true
+buildTextureFeature = true
+noLigation = false
+
+[buildPlans.IosevkaCaleuche.ligations]
+enables = ["kern-bars", "kern-dotty"]
+
+[buildPlans.IosevkaCaleuche.variants]
+inherits = "ss08"
+
+[buildPlans.IosevkaCaleuche.variants.design]
+two = "straight-neck-serifless"
+three = "two-arcs"
+five = "oblique-flat-serifless"
+six = "open-contour"
+eight = "crossing"
+nine = "open-contour"
+zero = "oval-slashed"
+capital-q = "crossing"
+capital-a = "curly-serifless"
+capital-v = "curly-serifless"
+capital-w = "curly-asymmetric-serifless"
+capital-y = "curly-serifless"
+w = "curly-almost-flat-top-serifless"
+d = "tailed-serifless"
+e = "rounded"
+i = "serifed-flat-tailed"
+j = "narrow-serifed"
+l = "serifed-flat-tailed"
+u = "tailed-serifless"
+v = "curly-serifless"
+y = "curly-turn-serifless"
+ampersand = "closed"
+at = "fourfold"
+f = "narrow-serifless"
+t = "narrow-bent-hook"
+r = "narrow-hook-serifless"
+dollar = "through"
+ellipsis-density = "dense"
+
+# Kerberos's x-height, cap height, ascender and descender (per 1000 em).
+# `descender` is overridable thanks to a one-line patch in
+# sources/iosevka/packages/param/src/metric-override.mjs.
+[buildPlans.IosevkaCaleuche.metricOverride]
+xHeight = 461
+cap = 703
+ascender = 748
+descender = -242
+symbolMid = 300                           # keep operators and brackets centred on the lower x-height
+periodSize = 'default_periodSize * 0.87'  # period and dots scaled with the x-height
+dotSize = 'default_dotSize * 0.9'
+onumZeroHeightRatio = 1.10                # oldstyle zero at Kerberos's height
+advanceScaleSp = 0.5                      # word space 222 (Kerberos: 212)
+
+# one width: 500 x 461/520, Charon's own width-to-x-height ratio
+[buildPlans.IosevkaCaleuche.widths.Normal]
+shape = 443
+menu = 5
+css = "normal"
+
+# Light, Regular, Medium, Bold weights. Bold is heavier than Charon's (740 vs 700)
+# to meet Kerberos's dark Bold partway; all weights stay just under Kerberos's colour.
+[buildPlans.IosevkaCaleuche.weights.Light]
+shape = 300
+menu = 300
+css  = 300
+
+[buildPlans.IosevkaCaleuche.weights.Regular]
+shape = 400
+menu = 400
+css  = 400
+
+[buildPlans.IosevkaCaleuche.weights.Medium]
+shape = 500
+menu = 500
+css  = 500
+
+[buildPlans.IosevkaCaleuche.weights.Bold]
+shape = 740
+menu = 700
+css  = 700
+
+# ONLY Upright and Italic slopes; Kerberos Italic leans ~17 degrees, 15 is Iosevka's maximum
+[buildPlans.IosevkaCaleuche.slopes.Upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css  = "normal"
+
+[buildPlans.IosevkaCaleuche.slopes.Italic]
+angle = 15
+shape = "italic"
+menu = "italic"
+css  = "italic"
+
+# ------------------------------------------------------------------
+
+[buildPlans.IosevkaCaleucheMono]
+family = "Iosevka Caleuche Mono"
+spacing = "normal"
+serifs = "sans"
+noCvSs = true
+exportGlyphNames = true
+buildTextureFeature = true
+noLigation = true
+
+[buildPlans.IosevkaCaleucheMono.variants]
+inherits = "ss08"
+
+[buildPlans.IosevkaCaleucheMono.variants.design]
+two = "straight-neck-serifless"
+three = "two-arcs"
+five = "oblique-flat-serifless"
+six = "open-contour"
+eight = "crossing"
+nine = "open-contour"
+zero = "oval-slashed"
+capital-q = "crossing"
+capital-a = "curly-serifless"
+capital-v = "curly-serifless"
+capital-w = "curly-almost-flat-top-serifless"
+capital-y = "curly-serifless"
+w = "curly-almost-flat-top-serifless"
+d = "tailed-serifless"
+e = "rounded"
+i = "serifed-flat-tailed"
+j = "serifed"
+l = "serifed-flat-tailed"
+u = "tailed-serifless"
+v = "curly-serifless"
+y = "curly-turn-serifless"
+ampersand = "closed"
+at = "fourfold"
+dollar = "through"
+
+[buildPlans.IosevkaCaleucheMono.metricOverride]
+xHeight = 461
+cap = 703
+ascender = 748
+descender = -242
+symbolMid = 300
+periodSize = 'default_periodSize * 0.87'
+dotSize = 'default_dotSize * 0.9'
+onumZeroHeightRatio = 1.10
+
+# one width
+[buildPlans.IosevkaCaleucheMono.widths.Normal]
+shape = 443
+menu = 5
+css = "normal"
+
+# Light, Regular, Medium, Bold weights
+[buildPlans.IosevkaCaleucheMono.weights.Light]
+shape = 300
+menu = 300
+css  = 300
+
+[buildPlans.IosevkaCaleucheMono.weights.Regular]
+shape = 400
+menu = 400
+css  = 400
+
+[buildPlans.IosevkaCaleucheMono.weights.Medium]
+shape = 500
+menu = 500
+css  = 500
+
+[buildPlans.IosevkaCaleucheMono.weights.Bold]
+shape = 740
+menu = 700
+css  = 700
+
+# ONLY Upright and Italic slopes
+[buildPlans.IosevkaCaleucheMono.slopes.Upright]
+angle = 0
+shape = "upright"
+menu = "upright"
+css  = "normal"
+
+[buildPlans.IosevkaCaleucheMono.slopes.Italic]
+angle = 15
+shape = "italic"
+menu = "italic"
+css  = "italic"
