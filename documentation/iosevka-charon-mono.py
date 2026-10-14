@@ -1,10 +1,15 @@
 import argparse
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, features
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--output", metavar="PNG", help="where to save the image")
 args = parser.parse_args()
+
+# Shaped text only: Raqm (HarfBuzz) applies the font's kerning and ligatures;
+# Pillow's basic layout would silently render without them.
+if not features.check("raqm"):
+    raise SystemExit("Pillow has no Raqm support (libraqm + fribidi); refusing to render unshaped text")
 
 FONT_DIR = "fonts/iosevkacharonmono"
 FONTS = {
@@ -12,9 +17,18 @@ FONTS = {
     "bold": f"{FONT_DIR}/IosevkaCharonMono-Bold.ttf",
 }
 
-WIDTH, MARGIN = 900, 50
-FONT_SIZE = 28
-SMALL_SIZE = 24
+# Rendered at 2x so glyph positions land within half a pixel;
+# GitHub scales the image down to the page width.
+SCALE = 2
+
+
+def px(value):
+    return round(value * SCALE)
+
+
+WIDTH, MARGIN = px(900), px(50)
+FONT_SIZE = px(28)
+SMALL_SIZE = px(24)
 
 # Brighter colors
 BG = (23, 23, 23)  # #171717
@@ -34,20 +48,20 @@ small = ImageFont.truetype(FONTS["regular"], SMALL_SIZE, layout_engine=RAQM)
 # Calculate height
 def calc_height():
     y = MARGIN
-    y += FONT_SIZE + 8  # def hello
-    y += FONT_SIZE + 8  # msg = "...
-    y += FONT_SIZE + 8  # continuation
-    y += FONT_SIZE + 8  # print
-    y += FONT_SIZE + 8  # blank
-    y += FONT_SIZE + 8  # if
-    y += FONT_SIZE + 8  # hello()
-    y += 25 + 20  # gap + line + gap
-    y += SMALL_SIZE + 6  # ABC
-    y += SMALL_SIZE + 6  # abc
-    y += SMALL_SIZE + 6  # disambiguation
-    y += 20 + 20  # gap + line + gap
-    y += SMALL_SIZE + 6  # operators
-    y += SMALL_SIZE + 6  # box drawing
+    y += FONT_SIZE + px(8)  # def hello
+    y += FONT_SIZE + px(8)  # msg = "...
+    y += FONT_SIZE + px(8)  # continuation
+    y += FONT_SIZE + px(8)  # print
+    y += FONT_SIZE + px(8)  # blank
+    y += FONT_SIZE + px(8)  # if
+    y += FONT_SIZE + px(8)  # hello()
+    y += px(25) + px(20)  # gap + line + gap
+    y += SMALL_SIZE + px(6)  # ABC
+    y += SMALL_SIZE + px(6)  # abc
+    y += SMALL_SIZE + px(6)  # disambiguation
+    y += px(20) + px(20)  # gap + line + gap
+    y += SMALL_SIZE + px(6)  # operators
+    y += SMALL_SIZE + px(6)  # box drawing
     y += MARGIN
     return y
 
@@ -62,9 +76,8 @@ def draw_code_line(y, segments):
     x = MARGIN
     for text, color in segments:
         draw.text((x, y), text, font=regular, fill=color)
-        bbox = draw.textbbox((x, y), text, font=regular)
-        x = bbox[2]
-    return y + FONT_SIZE + 8
+        x += draw.textlength(text, font=regular)
+    return y + FONT_SIZE + px(8)
 
 
 def draw_code_bold(y, segments):
@@ -72,9 +85,8 @@ def draw_code_bold(y, segments):
     for text, color, is_bold in segments:
         font = bold if is_bold else regular
         draw.text((x, y), text, font=font, fill=color)
-        bbox = draw.textbbox((x, y), text, font=font)
-        x = bbox[2]
-    return y + FONT_SIZE + 8
+        x += draw.textlength(text, font=font)
+    return y + FONT_SIZE + px(8)
 
 
 y = MARGIN
@@ -124,26 +136,26 @@ y = draw_code_line(
     ],
 )
 
-y += FONT_SIZE + 8
+y += FONT_SIZE + px(8)
 
-draw.line([(MARGIN, y), (WIDTH - MARGIN, y)], fill=GRAY, width=1)
-y += 20
+draw.line([(MARGIN, y), (WIDTH - MARGIN, y)], fill=GRAY, width=px(1))
+y += px(20)
 
 draw.text((MARGIN, y), "ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789", font=small, fill=WHITE)
-y += SMALL_SIZE + 6
+y += SMALL_SIZE + px(6)
 draw.text((MARGIN, y), "abcdefghijklmnopqrstuvwxyz !@#$%^&*()", font=small, fill=WHITE)
-y += SMALL_SIZE + 6
+y += SMALL_SIZE + px(6)
 draw.text((MARGIN, y), "iIlL1|  oO0  {}[]()<>  +-*/=  \"'`~_", font=small, fill=WHITE)
-y += SMALL_SIZE + 6
+y += SMALL_SIZE + px(6)
 
-y += 20
-draw.line([(MARGIN, y), (WIDTH - MARGIN, y)], fill=GRAY, width=1)
-y += 20
+y += px(20)
+draw.line([(MARGIN, y), (WIDTH - MARGIN, y)], fill=GRAY, width=px(1))
+y += px(20)
 
 draw.text(
     (MARGIN, y), "->  =>  <=  >=  ==  !=  &&  ||  ::  ...", font=small, fill=WHITE
 )
-y += SMALL_SIZE + 6
+y += SMALL_SIZE + px(6)
 draw.text((MARGIN, y), "┌──┬──┐ ╔══╦══╗ ░▒▓█ ◆◇●○ ▲▼◀▶", font=small, fill=WHITE)
 
 img.save(args.output)

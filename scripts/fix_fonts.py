@@ -40,7 +40,7 @@ from autokern import add_auto_kerning
 # Constants
 # ----------------------------------------------------------------------------
 
-# Iosevka Charon Mono's vertical metrics, kept family-wide to satisfy FontBakery family checks.
+# Keep family-wide vertical metrics consistent to satisfy FontBakery family checks.
 # Win metrics must cover glyph bounds (for clipping prevention)
 # but hhea metrics control line spacing (keep tighter like original Iosevka)
 TARGET_WIN_ASCENT = 1198  # Fontspector requires this to cover all glyphs
@@ -53,7 +53,7 @@ TARGET_HHEA_LINE_GAP = 0  # Keep gap at zero for GF compliance
 # Families
 # ----------------------------------------------------------------------------
 # Keyed by build-plan name, which Iosevka uses as the file-name prefix
-# (e.g. "IosevkaCharonMono-BoldItalic.ttf").
+# (e.g. "IosevkaCaleuche-BoldItalic.ttf").
 
 
 @dataclass(frozen=True)
@@ -70,17 +70,16 @@ class FamilySpec:
     reduce_word_spacing: bool = True
 
 
-_MONO = dict(
+_CHARON = dict(
     hhea_ascender=TARGET_HHEA_ASCENDER,
     hhea_descender=TARGET_HHEA_DESCENDER,
     win_ascent=TARGET_WIN_ASCENT,
     win_descent=TARGET_WIN_DESCENT,
 )
-# The proportional Iosevka Charon pairs with Kerberos, so it takes Kerberos's line
-# metrics, underline and strikeout: the same default line height (1.361), one
-# continuous underline across both. Its word space is set in the build plan
-# (advanceScaleSp), not here.
-_KERBEROS_PAIRED = dict(
+# Iosevka Caleuche pairs with Kerberos, so it takes Kerberos's line metrics, underline
+# and strikeout: the same default line height (1.361), one continuous underline across
+# both. Its word space is set in the build plan (advanceScaleSp), not here.
+_CALEUCHE = dict(
     hhea_ascender=1016,
     hhea_descender=-345,
     underline=(-120, 75),
@@ -89,8 +88,9 @@ _KERBEROS_PAIRED = dict(
 )
 
 FAMILIES = {
-    "IosevkaCharon": FamilySpec("Iosevka Charon", **_KERBEROS_PAIRED),
-    "IosevkaCharonMono": FamilySpec("Iosevka Charon Mono", **_MONO),
+    "IosevkaCharon": FamilySpec("Iosevka Charon", **_CHARON),
+    "IosevkaCharonMono": FamilySpec("Iosevka Charon Mono", **_CHARON),
+    "IosevkaCaleuche": FamilySpec("Iosevka Caleuche", **_CALEUCHE),
 }
 
 
@@ -433,7 +433,8 @@ def fix_font_names(font: TTFont, spec: FamilySpec) -> bool:
     # Detect weight from file name (more reliable than current OS/2 weight class)
     file_stem = file_path.stem
     weight_from_name = None
-    weights = ["Heavy", "Light", "Medium", "Bold", "Thin", "ExtraLight", "SemiBold", "ExtraBold", "Black"]
+    # Longest names first, so "SemiBold" is not read as "Bold" or "ExtraLight" as "Light"
+    weights = ["ExtraLight", "SemiBold", "ExtraBold", "Heavy", "Light", "Medium", "Bold", "Thin", "Black"]
     for w in weights:
         if w in file_stem:
             weight_from_name = w
@@ -460,13 +461,13 @@ def fix_font_names(font: TTFont, spec: FamilySpec) -> bool:
 
     weight_map = {
         100: ("Thin", "thin"),
-        200: ("Extralight", "extralight"),
+        200: ("ExtraLight", "extralight"),
         300: ("Light", "light"),
         400: ("Regular", "regular"),
         500: ("Medium", "medium"),
-        600: ("Semibold", "semibold"),
+        600: ("SemiBold", "semibold"),
         700: ("Bold", "bold"),
-        800: ("Extrabold", "extrabold"),
+        800: ("ExtraBold", "extrabold"),
         900: ("Heavy", "heavy"),
     }
     weight_display, _ = weight_map.get(weight_class, ("Regular", "regular"))
@@ -1176,13 +1177,8 @@ def process_and_copy_font(font_path: Path) -> Tuple[bool, Path, Optional[Path]]:
         dest_dir_name = plan_dir.lower().replace(" ", "")
         dest_dir = Path("fonts") / dest_dir_name
 
-        # Normalize filename
-        filename = font_path.name
-        replacements = {"ExtraBold": "Extrabold", "ExtraLight": "Extralight", "SemiBold": "Semibold"}
-        for old, new in replacements.items():
-            filename = filename.replace(old, new)
-
-        output_path = dest_dir / filename
+        # Iosevka already writes Google Fonts' canonical style names (e.g. "SemiBold")
+        output_path = dest_dir / font_path.name
         success = post_process_font(font_path, output_path)
         return success, font_path, output_path
 
