@@ -12,7 +12,7 @@ if not features.check("raqm"):
     raise SystemExit("Pillow has no Raqm support (libraqm + fribidi); refusing to render unkerned text")
 
 FONT_DIR = "fonts/iosevkacaleuche"
-WEIGHTS = ["Light", "Regular", "Medium", "SemiBold", "Bold"]
+WEIGHTS = ["Light", "Regular", "Medium", "Bold"]
 
 # Rendered at 2x so glyph positions and kerning land within half a pixel;
 # GitHub scales the image down to the page width.

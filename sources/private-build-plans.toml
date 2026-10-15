@@ -235,8 +235,7 @@ shape = 443
 menu = 5
 css = "normal"
 
-# Light, Regular, Medium, SemiBold, Bold weights, the same shapes as Charon's;
-# SemiBold (which Charon lacks) sits at the standard 600.
+# Light, Regular, Medium, Bold weights, the same as Charon's
 [buildPlans.IosevkaCaleuche.weights.Light]
 shape = 300
 menu = 300
@@ -251,11 +250,6 @@ css  = 400
 shape = 500
 menu = 500
 css  = 500
-
-[buildPlans.IosevkaCaleuche.weights.SemiBold]
-shape = 600
-menu = 600
-css  = 600
 
 [buildPlans.IosevkaCaleuche.weights.Bold]
 shape = 700
