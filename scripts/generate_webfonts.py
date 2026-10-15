@@ -66,7 +66,8 @@ def generate_webfont(args: Tuple[Path, str, Optional[str]]) -> Tuple[bool, Path,
         # Determine output path
         # Input: fonts/<family>/Font-Weight.ttf
         # Output: webfonts/<subset>/<family>/Font-Weight.woff2
-        family_dir = font_path.parent.name
+        # (variable fonts: fonts/<family>/variable/ -> webfonts/<subset>/<family>/variable/)
+        family_dir = font_path.parent.relative_to(INPUT_ROOT)
         stem = font_path.stem  # e.g., "IosevkaCharon-Regular"
         output_filename = f"{stem}.woff2"
 

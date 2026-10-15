@@ -10,6 +10,15 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 
 Iosevka Caleuche is Iosevka Charon re-proportioned to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. The letterforms are Charon's; the proportions are Kerberos's. At the same font size, the two share one x-height, cap height, ascender and descender, the same default line height (1.361) and the same underline. It comes in Light, Regular, Medium and Bold, the same weights as Charon, and its italics lean 15° to sit with Kerberos's steep italic.
 
+Iosevka Caleuche also comes as variable fonts that keep that shared x-height at every size, one for each weight and slope in `fonts/iosevkacaleuche/variable/`. They carry two of Kerberos's axes: optical size (`opsz`, 8–72), which grows the x-height below 20 pt as Kerberos's does, and lowercase height (`YTLC`, 500–550). Browsers set the optical size from the font size on their own (`font-optical-sizing: auto`), so set side by side the two still meet:
+
+| x-height (per 1000 em) | 8 pt | 12 pt | 14 pt | 16 pt | 20 pt and up |
+| --- | --- | --- | --- | --- | --- |
+| `YTLC` 500 (default) | 515 | 495 | 485 | 477 | 461 |
+| `YTLC` 550 | 525 | 513 | 507 | 507 | 507 |
+
+Iosevka builds at another x-height do not interpolate with these, so [`scripts/caleuche_variable.py`](scripts/caleuche_variable.py) derives the taller lowercase from each static, the way Kerberos derives its own: the x-height zone stretches while capitals, ascenders, descenders and every advance width stay, accents and dots ride along, and mark positioning follows. The variable fonts are unhinted, like Kerberos's.
+
 The name comes from Caleuche Chasma, a canyon on Pluto's moon Charon named after the ghost ship of Chiloé.
 
 ![Iosevka Caleuche specimen](documentation/iosevka-caleuche.png)

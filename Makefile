@@ -30,7 +30,7 @@ TEST_TARGETS := build fonts postprocess webfonts images test proof compare
 
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
-POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" 2>/dev/null) sources/version.json
+POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" -o -name "caleuche_variable.py" 2>/dev/null) sources/version.json
 
 # DrawBot image generation
 DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
@@ -64,6 +64,8 @@ postprocess.stamp: fonts.stamp $(POSTPROCESS_SOURCES)
 	@echo "==> Stage 2: Post-processing fonts for GF compliance..."
 	rm -rf fonts
 	python3 scripts/fix_fonts.py
+	@echo "==> Iosevka Caleuche variable fonts (optical size and lowercase height, as Kerberos)..."
+	python3 scripts/caleuche_variable.py
 	@touch postprocess.stamp
 	@echo "==> Final fonts available in fonts/"
 
@@ -115,7 +117,7 @@ compare: postprocess.stamp
 	mkdir -p out/compare
 	diffenator2 diff \
 		--fonts-before $$(find unprocessed_fonts -type f -name "*.ttf") \
-		--fonts-after $$(find fonts -type f -name "*.ttf") \
+		--fonts-after $$(find fonts -type f -name "*.ttf" -not -path "*/variable/*") \
 		-o out/compare --no-diffenator || true
 	@echo ""
 	@echo "==> Visual comparison complete!"
