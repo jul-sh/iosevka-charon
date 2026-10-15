@@ -19,6 +19,8 @@ Iosevka Caleuche also comes as variable fonts that keep that shared x-height at 
 
 Iosevka builds at another x-height do not interpolate with these, so [`scripts/caleuche_variable.py`](scripts/caleuche_variable.py) derives the taller lowercase from each static, the way Kerberos derives its own: the x-height zone stretches while capitals, ascenders, descenders and every advance width stay, accents and dots ride along, and mark positioning follows. The variable fonts are unhinted, like Kerberos's.
 
+Download Caleuche from [`iosevka-caleuche.zip`](https://github.com/jul-sh/iosevka-charon/releases), separate from the Charon downloads. It contains static TrueType fonts in `fonts/iosevkacaleuche/`, matching `opsz`/`YTLC` variable TrueType fonts in `fonts/iosevkacaleuche/variable/`, and WOFF2 webfonts in `webfonts/{full,latin-ext,latin}/iosevkacaleuche/` (with variable webfonts in each subset's `variable/` directory). The `iosevka-charon.zip` and `iosevka-charon-webfonts.zip` downloads contain only Charon and Charon Mono.
+
 The name comes from Caleuche Chasma, a canyon on Pluto's moon Charon named after the ghost ship of Chiloé.
 
 ![Iosevka Caleuche specimen](documentation/iosevka-caleuche.png)
