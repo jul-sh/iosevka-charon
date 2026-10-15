@@ -8,7 +8,7 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 
 ## Iosevka Caleuche
 
-Iosevka Caleuche is Iosevka Charon re-proportioned to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. The letterforms are Charon's; the proportions are Kerberos's. At the same font size, the two share one x-height, cap height, ascender and descender, the same default line height (1.361) and the same underline. It comes in Light, Regular, Medium, SemiBold and Bold, heavier than Charon's from Regular up so it holds its own next to Kerberos, and its italics lean 15° to sit with Kerberos's steep italic.
+Iosevka Caleuche is Iosevka Charon re-proportioned to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. The letterforms are Charon's; the proportions are Kerberos's. At the same font size, the two share one x-height, cap height, ascender and descender, the same default line height (1.361) and the same underline. It comes in Light, Regular, Medium, SemiBold and Bold, at the same weights as Charon, and its italics lean 15° to sit with Kerberos's steep italic.
 
 The name comes from Caleuche Chasma, a canyon on Pluto's moon Charon named after the ghost ship of Chiloé.
 

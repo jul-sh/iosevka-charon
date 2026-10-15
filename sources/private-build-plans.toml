@@ -235,30 +235,30 @@ shape = 443
 menu = 5
 css = "normal"
 
-# Light, Regular, Medium, SemiBold, Bold weights. Regular and up are heavier than
-# Charon's (475/575/710/850) to hold their own next to Kerberos at reading sizes; Light stays at 300.
+# Light, Regular, Medium, SemiBold, Bold weights, the same shapes as Charon's;
+# SemiBold (which Charon lacks) sits at the standard 600.
 [buildPlans.IosevkaCaleuche.weights.Light]
 shape = 300
 menu = 300
 css  = 300
 
 [buildPlans.IosevkaCaleuche.weights.Regular]
-shape = 475
+shape = 400
 menu = 400
 css  = 400
 
 [buildPlans.IosevkaCaleuche.weights.Medium]
-shape = 575
+shape = 500
 menu = 500
 css  = 500
 
 [buildPlans.IosevkaCaleuche.weights.SemiBold]
-shape = 710
+shape = 600
 menu = 600
 css  = 600
 
 [buildPlans.IosevkaCaleuche.weights.Bold]
-shape = 850
+shape = 700
 menu = 700
 css  = 700
 
