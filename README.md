@@ -8,14 +8,18 @@ Iosevka Charon is a quasi-proportional font excellent for technical writing and 
 
 ## Iosevka Caleuche
 
-Iosevka Caleuche is Iosevka Charon re-proportioned to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. The letterforms are Charon's; the proportions are Kerberos's. At the same font size, the two share one x-height, cap height, ascender and descender, the same default line height (1.361) and the same underline. It comes in Light, Regular, Medium and Bold, the same weights as Charon, and its italics lean 15° to sit with Kerberos's steep italic.
+Iosevka Caleuche is Iosevka Charon re-proportioned to pair with [Kerberos](https://github.com/jul-sh/Kerberos), a Dutch-baroque text serif. It follows Kerberos 1.4.2's proportions, including each weight and style's own x-height and cap height, ascenders at 741 and descenders at −233 per 1000 em, the same default line height (1.205) and the same underline. It comes in Light, Regular, Medium and Bold, the same weights as Charon, and its italics lean 14.3° to match Kerberos's italic. Caleuche keeps Charon's letterform choices and its existing width setting.
 
-Iosevka Caleuche also comes as variable fonts that keep that shared x-height at every size, one for each weight and slope in `fonts/iosevkacaleuche/variable/`. They carry two of Kerberos's axes: optical size (`opsz`, 8–72), which grows the x-height below 20 pt as Kerberos's does, and lowercase height (`YTLC`, 500–550). Browsers set the optical size from the font size on their own (`font-optical-sizing: auto`), so set side by side the two still meet:
+Iosevka Caleuche also comes as variable fonts that keep that shared x-height at every size, one for each weight and style in `fonts/iosevkacaleuche/variable/`. They carry two of Kerberos's axes: optical size (`opsz`, 8–72), which grows the x-height below 20 pt as Kerberos's does, and lowercase height (`YTLC`, 500–550). Browsers set the optical size from the font size on their own (`font-optical-sizing: auto`), so set side by side the two still meet:
 
-| x-height (per 1000 em) | 8 pt | 12 pt | 14 pt | 16 pt | 20 pt and up |
+| Regular roman x-height (per 1000 em) | 8 pt | 12 pt | 14 pt | 16 pt | 20 pt and up |
 | --- | --- | --- | --- | --- | --- |
 | `YTLC` 500 (default) | 515 | 495 | 485 | 477 | 461 |
 | `YTLC` 550 | 525 | 513 | 507 | 507 | 507 |
+
+The static fonts use Kerberos's drawn proportions at optical sizes of 20 pt and up. For text below 20 pt, use the variable fonts for both families with `font-optical-sizing: auto`; apply the same `YTLC` value to both if you change it. Caleuche follows the 8, 12, 14, 20 and 72 pt masters, including Kerberos's weight mapping for Medium; heights are rounded to whole font units. Its default optical size is 14 pt, like Kerberos's.
+
+The reference metrics are pinned to [Kerberos 1.4.2](https://github.com/jul-sh/Kerberos/tree/c813af0fd5ccda50c4beffebb5ea4029aad8e1a6) in [`sources/caleuche-kerberos.json`](sources/caleuche-kerberos.json), so building Caleuche does not require a Kerberos checkout or a network lookup.
 
 Iosevka builds at another x-height do not interpolate with these, so [`scripts/caleuche_variable.py`](scripts/caleuche_variable.py) derives the taller lowercase from each static, the way Kerberos derives its own: the x-height zone stretches while capitals, ascenders, descenders and every advance width stay, accents and dots ride along, and mark positioning follows. The variable fonts are unhinted, like Kerberos's.
 

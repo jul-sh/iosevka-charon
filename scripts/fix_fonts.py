@@ -57,6 +57,12 @@ TARGET_HHEA_LINE_GAP = 0  # Keep gap at zero for GF compliance
 
 
 @dataclass(frozen=True)
+class XHeightStrikeout:
+    position_ratio: float
+    size: int
+
+
+@dataclass(frozen=True)
 class FamilySpec:
     """Per-family naming, vertical metrics and spacing policy."""
 
@@ -66,7 +72,8 @@ class FamilySpec:
     win_ascent: Optional[int] = None  # None: cover the family's glyph bounds
     win_descent: Optional[int] = None
     underline: Optional[Tuple[int, int]] = None  # (post position, thickness); None keeps Iosevka's
-    strikeout: Optional[Tuple[int, int]] = None  # (OS/2 position, size); None keeps Iosevka's
+    strikeout: Tuple[int, int] | XHeightStrikeout | None = None  # (OS/2 position, size); None keeps Iosevka's
+    italic_angle: float | None = None
     reduce_word_spacing: bool = True
 
 
@@ -77,13 +84,15 @@ _CHARON = dict(
     win_descent=TARGET_WIN_DESCENT,
 )
 # Iosevka Caleuche pairs with Kerberos, so it takes Kerberos's line metrics, underline
-# and strikeout: the same default line height (1.361), one continuous underline across
+# and strikeout: the same default line height (1.205), one continuous underline across
 # both. Its word space is set in the build plan (advanceScaleSp), not here.
+_KERBEROS = json.loads((Path(__file__).resolve().parents[1] / "sources/caleuche-kerberos.json").read_text())
 _CALEUCHE = dict(
-    hhea_ascender=1016,
-    hhea_descender=-345,
-    underline=(-120, 75),
-    strikeout=(277, 75),
+    hhea_ascender=_KERBEROS["hhea_ascender"],
+    hhea_descender=_KERBEROS["hhea_descender"],
+    underline=tuple(_KERBEROS["underline"]),
+    strikeout=XHeightStrikeout(**_KERBEROS["strikeout"]),
+    italic_angle=_KERBEROS["italic_angle"],
     reduce_word_spacing=False,
 )
 
@@ -243,9 +252,23 @@ def fix_line_decorations(font: TTFont, spec: FamilySpec) -> bool:
         return False
     if spec.underline is not None:
         font["post"].underlinePosition, font["post"].underlineThickness = spec.underline
-    if spec.strikeout is not None:
-        font["OS/2"].yStrikeoutPosition, font["OS/2"].yStrikeoutSize = spec.strikeout
+    match spec.strikeout:
+        case XHeightStrikeout(position_ratio, size):
+            font["OS/2"].yStrikeoutPosition = round(position_ratio * font["OS/2"].sxHeight)
+            font["OS/2"].yStrikeoutSize = size
+        case (position, size):
+            font["OS/2"].yStrikeoutPosition, font["OS/2"].yStrikeoutSize = position, size
+        case None:
+            pass
     logger.info(f"  ✓ Set underline {spec.underline} and strikeout {spec.strikeout}")
+    return True
+
+
+def fix_italic_angle(font: TTFont, spec: FamilySpec) -> bool:
+    """Iosevka rounds this metadata to whole degrees; retain the drawn angle for Caleuche."""
+    if spec.italic_angle is None or not (font["OS/2"].fsSelection & 1):
+        return False
+    font["post"].italicAngle = -spec.italic_angle
     return True
 
 
@@ -1103,6 +1126,7 @@ def post_process_font(font_path: Path, output_path: Optional[Path] = None) -> bo
             (functools.partial(fix_windows_metrics, spec=spec, font_path=font_path), "windows_metrics"),
             (functools.partial(fix_vertical_metrics, spec=spec), "vertical_metrics"),
             (functools.partial(fix_line_decorations, spec=spec), "line_decorations"),
+            (functools.partial(fix_italic_angle, spec=spec), "italic_angle"),
             (fix_fontbakery_version, "fontbakery_metadata"),
             (fix_zero_width_glyphs, "zero_width_glyphs"),
             (functools.partial(fix_font_names, spec=spec), "font_names"),

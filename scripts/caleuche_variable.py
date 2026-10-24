@@ -12,10 +12,12 @@ colon, hyphen and the like move with the x-height; mark attachment points on the
 Every corner of the design space is then the drawn static plus a share of that change, so the
 variable font matches Kerberos at every size:
 
-    x-height (per 1000 em)   8 pt   14 pt   20 pt and up
+    Regular roman (per 1000 em)   8 pt   14 pt   20 pt and up
     YTLC 500                 515    485     461 (the drawn static)
     YTLC 550                 525    507     507
 
+Kerberos 1.4.2's zones and optical-size targets are pinned in sources/caleuche-kerberos.json,
+including each weight/style's own heights and its 12 pt optical-size master.
 One variable font per static (weights are drawn separately and do not interpolate), unhinted:
 fonts/iosevkacaleuche/variable/IosevkaCaleuche-<Style>[YTLC,opsz].ttf
 
@@ -25,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import bisect
+import json
 import math
 import os
 import sys
@@ -39,11 +42,9 @@ from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.tables import ttProgram
 from fontTools.varLib import build as build_variable
 
-DRAWN = 461                                   # the statics' x-height (Kerberos at 20 pt and up)
-FULL = 525                                    # the tallest: Kerberos at 8 pt, YTLC 550
-ASCENDER = 748                                # Kerberos's ascender, as the build plan sets it
-TARGETS = {(8, 500): 515, (8, 550): 525, (14, 500): 485, (14, 550): 507,
-           (20, 500): 461, (20, 550): 507, (72, 500): 461, (72, 550): 507}
+# Pinned Kerberos metrics keep the build reproducible without another checkout/network access.
+KERBEROS = json.loads((Path(__file__).resolve().parents[1] / "sources/caleuche-kerberos.json").read_text())
+ASCENDER = KERBEROS["ascender"]
 OPSZ = (8, 14, 72)
 YTLC = (500, 500, 550)
 OPSZ_NAMES = (8, 9, 10, 11, 12, 14, 16, 17, 18, 20, 24, 28, 36, 48, 60, 72)   # STAT, as in Kerberos
@@ -74,7 +75,7 @@ def _dotted(ch: str) -> bool:
 def roles(font: TTFont) -> tuple[dict, set, set, set]:
     """(glyph -> char, stretched glyphs, punctuation glyphs, dotted glyphs)"""
     glyf = font["glyf"]
-    x_height = font["OS/2"].sxHeight or DRAWN
+    x_height = font["OS/2"].sxHeight
     cmap = font.getBestCmap()
     char_of = {}
     for cp, name in cmap.items():
@@ -342,14 +343,14 @@ def bounds_of(name, glyf):
     return None
 
 
-def derive(font: TTFont) -> dict:
+def derive(font: TTFont, full: int) -> dict:
     """{"shift": {glyph: [(dx, dy) per point, or per component]}, "moves": {glyph: delta(y)} for
-    its anchors}, at the full change (x-height DRAWN -> FULL)"""
+    its anchors}, at the full change (the static x-height -> full)"""
     glyf = font["glyf"]
-    x_height = font["OS/2"].sxHeight or DRAWN
+    x_height = font["OS/2"].sxHeight
     slant = math.tan(math.radians(-font["post"].italicAngle))
     sl = lambda dy: (round(dy * slant), round(dy))
-    d = FULL - DRAWN
+    d = full - x_height
     char_of, lower, punct, dotted = roles(font)
     generic = Move(x_height, ASCENDER, d)
     moves, shift, tops = {}, {}, {}
@@ -521,12 +522,21 @@ def master(base: Path, change: dict, share: float, target: int) -> TTFont:
                                 anchor.XCoordinate += round(dy * change["slant"])
                                 anchor.YCoordinate += round(dy)
     f["OS/2"].sxHeight = target
+    f["OS/2"].yStrikeoutPosition = round(KERBEROS["strikeout"]["position_ratio"] * target)
     return f
 
 
 def variable(path: Path, out_dir: Path) -> Path:
     font = TTFont(path)
-    change = derive(font)
+    profile = KERBEROS["profiles"][path.stem.split("-", 1)[1]]
+    drawn = profile["x_height"]
+    if (font["OS/2"].sxHeight, font["OS/2"].sCapHeight) != (drawn, profile["cap_height"]):
+        raise ValueError(f"{path.name}: rebuild statics with the Kerberos {KERBEROS['version']} build plan")
+    targets = {(int(opsz), ytlc): target
+               for opsz, heights in profile["targets"].items()
+               for ytlc, target in zip((500, 550), heights)}
+    full = max(targets.values())
+    change = derive(font, full)
     change["pairs"] = pair_lookups(font)
     names = font["name"]
     italic = bool(font["OS/2"].fsSelection & 1)
@@ -540,8 +550,8 @@ def variable(path: Path, out_dir: Path) -> Path:
     out = out_dir / f"{path.stem}[YTLC,opsz].ttf"
     with tempfile.TemporaryDirectory(prefix="caleuche-vf-") as tmp:
         base = base_of(path, change["pairs"], Path(tmp) / "base.ttf")
-        for (opsz, ytlc), target in TARGETS.items():
-            share = (target - DRAWN) / (FULL - DRAWN)
+        for (opsz, ytlc), target in targets.items():
+            share = (target - drawn) / (full - drawn)
             p = Path(tmp) / f"m-{opsz}-{ytlc}.ttf"
             master(base, change, share, target).save(p)
             src = SourceDescriptor()
@@ -555,7 +565,7 @@ def variable(path: Path, out_dir: Path) -> Path:
         doc.addInstance(inst)
         vf, _, _ = build_variable(doc)
         # the kerning does not vary: it goes back in as drawn, unmerged (merging its million
-        # class pairs eight times over would take minutes and gigabytes for nothing)
+        # class pairs ten times over would take minutes and gigabytes for nothing)
         for i in change["pairs"]:
             kern = font["GPOS"].table.LookupList.Lookup[i]
             lookup = vf["GPOS"].table.LookupList.Lookup[i]
@@ -588,7 +598,7 @@ def main() -> int:
     if not fonts:
         print("no Iosevka Caleuche statics found", file=sys.stderr)
         return 1
-    # each build holds eight masters in memory: a few at a time
+    # each build holds ten masters in memory: a few at a time
     with ProcessPoolExecutor(max_workers=max(1, min(len(fonts), os.cpu_count() or 1, 4))) as pool:
         for out in pool.map(variable, fonts, [args.out] * len(fonts)):
             print("built", out)

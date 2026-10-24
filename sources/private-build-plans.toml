@@ -215,14 +215,16 @@ r = "narrow-hook-serifless"
 dollar = "through"
 ellipsis-density = "dense"
 
-# Kerberos's x-height, cap height, ascender and descender (per 1000 em).
+# Kerberos 1.4.2's drawn (20 pt+) zones, including weight/style differences.
+# Snapshot and optical-size targets: sources/caleuche-kerberos.json.
+# The static fonts use these zones; the variable fonts follow optical size.
 # `descender` is overridable thanks to a one-line patch in
 # sources/iosevka/packages/param/src/metric-override.mjs.
 [buildPlans.IosevkaCaleuche.metricOverride]
-xHeight = 461
-cap = 703
-ascender = 748
-descender = -242
+xHeight = 'blend(slopeAngle, [0, blend(weight, [300, 455], [400, 461], [500, 465], [700, 474])], [14.3, blend(weight, [300, 458], [400, 463], [500, 466], [700, 473])])'
+cap = 'blend(slopeAngle, [0, blend(weight, [300, 692], [400, 695], [500, 697], [700, 702])], [14.3, blend(weight, [300, 693], [400, 695], [500, 697], [700, 701])])'
+ascender = 741
+descender = -233
 symbolMid = 300                           # keep operators and brackets centred on the lower x-height
 periodSize = 'default_periodSize * 0.87'  # period and dots scaled with the x-height
 dotSize = 'default_dotSize * 0.9'
@@ -256,7 +258,7 @@ shape = 700
 menu = 700
 css  = 700
 
-# ONLY Upright and Italic slopes; Kerberos Italic leans ~17 degrees, 15 is Iosevka's maximum
+# Upright and Italic slopes; Kerberos 1.4.2 Italic leans 14.3 degrees
 [buildPlans.IosevkaCaleuche.slopes.Upright]
 angle = 0
 shape = "upright"
@@ -264,7 +266,7 @@ menu = "upright"
 css  = "normal"
 
 [buildPlans.IosevkaCaleuche.slopes.Italic]
-angle = 15
+angle = 14.3
 shape = "italic"
 menu = "italic"
 css  = "italic"

@@ -1,0 +1,24 @@
+{
+  "reference": "https://github.com/jul-sh/Kerberos/tree/c813af0fd5ccda50c4beffebb5ea4029aad8e1a6",
+  "version": "1.4.2",
+  "ascender": 741,
+  "descender": -233,
+  "italic_angle": 14.3,
+  "hhea_ascender": 960,
+  "hhea_descender": -245,
+  "underline": [
+    -120,
+    75
+  ],
+  "strikeout": {"position_ratio": 0.6, "size": 75},
+  "profiles": {
+    "Light": {"x_height": 455, "cap_height": 692, "targets": {"8": [508, 519], "12": [488, 507], "14": [478, 501], "20": [455, 501], "72": [455, 501]}},
+    "Regular": {"x_height": 461, "cap_height": 695, "targets": {"8": [515, 525], "12": [495, 513], "14": [485, 507], "20": [461, 507], "72": [461, 507]}},
+    "Medium": {"x_height": 465, "cap_height": 697, "targets": {"8": [520, 530], "12": [499, 517], "14": [489, 511], "20": [465, 511], "72": [465, 511]}},
+    "Bold": {"x_height": 474, "cap_height": 702, "targets": {"8": [530, 540], "12": [508, 527], "14": [498, 521], "20": [474, 521], "72": [474, 521]}},
+    "LightItalic": {"x_height": 458, "cap_height": 693, "targets": {"8": [512, 522], "12": [491, 510], "14": [481, 504], "20": [458, 504], "72": [458, 504]}},
+    "Italic": {"x_height": 463, "cap_height": 695, "targets": {"8": [518, 528], "12": [497, 515], "14": [487, 509], "20": [463, 509], "72": [463, 509]}},
+    "MediumItalic": {"x_height": 466, "cap_height": 697, "targets": {"8": [521, 531], "12": [500, 518], "14": [490, 512], "20": [466, 512], "72": [466, 512]}},
+    "BoldItalic": {"x_height": 473, "cap_height": 701, "targets": {"8": [529, 539], "12": [507, 526], "14": [497, 520], "20": [473, 520], "72": [473, 520]}}
+  }
+}

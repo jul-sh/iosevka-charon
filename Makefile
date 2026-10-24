@@ -17,6 +17,7 @@ help:
 	@echo "  make postprocess:                    Post-processes fonts (stage 2: unprocessed_fonts/ → fonts/)"
 	@echo "  make images:                         Generates specimen images via DrawBot"
 	@echo "  make test:                           Runs fontspector checks on the built fonts"
+	@echo "  make test-caleuche:                  Checks Kerberos compatibility and variable fonts"
 	@echo "  make proof:                          Generates HTML proofs via diffenator2"
 	@echo "  make compare:                        Compares raw vs post-processed fonts"
 	@echo "  make webfonts:                       Generates WOFF2 webfonts with subsets (full, latin-ext, latin)"
@@ -26,11 +27,11 @@ help:
 	@echo
 
 # Make targets that should be included in automated test runs
-TEST_TARGETS := build fonts postprocess webfonts images test proof compare
+TEST_TARGETS := build fonts postprocess webfonts images test-caleuche test proof compare
 
 # Source dependencies for each stage
 BUILD_SOURCES := $(PLAN) $(shell find sources/iosevka -type f 2>/dev/null) scripts/iosevka_build.py
-POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" -o -name "caleuche_variable.py" 2>/dev/null) sources/version.json
+POSTPROCESS_SOURCES := $(shell find scripts -name "post_process*.py" -o -name "fix_fonts.py" -o -name "caleuche_variable.py" 2>/dev/null) sources/version.json sources/caleuche-kerberos.json
 
 # DrawBot image generation
 DRAWBOT_SCRIPTS=$(shell ls documentation/*.py 2>/dev/null)
@@ -104,6 +105,9 @@ test: postprocess.stamp
 # Excluded checks:
 # - fontdata_namecheck: requires network access to namecheck.fontdata.com which is
 #   unreliable and errors in sandboxed/CI environments.
+
+test-caleuche: postprocess.stamp
+	python3 -m unittest discover -s tests -p 'test_caleuche*.py'
 
 test-harfbuzz: postprocess.stamp
 	@echo "===> Running HarfBuzz mark positioning tests..."
