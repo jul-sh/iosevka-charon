@@ -95,7 +95,7 @@ class CaleucheVariableTest(unittest.TestCase):
     @unittest.skipUnless(Path('fonts/iosevkacaleuche/variable').is_dir(), 'requires built fonts')
     def test_built_family(self):
         root = Path('fonts/iosevkacaleuche')
-        self.assertEqual(len(list((root / 'variable').glob('*.ttf'))), 8)
+        self.assertEqual(len(list((root / 'variable').glob('*.ttf'))), len(KERBEROS['profiles']))
         for style, profile in KERBEROS['profiles'].items():
             with self.subTest(style=style):
                 static = TTFont(root / f'IosevkaCaleuche-{style}.ttf')
@@ -138,7 +138,7 @@ class CaleucheVariableTest(unittest.TestCase):
             for (const [weight, name] of [[300, 'Light'], [400, 'Regular'], [500, 'Medium'], [700, 'Bold']]) {
                 for (const [slope, suffix] of [['Upright', ''], ['Italic', 'Italic']]) {
                     const style = name === 'Regular' && suffix ? 'Italic' : name + suffix;
-                    const shape = {weight, width: 443, slopeAngle: plan.slopes[slope].angle};
+                    const shape = {weight: plan.weights[name].shape, width: 443, slopeAngle: plan.slopes[slope].angle};
                     const metrics = {};
                     applyMetricOverride(metrics, plan.metricOverride, {shape});
                     assert.equal(metrics.xHeight, reference.profiles[style].x_height);

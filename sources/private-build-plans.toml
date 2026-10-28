@@ -221,8 +221,8 @@ ellipsis-density = "dense"
 # `descender` is overridable thanks to a one-line patch in
 # sources/iosevka/packages/param/src/metric-override.mjs.
 [buildPlans.IosevkaCaleuche.metricOverride]
-xHeight = 'blend(slopeAngle, [0, blend(weight, [300, 455], [400, 461], [500, 465], [700, 474])], [14.3, blend(weight, [300, 458], [400, 463], [500, 466], [700, 473])])'
-cap = 'blend(slopeAngle, [0, blend(weight, [300, 692], [400, 695], [500, 697], [700, 702])], [14.3, blend(weight, [300, 693], [400, 695], [500, 697], [700, 701])])'
+xHeight = 'blend(slopeAngle, [0, blend(weight, [300, 455], [400, 461], [450, 463], [500, 465], [700, 474])], [14.3, blend(weight, [300, 458], [400, 463], [450, 465], [500, 466], [700, 473])])'
+cap = 'blend(slopeAngle, [0, blend(weight, [300, 692], [400, 695], [450, 696], [500, 697], [700, 702])], [14.3, blend(weight, [300, 693], [400, 695], [450, 696], [500, 697], [700, 701])])'
 ascender = 741
 descender = -233
 symbolMid = 300                           # keep operators and brackets centred on the lower x-height
@@ -237,14 +237,14 @@ shape = 443
 menu = 5
 css = "normal"
 
-# Light, Regular, Medium, Bold weights, the same as Charon's
+# Light, Regular, Medium and Bold weights; Regular uses the approved 450 drawing.
 [buildPlans.IosevkaCaleuche.weights.Light]
 shape = 300
 menu = 300
 css  = 300
 
 [buildPlans.IosevkaCaleuche.weights.Regular]
-shape = 400
+shape = 450
 menu = 400
 css  = 400
 
